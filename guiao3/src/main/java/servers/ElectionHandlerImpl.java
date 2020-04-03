@@ -7,7 +7,6 @@ import java.util.function.Consumer;
 public class ElectionHandlerImpl implements ElectionHandler {
     private Consumer<Integer> job;
 
-
     public ElectionHandlerImpl(Consumer<Integer> job){
         this.job = job;
     }

@@ -163,6 +163,6 @@ public class Server {
     }
 
     public static void main(String[] args) throws InterruptedException, SpreadException, UnknownHostException, ExecutionException {
-        new Server("bom",10000).start();
+        new Server("b",10000).start();
     }
 }
