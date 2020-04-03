@@ -10,25 +10,23 @@ import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 
 public class ContaStub {
     private ManagedMessagingService mms;
     private Address primaryServer;
     private Address myAddress;
-    private ExecutorService e;
     private Serializer s;
     private int idCount;
     private CompletableFuture<ReplyMessage> res;
+    private ScheduledExecutorService ses;
 
     public ContaStub(int myPort){
         this.primaryServer = Address.from(10000);
         this.idCount = 0;
         this.myAddress = Address.from(myPort);
+        this.ses = Executors.newScheduledThreadPool(1);
     }
 
     public void start(){
@@ -41,19 +39,22 @@ public class ContaStub {
                 .addType(ReplyMessage.class)
                 .addType(RequestMessage.class)
                 .build();
-        this.e = Executors.newFixedThreadPool(1);
 
         this.mms.registerHandler("reply", (a,b) -> {
             ReplyMessage repm = s.decode(b);
             if(repm.reqId == idCount)
                 res.complete(repm);
-        }, e);
+        }, ses);
     }
 
     public int saldo() throws ExecutionException, InterruptedException {
         this.res = new CompletableFuture<>();
         idCount++;
         RequestMessage reqm = new RequestMessage(idCount);
+        //Agenda um timeout
+        ScheduledFuture<?> sf = scheduleTimeout(reqm);
+        //Caso a resposta tenha chegado cancela o timeout
+        res.whenComplete((m,t) -> sf.cancel(true));
         mms.sendAsync(primaryServer, "request", s.encode(reqm));
         return res.get().q;
     }
@@ -62,7 +63,16 @@ public class ContaStub {
         this.res = new CompletableFuture<>();
         idCount++;
         RequestMessage reqm = new RequestMessage(idCount,q);
+        ScheduledFuture<?> sf = scheduleTimeout(reqm);
+        res.whenComplete((m,t) -> sf.cancel(true));
         mms.sendAsync(primaryServer, "request", s.encode(reqm));
         return res.get().b;
+    }
+
+    public ScheduledFuture<?> scheduleTimeout(RequestMessage reqm){
+        return ses.scheduleAtFixedRate(()->{
+            System.out.println("timeout...sending new request");
+            mms.sendAsync(primaryServer, "request", s.encode(reqm));
+            }, 1, 4, TimeUnit.SECONDS);
     }
 }

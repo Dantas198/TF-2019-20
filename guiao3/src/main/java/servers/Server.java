@@ -11,12 +11,14 @@ import messages.Acknowledgment;
 import messages.ReplyMessage;
 import messages.RequestMessage;
 import messages.TransferStateMessage;
+
 import spread.*;
 
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -26,23 +28,31 @@ import java.util.function.Consumer;
 public class Server {
     private String privateName;
     private Address myAddress;
-
     private CompletableFuture<Void> reply;
     private CompletableFuture<Void> running;
     private ContaSkel skel = new ContaSkel();
 
+    //Util para secundários que transitam para primários, para que possam responder ao ultimo pedido de cada cliente
+    //e para permitir detetar pedidos repetidos que podem acontecer devido ao timeout do lado do cliente
+    private HashMap<Address, ReplyMessage> lastReplies;
+
+    //modulo que trata da eleição do lider (quando em modo secundário)
     private ElectionManager electionManager;
+
+    //modulo que trata de replicar estado (quando em modo primário)
     private ReplicationManager replicationManager;
 
     private SpreadConnection connection;
     private SpreadGroup group;
+    private AdvancedMessageListener setSecondaryListener;
     private Serializer s;
     private ExecutorService e;
     private ManagedMessagingService mms;
 
-    public Server(String privateName, int port) throws InterruptedException, ExecutionException, SpreadException, UnknownHostException {
+    public Server(String privateName, int port) {
         this.privateName = privateName;
         this.myAddress = Address.from(port);
+        this.lastReplies = new HashMap<>();
         this.running = new CompletableFuture<>();
         this.e = Executors.newFixedThreadPool(1);
         this.s = new SerializerBuilder()
@@ -51,36 +61,35 @@ public class Server {
                 .build();
         this.connection = new SpreadConnection();
 
-        // o que fazer quando sou eleito
-        Consumer<Void> becomePrimary = (x) -> {
-            connection.remove(getSecondaryListener());
-            replicationManager = new ReplicationManager(new ReplicationHandlerImpl((y) -> reply.complete(null)));
+        // O que fazer quando sou eleito
+        Consumer<Integer> becomePrimary = (x) -> {
+            connection.remove(this.setSecondaryListener);
+            replicationManager = new ReplicationManager(x, new ReplicationHandlerImpl((y) -> reply.complete(null)));
             connection.add(replicationManager.getListener());
 
-
-            //todos os servidores irão utilizar a mesma porta. Quando o primário falha a porta deverá ficar livre, mas
-            //temos de verficar, caso contrário teremos de comunicar com o cliente para estabelecer a porta.
-            //de qualquer das maneiras muito provávelmente o cliente vai dar uma exceção do atomix, pq por momentos não vai
-            //haver quem leia deste lado o que ele envia.
+            //Todos os servidores irão utilizar a mesma porta. Quando o primário falha a porta deverá ficar livre para
+            // o próximo
             startPrimaryComponent();
             startClientsListener();
+
+            //envia os ultimos pedidos dos clientes. Caso seja repetido o cliente simplesmente irá descartar, devido ao id
+            lastReplies.forEach((a,b) -> mms.sendAsync(a,"reply",s.encode(b)));
         };
 
-        // começo como secundário. Se estiver correto o algoritmo se eu for o primeiro a entrar sou logo eleito
+        //Começo como secundário, quando sou o primeiro a entrar sou logo eleito
         this.electionManager = new ElectionManager(connection, new ElectionHandlerImpl(becomePrimary));
     }
 
-
+    //Função de arranque no modo secundário
     public void start() throws UnknownHostException, SpreadException, InterruptedException, ExecutionException {
         this.connection.connect(InetAddress.getByName("localhost"), 0,
                 "server:" + privateName, false, true);
         this.group = new SpreadGroup();
         this.group.join(connection, "bank");
-        // adiciona o listener do secundário à conexão
-        connection.add(getSecondaryListener());
 
-        //cuidado! imagino que o que corra o becomePrimary seja a thread associada ao connection.add() do listener que
-        //o chamou, mas se não foi isto pode dar problemas
+        // Adiciona o listener do secundário à conexão
+        setSecondaryListener();
+        connection.add(this.setSecondaryListener);
         this.running.get();
     }
 
@@ -90,38 +99,50 @@ public class Server {
                 myAddress,
                 new MessagingConfig());
         this.mms.start();
+        System.out.println("Primary component");
     }
 
-    // para responder a pedidos dos clientes
+    // Para responder a pedidos dos clientes
     private void startClientsListener(){
         mms.registerHandler("request", (a,b) -> {
             RequestMessage reqm = s.decode(b);
-            ReplyMessage repm = skel.resolve(reqm);
-            // se não é um pedido de saldo e a operação foi bem sucedida
-            if(repm.type != 1 && repm.b){
-                try {
-                    this.reply = new CompletableFuture<>();
-                    sendMsg(new TransferStateMessage(skel.getContaImpl().saldo()), group);
-                    //tem de esperar para ser sequencial, visto que concorrência de pedidos envolve mais coisas
-                    reply.thenAccept(x -> mms.sendAsync(a,"reply",s.encode(repm))).get();
-                } catch (SpreadException | InterruptedException | ExecutionException ex) {
-                    ex.printStackTrace();
+            ReplyMessage old = lastReplies.get(a);
+
+            //Só irei mudar o estado e responder se ainda não respondi já a esta msg
+            //Ocorre quando o cliente dá timeout, mas o servidor já tinha respondido
+            //Se já respondi então o cliente não irá estar, em princípio, à espera da resposta à pergunta repetida
+            if(old == null || !old.answerToSameRequest(reqm)){
+                ReplyMessage repm = skel.resolve(reqm);
+                lastReplies.put(a, repm);
+                // se não é um pedido de saldo e a operação foi bem sucedida
+                if(repm.type != 1 && repm.b){
+                    try {
+                        this.reply = new CompletableFuture<>();
+                        sendMsg(new TransferStateMessage(skel.getContaImpl().saldo(), a, repm), group);
+                        //tem de esperar para ser sequencial, visto que concorrência de pedidos envolve mais coisas
+                        reply.thenAccept(x -> mms.sendAsync(a,"reply",s.encode(repm))).get();
+                    } catch (SpreadException | InterruptedException | ExecutionException ex) {
+                        ex.printStackTrace();
+                    }
                 }
+                else
+                    mms.sendAsync(a,"reply",s.encode(repm));
             }
-            else
-                mms.sendAsync(a,"reply",s.encode(repm));
         },e);
     }
 
     // listener para a receção das transferencias de estado e eleição de primário
-    private AdvancedMessageListener getSecondaryListener(){
-        return new AdvancedMessageListener() {
+    private void setSecondaryListener(){
+        this.setSecondaryListener =  new AdvancedMessageListener() {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
-                TransferStateMessage tsm = null;
+                TransferStateMessage tsm;
                 try {
                     tsm = (TransferStateMessage) spreadMessage.getObject();
                     System.out.println("Server " + privateName + "Received state tranfer");
+
+                    //Guardo a última resposta do primário replicada, para quando eu me tornar primário a enviar
+                    lastReplies.put(Address.from(tsm.client), tsm.lastReply);
                     skel.setSaldo(tsm.saldo);
                     sendMsg(new Acknowledgment(true), spreadMessage.getSender());
                 } catch (SpreadException ex) {

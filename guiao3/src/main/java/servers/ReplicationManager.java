@@ -9,8 +9,9 @@ public class ReplicationManager {
     private boolean primaryConfirmation;
     private ReplicationHandler replicationHandler;
 
-    public ReplicationManager(ReplicationHandler replicationHandler) {
+    public ReplicationManager(int numServers,  ReplicationHandler replicationHandler) {
         this.numAcks = 0;
+        this.numServers = numServers;
         this.primaryConfirmation = false;
         this.replicationHandler = replicationHandler;
     }
@@ -19,6 +20,7 @@ public class ReplicationManager {
         try {
             Object o = spreadMessage.getObject();
             numAcks++;
+            //Se é uma transferStateMessage então estou a receber a minha própria menságem (eu sou o primário)
             if (o instanceof TransferStateMessage) {
                 primaryConfirmation = true;
                 System.out.println("Primary confirmation arrived");
