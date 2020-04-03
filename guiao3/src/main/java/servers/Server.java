@@ -28,7 +28,6 @@ import java.util.function.Consumer;
 public class Server {
     private String privateName;
     private Address myAddress;
-    private CompletableFuture<Void> reply;
     private CompletableFuture<Void> running;
     private ContaSkel skel = new ContaSkel();
 
@@ -64,7 +63,7 @@ public class Server {
         // O que fazer quando sou eleito
         Consumer<Integer> becomePrimary = (x) -> {
             connection.remove(this.setSecondaryListener);
-            replicationManager = new ReplicationManager(x, new ReplicationHandlerImpl((y) -> reply.complete(null)));
+            replicationManager = new ReplicationManager(x);
             connection.add(replicationManager.getListener());
 
             //Todos os servidores irão utilizar a mesma porta. Quando o primário falha a porta deverá ficar livre para
@@ -117,11 +116,10 @@ public class Server {
                 // se não é um pedido de saldo e a operação foi bem sucedida
                 if(repm.type != 1 && repm.b){
                     try {
-                        this.reply = new CompletableFuture<>();
+
+                        replicationManager.createEntry(repm.reqId, x -> mms.sendAsync(a,"reply",s.encode(repm)));
                         sendMsg(new TransferStateMessage(skel.getContaImpl().saldo(), a, repm), group);
-                        //tem de esperar para ser sequencial, visto que concorrência de pedidos envolve mais coisas
-                        reply.thenAccept(x -> mms.sendAsync(a,"reply",s.encode(repm))).get();
-                    } catch (SpreadException | InterruptedException | ExecutionException ex) {
+                    } catch (SpreadException ex) {
                         ex.printStackTrace();
                     }
                 }
@@ -144,7 +142,7 @@ public class Server {
                     //Guardo a última resposta do primário replicada, para quando eu me tornar primário a enviar
                     lastReplies.put(Address.from(tsm.client), tsm.lastReply);
                     skel.setSaldo(tsm.saldo);
-                    sendMsg(new Acknowledgment(true), spreadMessage.getSender());
+                    sendMsg(new Acknowledgment(true, tsm.lastReply.reqId), spreadMessage.getSender());
                 } catch (SpreadException ex) {
                     ex.printStackTrace();
                 }

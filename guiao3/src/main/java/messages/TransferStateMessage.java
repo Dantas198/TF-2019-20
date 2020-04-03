@@ -19,7 +19,9 @@ public class TransferStateMessage implements Serializable {
     @Override
     public String toString() {
         return "TransferStateMessage{" +
-                "saldo=" + saldo +
+                "lastReply=" + lastReply +
+                ", client=" + client +
+                ", saldo=" + saldo +
                 '}';
     }
 }
