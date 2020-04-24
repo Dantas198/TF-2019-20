@@ -36,4 +36,13 @@ public class OrderImpl implements Order {
 		int oldQuantity = products.get(prod);
 		products.replace(prod, oldQuantity + quantity);
 	}
+
+	@Override
+	public float getPrice() {
+		float price = 0;
+		for(Product prod : products.keySet()){
+			price += prod.getPrice() * products.get(prod);
+		}
+		return price;
+	}
 }

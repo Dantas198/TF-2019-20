@@ -38,4 +38,9 @@ public class CustomerImpl implements Customer {
 	public Order getCurrentOrder() {
 		return currentOrder;
 	}
+
+	@Override
+	public List<Order> getOldOrders() {
+		return oldOrders;
+	}
 }

@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class PassiveReplicationServer implements Server {
+public abstract class PassiveReplicationServer<STATE extends Serializable> implements Server {
 
     private String privateName;
     private AdvancedMessageListener messageListener;
@@ -40,13 +40,21 @@ public abstract class PassiveReplicationServer implements Server {
     }
 
     public void floodMessage(Serializable message) throws Exception{
+        floodMessage(message, this.spreadGroup);
+    }
+
+    public void floodMessage(Serializable message, SpreadGroup sg) throws Exception{
         SpreadMessage m = new SpreadMessage();
-        m.addGroup(this.spreadGroup);
+        m.addGroup(sg);
         m.setObject(message);
         m.setReliable();
         spreadConnection.multicast(m);
         System.out.println("Flooding to group ("+ this.spreadGroup+ "): " + message);
     }
+
+    public abstract STATE getState();
+
+    public abstract void setState(STATE state);
 
     public abstract void handleMessage(Object message);
 }

@@ -6,7 +6,7 @@ import business.product.Product;
 
 import java.util.Collection;
 
-public class SuperMarketAtomixStub implements SuperMakert {
+public class SuperMarketAtomixStub implements SuperMarket {
     @Override
     public boolean addCustomer(Customer customer) {
         return false;

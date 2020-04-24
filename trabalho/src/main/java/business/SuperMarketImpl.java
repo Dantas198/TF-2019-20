@@ -8,9 +8,10 @@ import business.data.ProductDAO;
 import business.order.Order;
 import business.product.Product;
 
+import java.io.Serializable;
 import java.util.Collection;
 
-public class SuperMarketImpl implements SuperMakert {
+public class SuperMarketImpl implements SuperMarket, Serializable {
 
 	DAO<String, Order> orderDAO;
 	DAO<String, Product> productDAO;

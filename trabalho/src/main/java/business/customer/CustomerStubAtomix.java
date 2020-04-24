@@ -1,4 +1,32 @@
 package business.customer;
 
-public class CustomerStubAtomix {
+import business.order.Order;
+
+import java.util.List;
+
+public class CustomerStubAtomix implements Customer {
+    @Override
+    public String getId() {
+        return null;
+    }
+
+    @Override
+    public void newCurrentOrder() {
+
+    }
+
+    @Override
+    public boolean hasCurrentOrder() {
+        return false;
+    }
+
+    @Override
+    public Order getCurrentOrder() {
+        return null;
+    }
+
+    @Override
+    public List<Order> getOldOrders() {
+        return null;
+    }
 }
