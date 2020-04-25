@@ -1,5 +1,7 @@
 package middleware;
 
+import middleware.listeners.SecondaryServerListener;
+import middleware.message.Message;
 import spread.AdvancedMessageListener;
 import spread.SpreadConnection;
 import spread.SpreadGroup;
@@ -24,6 +26,7 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.runningCompletable = new CompletableFuture<>();
+        this.messageListener = new SecondaryServerListener(spreadConnection, privateName, this);
     }
 
     @Override
@@ -39,11 +42,36 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
         this.runningCompletable.complete(null);
     }
 
-    public void floodMessage(Serializable message) throws Exception{
+    /**
+     * Called when necessary from regularMessageReceived (Spread), used to get the correct response from the extended
+     * server
+     * @param message The body Message received
+     * @return the message body of the response
+     */
+    public abstract Serializable handleMessage(Serializable message);
+
+    public void setMessageListener(AdvancedMessageListener messageListener){
+        this.spreadConnection.remove(this.messageListener);
+        this.messageListener = messageListener;
+        this.spreadConnection.add(this.messageListener);
+    }
+
+    /**
+     * Used to respond to all Servers in the current spread group
+     * @param message the body message that should be passed to all Servers
+     * @throws Exception
+     */
+    public void floodMessage(Message message) throws Exception{
         floodMessage(message, this.spreadGroup);
     }
 
-    public void floodMessage(Serializable message, SpreadGroup sg) throws Exception{
+    /**
+     * Used to respond to all Servers connected in the corresponding spread group
+     * @param message
+     * @param sg
+     * @throws Exception
+     */
+    public void floodMessage(Message message, SpreadGroup sg) throws Exception{
         SpreadMessage m = new SpreadMessage();
         m.addGroup(sg);
         m.setObject(message);
@@ -52,9 +80,31 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
         System.out.println("Flooding to group ("+ this.spreadGroup+ "): " + message);
     }
 
+    /**
+     * Get of the state of the current Server
+     * @return the state of the current Server
+     */
     public abstract STATE getState();
 
+    /**
+     * Set of the state of the Server, used for extended classes to update their state, called when secondary server
+     * receives the updated version
+     * @param state the updated state of the server
+     */
     public abstract void setState(STATE state);
 
-    public abstract void handleMessage(Object message);
+    /**
+     * Method used to respond to the Sender the message defined in the handleMessage abstract method
+     * @param spreadMessage
+     */
+    public void respondMessage(SpreadMessage spreadMessage) {
+        try {
+            Message received = (Message) spreadMessage.getObject();
+            Serializable bodyResponse = handleMessage(received.getBody());
+            Message response = new Message(bodyResponse);
+            floodMessage(response, spreadMessage.getSender());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

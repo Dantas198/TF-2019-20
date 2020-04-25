@@ -7,7 +7,6 @@ import spread.MembershipInfo;
 import spread.SpreadGroup;
 import spread.SpreadMessage;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,8 +14,11 @@ import java.util.Map;
 
 public class PrimaryServerListener implements AdvancedMessageListener {
 
+
     private PassiveReplicationServer server;
+    // number of servers on the spread group
     private int nServers;
+    // Map<Message.getId(), List<Message>, stores all responses of the other servers by the sent message
     private Map<String, List<Message>> cachedMessages;
 
     public PrimaryServerListener(PassiveReplicationServer server){
@@ -33,7 +35,7 @@ public class PrimaryServerListener implements AdvancedMessageListener {
             List<Message> messagesReceived = cachedMessages.get(received.getId());
             messagesReceived.add(received);
             if(messagesReceived.size() == nServers){
-                server.handleMessage(received.getBody());
+                server.respondMessage(spreadMessage);
             }
         } catch (Exception e){
             e.printStackTrace();
@@ -47,13 +49,10 @@ public class PrimaryServerListener implements AdvancedMessageListener {
         for(SpreadGroup sg : info.getMembers()){
             try {
                 Message message = new Message(server.getState());
-                server.floodMessage(message);
+                server.floodMessage(message, sg);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
-
-
-
 }
