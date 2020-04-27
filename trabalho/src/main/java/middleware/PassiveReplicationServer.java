@@ -1,6 +1,7 @@
 package middleware;
 
 import middleware.listeners.SecondaryServerListener;
+import middleware.message.ContentMessage;
 import middleware.message.Message;
 import spread.AdvancedMessageListener;
 import spread.SpreadConnection;
@@ -100,8 +101,8 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
     public void respondMessage(SpreadMessage spreadMessage) {
         try {
             Message received = (Message) spreadMessage.getObject();
-            Serializable bodyResponse = handleMessage(received.getBody());
-            Message response = new Message(bodyResponse);
+            Serializable bodyResponse = handleMessage(received);
+            Message response = new ContentMessage<>(bodyResponse);
             floodMessage(response, spreadMessage.getSender());
         } catch (Exception e) {
             e.printStackTrace();

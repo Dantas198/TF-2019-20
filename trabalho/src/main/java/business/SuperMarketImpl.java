@@ -51,10 +51,10 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	@Override
-	public boolean addProduct(String customer, String name, int amount) {
+	public boolean addProduct(String customer, Product product, int amount) {
 		Customer c = customerDAO.get(customer);
 		Order order = c.getCurrentOrder();
-		Product p = productDAO.get(name);
+		Product p = productDAO.get(product.getName());
 		order.addProduct(p, amount);
 		orderDAO.update(order.getId(), order);
 		return true;

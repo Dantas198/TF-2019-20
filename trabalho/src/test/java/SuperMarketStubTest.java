@@ -14,7 +14,7 @@ public class SuperMarketStubTest {
 
     @Test
     public void addCustomerTest(){
-        SuperMarket stub = new SuperMarketStub();
+
     }
 
     @Test
