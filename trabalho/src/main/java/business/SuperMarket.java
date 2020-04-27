@@ -7,14 +7,16 @@ import business.product.Product;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public interface SuperMarket extends Serializable {
 
-	boolean startOrder(Customer customer);
-	boolean finishOrder(Customer customer);
-	boolean addProduct(String name, int amount);
-	Collection<Product> getCurrentOrderProducts(Customer customer);
-	List<Order> getHistory(Customer customer);
+	boolean addCustomer(String customer);
+	boolean resetOrder(String customer);
+	boolean finishOrder(String customer);
+	boolean addProduct(String customer, String name, int amount);
+	Map<Product,Integer> getCurrentOrderProducts(String customer);
+	List<Order> getHistory(String customer);
 	Collection<Product> getCatalogProducts();
 
 
