@@ -19,7 +19,6 @@ public class CustomerImpl implements Customer {
 		this.oldOrders = new ArrayList<>();
 	}
 
-
 	@Override
 	public String getId() {
 		return id;

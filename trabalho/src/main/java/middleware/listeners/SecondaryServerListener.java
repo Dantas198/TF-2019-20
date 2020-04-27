@@ -70,16 +70,6 @@ public class SecondaryServerListener implements AdvancedMessageListener {
         if (iAmLeader){
             AdvancedMessageListener primaryListener = new PrimaryServerListener(server);
             server.setMessageListener(primaryListener);
-        } else {
-            MembershipInfo info = spreadMessage.getMembershipInfo();
-            for(SpreadGroup sg : info.getMembers()){
-                try {
-                    Message message = new StateMessage(server.getState(), privateName);
-                    server.floodMessage(message, sg);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 }

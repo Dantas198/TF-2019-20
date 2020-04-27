@@ -11,9 +11,7 @@ import business.product.Product;
 import business.product.ProductImpl;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SuperMarketImpl implements SuperMarket, Serializable {
 
@@ -74,7 +72,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	@Override
-	public Collection<Product> getCatalogProducts() {
-		return productDAO.getAll().values();
+	public ArrayList<Product> getCatalogProducts() {
+		return new ArrayList<>(productDAO.getAll().values());
 	}
 }

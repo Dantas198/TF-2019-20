@@ -46,13 +46,11 @@ public class PrimaryServerListener implements AdvancedMessageListener {
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
         MembershipInfo info = spreadMessage.getMembershipInfo();
         nServers = info.getMembers().length;
-        for(SpreadGroup sg : info.getMembers()){
-            try {
-                Message message = new Message(server.getState());
-                server.floodMessage(message, sg);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        try {
+            Message message = new Message(server.getState());
+            server.floodMessage(message, spreadMessage.getSender());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

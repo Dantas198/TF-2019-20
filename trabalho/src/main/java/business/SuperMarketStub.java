@@ -14,6 +14,7 @@ import middleware.message.Message;
 
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,7 @@ public class SuperMarketStub implements SuperMarket {
     }
 
     @Override
-    public Collection<Product> getCatalogProducts() {
+    public ArrayList<Product> getCatalogProducts() {
         return null;
     }
 }

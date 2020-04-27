@@ -46,14 +46,6 @@
             <groupId>org.spread</groupId>
             <artifactId>spread</artifactId>
             <version>5.0.1</version>
-            <scope>system</scope>
-            <systemPath>/home/dansvc/spread-src-5.0.1/java/dest/spread-4.4.0.jar</systemPath>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13</version>
-            <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.hsqldb/hsqldb -->
         <dependency>
@@ -67,21 +59,6 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.atomix</groupId>
-            <artifactId>atomix-utils</artifactId>
-            <version>3.0.11</version>
-        </dependency>
-        <dependency>
-            <groupId>io.atomix</groupId>
-            <artifactId>atomix-storage</artifactId>
-            <version>3.0.11</version>
-        </dependency>
-        <dependency>
-            <groupId>io.atomix</groupId>
-            <artifactId>atomix-cluster</artifactId>
-            <version>3.0.11</version>
         </dependency>
     </dependencies>
 </project>
