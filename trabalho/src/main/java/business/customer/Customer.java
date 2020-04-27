@@ -15,5 +15,4 @@ public interface Customer {
 	Order getCurrentOrder();
 
 	List<Order> getOldOrders();
-
 }

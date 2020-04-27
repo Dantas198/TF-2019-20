@@ -5,6 +5,7 @@ import business.order.OrderImpl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class CustomerImpl implements Customer {
 
@@ -42,5 +43,18 @@ public class CustomerImpl implements Customer {
 	@Override
 	public List<Order> getOldOrders() {
 		return oldOrders;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		CustomerImpl customer = (CustomerImpl) o;
+		return Objects.equals(id, customer.id);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id);
 	}
 }
