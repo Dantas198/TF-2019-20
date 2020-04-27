@@ -3,11 +3,12 @@ package business.customer;
 import business.order.Order;
 import business.order.OrderImpl;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class CustomerImpl implements Customer {
+public class CustomerImpl implements Customer, Serializable {
 
 	private String id;
 	private Order currentOrder;

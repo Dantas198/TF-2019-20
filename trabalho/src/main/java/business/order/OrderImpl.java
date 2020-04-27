@@ -2,11 +2,12 @@ package business.order;
 
 import business.product.Product;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class OrderImpl implements Order {
+public class OrderImpl implements Order, Serializable{
 
 	private String id;
 	private Map<Product, Integer> products;
@@ -44,5 +45,11 @@ public class OrderImpl implements Order {
 			price += prod.getPrice() * products.get(prod);
 		}
 		return price;
+	}
+
+	@Override
+	public boolean reset() {
+		this.products.clear();
+		return true;
 	}
 }
