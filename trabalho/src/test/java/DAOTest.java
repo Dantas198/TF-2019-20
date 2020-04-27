@@ -10,9 +10,10 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 public class DAOTest {
 
@@ -29,6 +30,28 @@ public class DAOTest {
         CustomerSQLDAO dao = new CustomerSQLDAO(c, true);
         Customer customer1 = new CustomerImpl("Customer1");
         daoTest(dao, customer1.getId(), customer1);
+        Customer customer = dao.get(customer1.getId());
+        Set<Order> oldOrders = customer.getOldOrders();
+        assertTrue("Customer's old orders should initialize empty", oldOrders.isEmpty());
+        assertEquals("Customer's old orders' size should be coherent with empty",
+                0, oldOrders.size());
+        Order order = new OrderImpl();
+        oldOrders.add(order);
+        assertFalse("Customer's old orders should have content", oldOrders.isEmpty());
+        assertEquals("Customer's old orders' size should have one order",
+                1, oldOrders.size());
+        assertTrue("Customer's old orders should have the order", oldOrders.contains(order));
+        ArrayList<Order> list = new ArrayList<>();
+        list.add(order);
+        list.add(new OrderImpl());
+        list.add(new OrderImpl());
+        int i = 0;
+        for (Order o:
+             list) {
+            assertEquals("Iterator should contain same elements",
+                    o, list.get(i));
+            i++;
+        }
     }
 
     private <K,T> void daoTest(DAO<K, T>  dao, K key, T obj){

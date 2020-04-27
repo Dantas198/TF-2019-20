@@ -2,6 +2,8 @@ package server;
 
 import business.SuperMarket;
 import business.SuperMarketImpl;
+import business.product.Product;
+import business.product.ProductImpl;
 import client.message.AddCostumerMessage;
 import client.message.GetProductsMessage;
 import middleware.PassiveReplicationServer;
@@ -10,6 +12,7 @@ import middleware.message.ContentMessage;
 import middleware.message.Message;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 
 public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
@@ -28,7 +31,7 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
                 String customer = ((AddCostumerMessage) message).getBody();
                 return new ContentMessage<>(superMarket.addCustomer(customer));
             } else if(message instanceof GetProductsMessage){
-                return new ContentMessage<>(superMarket.getCatalogProducts());
+                return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             }
         } catch (Exception e){
             return new Message();

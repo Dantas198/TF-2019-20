@@ -5,6 +5,7 @@ import business.product.Product;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public class OrderImpl implements Order, Serializable{
@@ -51,5 +52,18 @@ public class OrderImpl implements Order, Serializable{
 	public boolean reset() {
 		this.products.clear();
 		return true;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		OrderImpl order = (OrderImpl) o;
+		return Objects.equals(id, order.id);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id);
 	}
 }

@@ -4,20 +4,24 @@ import business.order.Order;
 import business.order.OrderImpl;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class CustomerImpl implements Customer, Serializable {
 
 	private String id;
 	private Order currentOrder;
-	private List<Order> oldOrders;
+	private Set<Order> oldOrders;
 
 	public CustomerImpl(String id){
 		this.id = id;
 		this.currentOrder = null;
-		this.oldOrders = new ArrayList<>();
+		this.oldOrders = new HashSet<>();
+	}
+
+	public CustomerImpl(String id, Order currentOrder, Set<Order> oldOrders){
+		this.id = id;
+		this.currentOrder = currentOrder;
+		this.oldOrders = oldOrders;
 	}
 
 	@Override
@@ -41,7 +45,7 @@ public class CustomerImpl implements Customer, Serializable {
 	}
 
 	@Override
-	public List<Order> getOldOrders() {
+	public Set<Order> getOldOrders() {
 		return oldOrders;
 	}
 

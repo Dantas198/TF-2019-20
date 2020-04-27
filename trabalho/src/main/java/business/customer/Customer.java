@@ -2,7 +2,7 @@ package business.customer;
 
 import business.order.Order;
 
-import java.util.List;
+import java.util.Set;
 
 public interface Customer {
 
@@ -14,5 +14,5 @@ public interface Customer {
 
 	Order getCurrentOrder();
 
-	List<Order> getOldOrders();
+	Set<Order> getOldOrders();
 }
