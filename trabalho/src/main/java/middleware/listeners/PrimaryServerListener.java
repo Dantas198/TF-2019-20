@@ -46,7 +46,7 @@ public class PrimaryServerListener implements AdvancedMessageListener {
         this.cachedMessages = new HashMap<>();
         this.finishedMessages = new HashMap<>();
         this.e = Executors.newFixedThreadPool(1);
-        this.s = new SerializerBuilder().build();
+        this.s = new SerializerBuilder().withRegistrationRequired(false).build();
         this.mms = new NettyMessagingService(
                 "server",
                 myAddress,

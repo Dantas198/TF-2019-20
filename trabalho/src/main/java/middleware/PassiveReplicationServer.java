@@ -49,7 +49,7 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
      * @param message The body Message received
      * @return the message body of the response
      */
-    public abstract Serializable handleMessage(Serializable message);
+    public abstract Message handleMessage(Message message);
 
     public void setMessageListener(AdvancedMessageListener messageListener){
         this.spreadConnection.remove(this.messageListener);

@@ -50,7 +50,7 @@ public class SecondaryServerListener implements AdvancedMessageListener {
                         server.respondMessage(sm);
                     }
                     messageQueue = null;
-                    server.setState(received.getBody());
+                    server.setState(((StateMessage) received).getBody());
                 }else {
                     messageQueue.add(spreadMessage);
                 }
@@ -68,7 +68,7 @@ public class SecondaryServerListener implements AdvancedMessageListener {
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
         boolean iAmLeader = electionManager.amIPrimary(spreadMessage);
         if (iAmLeader){
-            AdvancedMessageListener primaryListener = new PrimaryServerListener(server);
+            AdvancedMessageListener primaryListener = new PrimaryServerListener(server, 7777);
             server.setMessageListener(primaryListener);
         }
     }

@@ -17,14 +17,7 @@ import middleware.message.ContentMessage;
 import middleware.message.Message;
 
 import java.io.Serializable;
-<<<<<<< HEAD
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-=======
 import java.util.*;
->>>>>>> 892e1620cba0f05a4552a34926e457dd1fc18c78
 import java.util.concurrent.*;
 
 public class SuperMarketStub implements SuperMarket {
@@ -32,7 +25,6 @@ public class SuperMarketStub implements SuperMarket {
     private Address primaryServer;
     private Address myAddress;
     private Serializer s;
-    private int idCount;
     private CompletableFuture<ContentMessage> res;
     private ScheduledExecutorService ses;
     private String privateCustumer;
@@ -42,7 +34,6 @@ public class SuperMarketStub implements SuperMarket {
         this.res = null;
         this.currentOrders = new HashMap<>();
         this.primaryServer = primaryServer;
-        this.idCount = 0;
         this.myAddress = io.atomix.utils.net.Address.from(myPort);
         this.ses = Executors.newScheduledThreadPool(1);
 
@@ -52,7 +43,7 @@ public class SuperMarketStub implements SuperMarket {
                 new MessagingConfig());
         this.mms.start();
         this.s = new SerializerBuilder()
-                .addType(ContentMessage.class)
+                .withRegistrationRequired(false)
                 .build();
 
         this.mms.registerHandler("reply", (a,b) -> {
@@ -65,7 +56,7 @@ public class SuperMarketStub implements SuperMarket {
         res = new CompletableFuture<>();
         ScheduledFuture<?> sf = scheduleTimeout(reqm);
         //Caso a resposta tenha chegado cancela o timeout
-        res.whenComplete((m,t) -> sf.cancel(true));
+        res.whenComplete((m,t) -> { System.out.println(t.getStackTrace()); sf.cancel(true);});
         mms.sendAsync(primaryServer, "request", s.encode(reqm));
         return res.get();
     }
@@ -117,13 +108,8 @@ public class SuperMarketStub implements SuperMarket {
     }
 
     @Override
-<<<<<<< HEAD
-    public ArrayList<Product> getCatalogProducts() {
-        return null;
-=======
     public ArrayList<Product> getCatalogProducts() throws Exception {
         ContentMessage<ArrayList<Product>> cm = getResponse(new GetCatalogProducts());
         return cm.getBody();
->>>>>>> 892e1620cba0f05a4552a34926e457dd1fc18c78
     }
 }

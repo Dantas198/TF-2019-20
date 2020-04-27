@@ -2,13 +2,15 @@ package server;
 
 import business.SuperMarket;
 import business.SuperMarketImpl;
-import client.message.AddCustumer;
+import client.message.AddCostumerMessage;
 import client.message.GetProductsMessage;
-import io.atomix.utils.net.Address;
 import middleware.PassiveReplicationServer;
 import middleware.Server;
+import middleware.message.ContentMessage;
+import middleware.message.Message;
 
 import java.io.Serializable;
+import java.util.Collection;
 
 public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
 
@@ -20,16 +22,18 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
     }
 
     @Override
-    public Serializable handleMessage(Serializable message) {
-        if(message instanceof AddCustumer){
-            if(((AddCustumer) message).getBody() instanceof String){
-                String customer = (String) ((AddCustumer) message).getBody();
-                return superMarket.addCustomer(customer);
+    public Message handleMessage(Message message) {
+        try{
+            if(message instanceof AddCostumerMessage){
+                String customer = ((AddCostumerMessage) message).getBody();
+                return new ContentMessage<>(superMarket.addCustomer(customer));
+            } else if(message instanceof GetProductsMessage){
+                return new ContentMessage<>(superMarket.getCatalogProducts());
             }
-        } else if(message instanceof GetProductsMessage){
-            return superMarket.getCatalogProducts();
+        } catch (Exception e){
+            return new Message();
         }
-        return false;
+        return new Message();
     }
 
     @Override

@@ -18,13 +18,6 @@ public interface SuperMarket extends Serializable {
 	boolean finishOrder(String customer) throws Exception;
 	boolean addProduct(String customer, Product product, int amount);
 	Map<Product,Integer> getCurrentOrderProducts(String customer);
-<<<<<<< HEAD
-	List<Order> getHistory(String customer);
-	ArrayList<Product> getCatalogProducts();
-=======
 	List<Order> getHistory(String customer) throws Exception;
-	Collection<Product> getCatalogProducts() throws Exception;
-
-
->>>>>>> 892e1620cba0f05a4552a34926e457dd1fc18c78
+	ArrayList<Product> getCatalogProducts() throws Exception;
 }
