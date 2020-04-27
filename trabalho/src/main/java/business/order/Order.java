@@ -19,5 +19,4 @@ public interface Order {
 	void addProduct(Product prod, int quantity);
 
 	float getPrice();
-
 }

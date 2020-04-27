@@ -13,7 +13,7 @@ public interface SuperMarket extends Serializable {
 	 * 
 	 * @param customer
 	 */
-	boolean addCustomer(Customer customer);
+	boolean addCustomer(Customer customer) throws Exception;
 
 	/**
 	 * 
@@ -21,26 +21,26 @@ public interface SuperMarket extends Serializable {
 	 * @param prod
 	 * @param quantity
 	 */
-	void addToOrder(Customer client, Product prod, int quantity);
+	void addToOrder(Customer client, Product prod, int quantity) throws Exception;
 
 	/**
 	 * 
 	 * @param client
 	 */
-	void buyOrder(Customer client);
+	void buyOrder(Customer client) throws Exception;
 
 	/**
 	 * 
 	 * @param client
 	 */
-	Order getOrder(Customer client);
+	Order getOrder(Customer client) throws Exception;
 
 	/**
 	 * 
 	 * @param name
 	 */
-	Product getProduct(String name);
+	Product getProduct(String name) throws Exception;
 
-	Collection<Product> getProducts();
+	Collection<Product> getProducts() throws Exception;
 
 }
