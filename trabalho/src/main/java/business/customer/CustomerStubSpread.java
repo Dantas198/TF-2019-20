@@ -4,7 +4,7 @@ import business.order.Order;
 
 import java.util.List;
 
-public class CustomerStubSpread  implements Customer {
+public class CustomerStubSpread implements Customer {
     @Override
     public String getId() {
         return null;

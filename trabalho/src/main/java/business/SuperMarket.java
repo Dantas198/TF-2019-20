@@ -6,41 +6,18 @@ import business.product.Product;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 public interface SuperMarket extends Serializable {
 
-	/**
-	 * 
-	 * @param customer
-	 */
-	boolean addCustomer(Customer customer);
+	boolean addCustomer(String customer);
+	boolean resetOrder(String customer);
+	boolean finishOrder(String customer);
+	boolean addProduct(String customer, String name, int amount);
+	Map<Product,Integer> getCurrentOrderProducts(String customer);
+	List<Order> getHistory(String customer);
+	Collection<Product> getCatalogProducts();
 
-	/**
-	 * 
-	 * @param client
-	 * @param prod
-	 * @param quantity
-	 */
-	void addToOrder(Customer client, Product prod, int quantity);
-
-	/**
-	 * 
-	 * @param client
-	 */
-	void buyOrder(Customer client);
-
-	/**
-	 * 
-	 * @param client
-	 */
-	Order getOrder(Customer client);
-
-	/**
-	 * 
-	 * @param name
-	 */
-	Product getProduct(String name);
-
-	Collection<Product> getProducts();
 
 }
