@@ -67,6 +67,7 @@ public class SecondaryServerListener implements AdvancedMessageListener {
     @Override
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
         boolean iAmLeader = electionManager.amIPrimary(spreadMessage);
+        System.out.println("Am I leader :" + iAmLeader);
         if (iAmLeader){
             AdvancedMessageListener primaryListener = new PrimaryServerListener(server, 7777);
             server.setMessageListener(primaryListener);

@@ -9,9 +9,6 @@ import middleware.Server;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
 
-import java.io.Serializable;
-import java.util.Collection;
-
 public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
 
     private SuperMarket superMarket;
@@ -31,9 +28,9 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
                 return new ContentMessage<>(superMarket.getCatalogProducts());
             }
         } catch (Exception e){
-            return new Message();
+            return new Message().from(message);
         }
-        return new Message();
+        return new Message().from(message);
     }
 
     @Override
