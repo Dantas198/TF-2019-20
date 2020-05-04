@@ -12,11 +12,6 @@ public interface Order{
 
 	Map<Product, Integer> getProducts();
 
-	/**
-	 * 
-	 * @param prod
-	 * @param quantity
-	 */
 	void addProduct(Product prod, int quantity);
 
 	float getPrice();

@@ -21,9 +21,9 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class SuperMarketStub implements SuperMarket {
+
     private ManagedMessagingService mms;
     private Address primaryServer;
-    private Address myAddress;
     private Serializer s;
     private CompletableFuture<ContentMessage> res;
     private ScheduledExecutorService ses;
@@ -33,13 +33,13 @@ public class SuperMarketStub implements SuperMarket {
     public SuperMarketStub(int myPort, Address primaryServer){
         this.res = null;
         this.currentOrder = null;
+
         this.primaryServer = primaryServer;
-        this.myAddress = io.atomix.utils.net.Address.from(myPort);
         this.ses = Executors.newScheduledThreadPool(1);
 
         this.mms = new NettyMessagingService(
                 "server",
-                myAddress,
+                Address.from(myPort),
                 new MessagingConfig());
         this.mms.start();
         this.s = new SerializerBuilder()
@@ -69,19 +69,23 @@ public class SuperMarketStub implements SuperMarket {
         }, 1, 4, TimeUnit.SECONDS);
     }
 
+
+    // define o utilizador atual, deve ser usado antes dos outros métodos
     @Override
     public boolean addCustomer(String customer) throws Exception {
         this.privateCustumer = customer;
         return (Boolean) getResponse(new AddCostumerMessage(customer)).getBody();
     }
 
-
+    // local
     @Override
     public boolean resetOrder(String customer) {
         this.currentOrder.reset();
         return true;
     }
 
+
+    // envia para servidor
     @Override
     public boolean finishOrder(String customer) throws Exception {
         if(!customer.equals(privateCustumer))
@@ -89,6 +93,8 @@ public class SuperMarketStub implements SuperMarket {
         return (Boolean) getResponse(new FinishOrderMessage(customer, currentOrder)).getBody();
     }
 
+
+    // local
     @Override
     public boolean addProduct(String customer, Product product, int amount) {
         if(!customer.equals(privateCustumer))
@@ -99,17 +105,23 @@ public class SuperMarketStub implements SuperMarket {
         return true;
     }
 
+
+    // local
     @Override
     public Map<Product, Integer> getCurrentOrderProducts(String customer) {
         return this.currentOrder.getProducts();
     }
 
+
+    // pedido ao servidor
     @Override
     public ArrayList<Order> getHistory(String customer) throws Exception {
         ContentMessage<ArrayList<Order>> cm = getResponse(new GetHistoryMessage(customer));
         return cm.getBody();
     }
 
+
+    // pedido ao servidor
     @Override
     public ArrayList<Product> getCatalogProducts() throws Exception {
         ContentMessage<ArrayList<Product>> cm = getResponse(new GetCatalogProducts());
