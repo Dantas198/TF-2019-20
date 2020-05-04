@@ -3,6 +3,7 @@ package business.customer;
 import business.order.Order;
 
 import java.util.List;
+import java.util.Set;
 
 public class CustomerStubSpread implements Customer {
     @Override
@@ -26,7 +27,7 @@ public class CustomerStubSpread implements Customer {
     }
 
     @Override
-    public List<Order> getOldOrders() {
+    public Set<Order> getOldOrders() {
         return null;
     }
 }

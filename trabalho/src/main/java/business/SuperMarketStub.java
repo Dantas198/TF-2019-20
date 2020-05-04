@@ -1,8 +1,8 @@
 package business;
 
 import business.order.Order;
+import business.order.OrderImpl;
 import business.product.Product;
-import client.bodies.FinishOrderBody;
 import client.message.AddCostumerMessage;
 import client.message.FinishOrderMessage;
 import client.message.GetCatalogProducts;
@@ -28,11 +28,11 @@ public class SuperMarketStub implements SuperMarket {
     private CompletableFuture<ContentMessage> res;
     private ScheduledExecutorService ses;
     private String privateCustumer;
-    private HashMap<String, Order> currentOrders;
+    private Order currentOrder;
 
     public SuperMarketStub(int myPort, Address primaryServer){
         this.res = null;
-        this.currentOrders = new HashMap<>();
+        this.currentOrder = null;
         this.primaryServer = primaryServer;
         this.myAddress = io.atomix.utils.net.Address.from(myPort);
         this.ses = Executors.newScheduledThreadPool(1);
@@ -77,28 +77,30 @@ public class SuperMarketStub implements SuperMarket {
 
     @Override
     public boolean resetOrder(String customer) {
-        if(!currentOrders.containsKey(customer) || !customer.equals(privateCustumer))
-            return false;
-        this.currentOrders.get(customer).reset();
+        this.currentOrder.reset();
         return true;
     }
 
     @Override
     public boolean finishOrder(String customer) throws Exception {
-        return (Boolean) getResponse(new FinishOrderMessage(customer, currentOrders.get(customer))).getBody();
+        if(!customer.equals(privateCustumer))
+            return false;
+        return (Boolean) getResponse(new FinishOrderMessage(customer, currentOrder)).getBody();
     }
 
     @Override
     public boolean addProduct(String customer, Product product, int amount) {
-        if(!currentOrders.containsKey(customer) || !customer.equals(privateCustumer))
+        if(!customer.equals(privateCustumer))
             return false;
-        this.currentOrders.get(customer).addProduct(product, amount);
+        if(this.currentOrder == null)
+            this.currentOrder = new OrderImpl();
+        this.currentOrder.addProduct(product, amount);
         return true;
     }
 
     @Override
     public Map<Product, Integer> getCurrentOrderProducts(String customer) {
-        return this.currentOrders.get(customer).getProducts();
+        return this.currentOrder.getProducts();
     }
 
     @Override

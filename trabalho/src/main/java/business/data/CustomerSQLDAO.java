@@ -4,8 +4,7 @@ import business.customer.Customer;
 import business.customer.CustomerImpl;
 
 import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class CustomerSQLDAO implements DAO<String, Customer> {
     private Connection c;
@@ -39,9 +38,9 @@ public class CustomerSQLDAO implements DAO<String, Customer> {
     public Customer get(String key) {
         try {
             getPS.setString(1, key);
-            ResultSet client = getPS.executeQuery();
-            if(!client.next()) return null;
-            return newCustomer(client);
+            ResultSet rs = getPS.executeQuery();
+            if(!rs.next()) return null;
+            return newCustomer(rs);
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
@@ -87,10 +86,10 @@ public class CustomerSQLDAO implements DAO<String, Customer> {
     public Map<String, Customer> getAll() {
         try {
             Map<String, Customer> map = new HashMap<>();
-            ResultSet allCustomer = this.getAllPS.executeQuery();
-            while (allCustomer.next()) {
-                String id = allCustomer.getString("id");
-                Customer customer = newCustomer(allCustomer);
+            ResultSet rs = this.getAllPS.executeQuery();
+            while (rs.next()) {
+                String id = rs.getString("id");
+                Customer customer = newCustomer(rs);
                 map.put(id, customer);
             }
             return map;
@@ -102,13 +101,18 @@ public class CustomerSQLDAO implements DAO<String, Customer> {
 
     private Customer newCustomer(ResultSet rs) throws SQLException {
         String id = rs.getString("id");
-        return new CustomerImpl(id);
+        return new CustomerImpl(id, null, new CustomerOldOrderDAO(c, id));
     }
 
     private void initializeTable() throws SQLException {
         c.prepareStatement("DROP TABLE IF EXISTS \"customer\";\n").execute();
         c.prepareStatement("CREATE TABLE \"customer\" (\n" +
                 "    \"id\" varchar(255),\n" +
+                "); ").execute();
+        c.prepareStatement("CREATE TABLE \"order\" (\n" +
+                "    \"id\" varchar(255),\n" +
+                "    \"customer_id\" varchar(255),\n" +
+                "    \"price\" decimal,\n" +
                 "); ").execute();
     }
 }

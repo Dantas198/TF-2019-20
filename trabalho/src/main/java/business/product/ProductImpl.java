@@ -1,6 +1,8 @@
 package business.product;
 
-public class ProductImpl implements Product {
+import java.io.Serializable;
+
+public class ProductImpl implements Product, Serializable {
 
 	private String name;
 	private float price;

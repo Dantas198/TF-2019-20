@@ -66,13 +66,13 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	@Override
-	public List<Order> getHistory(String customer) {
+	public Collection<Order> getHistory(String customer) {
 		Customer c = customerDAO.get(customer);
 		return c.getOldOrders();
 	}
 
 	@Override
-	public ArrayList<Product> getCatalogProducts() {
-		return new ArrayList<>(productDAO.getAll().values());
+	public Collection<Product> getCatalogProducts() {
+		return productDAO.getAll().values();
 	}
 }
