@@ -67,6 +67,7 @@ public class SuperMarketStub implements SuperMarket {
         return true;
     }
 
+
     @Override
     public boolean resetOrder(String customer) {
         return false;

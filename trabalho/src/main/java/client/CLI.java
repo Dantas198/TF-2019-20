@@ -22,7 +22,7 @@ public class CLI {
                 break;
             }
             if(input.equals("help")) {
-                System.out.println("sair");
+                System.out.println("end");
                 System.out.println("addcustomer <name>");
                 continue;
             }
@@ -40,7 +40,7 @@ public class CLI {
                         // sm.fazCoisas(arg);
                         break;
                     default:
-                        System.out.println("Unkown command, use 'help' for the list of commands");
+                        System.out.println("Unknown command, use 'help' for the list of commands");
                 }
                 System.out.println("Done!");
             } catch (Exception e) {

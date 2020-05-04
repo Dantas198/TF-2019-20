@@ -1,3 +1,5 @@
+package main.java;
+
 import spread.SpreadException;
 
 import java.net.UnknownHostException;

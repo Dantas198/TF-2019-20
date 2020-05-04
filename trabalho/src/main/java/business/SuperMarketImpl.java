@@ -30,8 +30,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	@Override
 	public boolean addCustomer(String customer) {
 		Customer c = new CustomerImpl(customer);
-		customerDAO.put(c);
-		return true;
+		return customerDAO.put(c);
 	}
 
 

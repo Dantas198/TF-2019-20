@@ -37,11 +37,7 @@ public class ElectionManager {
             isJoinning = false;
         }
 
-        if(removeSpreadGroups(info) >= 0 && this.groupsLeftForPrimary.isEmpty()){
-            return true;
-        } else {
-            return false;
-        }
+        return removeSpreadGroups(info) >= 0 && this.groupsLeftForPrimary.isEmpty();
     }
 
 
