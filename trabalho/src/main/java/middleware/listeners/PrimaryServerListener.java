@@ -41,7 +41,7 @@ public class PrimaryServerListener implements AdvancedMessageListener {
 
     public PrimaryServerListener(PassiveReplicationServer server, int portAtomix){
         this.server = server;
-        this.myAddress = Address.from(portAtomix);
+        this.myAddress = Address.from("localhost", portAtomix);
         nServers = 1;
         this.cachedMessages = new HashMap<>();
         this.finishedMessages = new HashMap<>();
@@ -68,7 +68,12 @@ public class PrimaryServerListener implements AdvancedMessageListener {
 
             res.thenAccept(message -> {
                 System.out.println("Sending response message: " + message);
-                mms.sendAsync(a,"reply",s.encode(message));
+                System.out.println(a);
+                mms.sendAsync(a,"reply",s.encode(message)).whenComplete((m,t) -> {
+                    if(t != null){
+                        t.printStackTrace();
+                    }
+                });
             });
         },e);
     }
@@ -81,11 +86,11 @@ public class PrimaryServerListener implements AdvancedMessageListener {
             List<Message> messagesReceived = cachedMessages.get(received.getId());
             System.out.println("Received message with id: "  + received.getId());
             Message myResponse = server.handleMessage(received).from(received);
-            System.out.println("Handled message with id: "  + received.getId());
+            System.out.println("Handled message with id: "  + myResponse.getId() + "; " + myResponse);
             messagesReceived.add(myResponse);
             System.out.println("Received " + messagesReceived.size() +" from "+ nServers +": " + received.getId());
             if(messagesReceived.size() >= nServers){
-                finishedMessages.get(received.getId()).complete(received);
+                finishedMessages.get(received.getId()).complete(myResponse);
             }
         } catch (Exception e){
             e.printStackTrace();

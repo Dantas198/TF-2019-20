@@ -24,7 +24,7 @@ public class SuperMarketStubTest {
 
     @Test
     public void addCustomerTest() throws Exception {
-        SuperMarket stub = new SuperMarketStub(8888, Address.from(7777));
+        SuperMarket stub = new SuperMarketStub(8888, Address.from("localhost", 7777));
         ArrayList<Product> products = new ArrayList<>(stub.getCatalogProducts());
         System.out.println(products);
     }
