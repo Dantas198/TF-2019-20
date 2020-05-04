@@ -11,9 +11,7 @@ import business.product.Product;
 import business.product.ProductImpl;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SuperMarketImpl implements SuperMarket, Serializable {
 
@@ -52,10 +50,10 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	@Override
-	public boolean addProduct(String customer, String name, int amount) {
+	public boolean addProduct(String customer, Product product, int amount) {
 		Customer c = customerDAO.get(customer);
 		Order order = c.getCurrentOrder();
-		Product p = productDAO.get(name);
+		Product p = productDAO.get(product.getName());
 		order.addProduct(p, amount);
 		orderDAO.update(order.getId(), order);
 		return true;
@@ -67,7 +65,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	@Override
-	public List<Order> getHistory(String customer) {
+	public Collection<Order> getHistory(String customer) {
 		Customer c = customerDAO.get(customer);
 		return c.getOldOrders();
 	}

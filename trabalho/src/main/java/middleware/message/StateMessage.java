@@ -2,7 +2,7 @@ package middleware.message;
 
 import java.io.Serializable;
 
-public class StateMessage extends Message {
+public class StateMessage extends ContentMessage {
     private String serverName;
 
     public StateMessage(Serializable body, String serverName) {

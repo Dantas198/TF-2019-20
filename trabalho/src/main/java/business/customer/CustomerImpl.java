@@ -3,21 +3,26 @@ package business.customer;
 import business.order.Order;
 import business.order.OrderImpl;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.Serializable;
+import java.util.*;
 
-public class CustomerImpl implements Customer {
+public class CustomerImpl implements Customer, Serializable {
 
 	private String id;
 	private Order currentOrder;
-	private List<Order> oldOrders;
+	private Set<Order> oldOrders;
 
 	public CustomerImpl(String id){
 		this.id = id;
 		this.currentOrder = null;
-		this.oldOrders = new ArrayList<>();
+		this.oldOrders = new HashSet<>();
 	}
 
+	public CustomerImpl(String id, Order currentOrder, Set<Order> oldOrders){
+		this.id = id;
+		this.currentOrder = currentOrder;
+		this.oldOrders = oldOrders;
+	}
 
 	@Override
 	public String getId() {
@@ -40,7 +45,20 @@ public class CustomerImpl implements Customer {
 	}
 
 	@Override
-	public List<Order> getOldOrders() {
+	public Set<Order> getOldOrders() {
 		return oldOrders;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		CustomerImpl customer = (CustomerImpl) o;
+		return Objects.equals(id, customer.id);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id);
 	}
 }

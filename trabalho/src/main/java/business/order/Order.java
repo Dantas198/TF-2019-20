@@ -2,10 +2,11 @@ package business.order;
 
 import business.product.Product;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 
-public interface Order {
+public interface Order{
 
 	String getId();
 
@@ -19,4 +20,6 @@ public interface Order {
 	void addProduct(Product prod, int quantity);
 
 	float getPrice();
+
+	boolean reset();
 }
