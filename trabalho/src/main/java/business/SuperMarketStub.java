@@ -23,7 +23,6 @@ import java.util.concurrent.*;
 public class SuperMarketStub implements SuperMarket {
     private ManagedMessagingService mms;
     private Address primaryServer;
-    private Address myAddress;
     private Serializer s;
     private CompletableFuture<Message> res;
     private ScheduledExecutorService ses;
@@ -34,7 +33,7 @@ public class SuperMarketStub implements SuperMarket {
         this.res = null;
         this.currentOrder = null;
         this.primaryServer = primaryServer;
-        this.myAddress = io.atomix.utils.net.Address.from("localhost", myPort);
+        Address myAddress = io.atomix.utils.net.Address.from("localhost", myPort);
         this.ses = Executors.newScheduledThreadPool(1);
 
         this.mms = new NettyMessagingService(

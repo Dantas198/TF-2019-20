@@ -6,7 +6,6 @@ import business.product.Product;
 import business.product.ProductImpl;
 import client.message.AddCostumerMessage;
 import client.message.GetCatalogProducts;
-import client.message.GetProductsMessage;
 import middleware.PassiveReplicationServer;
 import middleware.Server;
 import middleware.message.ContentMessage;
@@ -31,8 +30,6 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
             if(message instanceof AddCostumerMessage){
                 String customer = ((AddCostumerMessage) message).getBody();
                 return new ContentMessage<>(superMarket.addCustomer(customer));
-            } else if(message instanceof GetProductsMessage){
-                return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             } else if(message instanceof GetCatalogProducts){
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             }
