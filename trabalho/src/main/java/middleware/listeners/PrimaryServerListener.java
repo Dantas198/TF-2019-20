@@ -46,6 +46,9 @@ public class PrimaryServerListener implements AdvancedMessageListener {
         this.cachedMessages = new HashMap<>();
         this.finishedMessages = new HashMap<>();
         this.e = Executors.newFixedThreadPool(1);
+
+        System.out.println("Servidor Primário a iniciar");
+
         this.s = new SerializerBuilder().withRegistrationRequired(false).build();
         this.mms = new NettyMessagingService(
                 "server",
@@ -56,7 +59,7 @@ public class PrimaryServerListener implements AdvancedMessageListener {
         mms.registerHandler("request", (a,b) -> {
             Message reqm = s.decode(b);
             CompletableFuture<Message> res = new CompletableFuture<>();
-            finishedMessages.putIfAbsent(reqm.getId(), new CompletableFuture<>());
+            finishedMessages.putIfAbsent(reqm.getId(), res);
             try {
                 server.floodMessage(reqm);
             } catch (Exception ex) {
@@ -64,6 +67,7 @@ public class PrimaryServerListener implements AdvancedMessageListener {
             }
 
             res.thenAccept(message -> {
+                System.out.println("Sending response message: " + message);
                 mms.sendAsync(a,"reply",s.encode(message));
             });
         },e);
@@ -75,8 +79,12 @@ public class PrimaryServerListener implements AdvancedMessageListener {
             Message received = (Message) spreadMessage.getObject();
             cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
             List<Message> messagesReceived = cachedMessages.get(received.getId());
-            messagesReceived.add(received);
-            if(messagesReceived.size() == nServers){
+            System.out.println("Received message with id: "  + received.getId());
+            Message myResponse = server.handleMessage(received).from(received);
+            System.out.println("Handled message with id: "  + received.getId());
+            messagesReceived.add(myResponse);
+            System.out.println("Received " + messagesReceived.size() +" from "+ nServers +": " + received.getId());
+            if(messagesReceived.size() >= nServers){
                 finishedMessages.get(received.getId()).complete(received);
             }
         } catch (Exception e){

@@ -11,4 +11,9 @@ public class Message implements Serializable {
     public String getId() {
         return id;
     }
+
+    public Message from(Message m){
+        this.id = m.getId();
+        return this;
+    }
 }

@@ -34,9 +34,9 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             }
         } catch (Exception e){
-            return new Message();
+            return new Message().from(message);
         }
-        return new Message();
+        return new Message().from(message);
     }
 
     @Override

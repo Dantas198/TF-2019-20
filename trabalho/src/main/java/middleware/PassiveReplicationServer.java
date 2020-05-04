@@ -3,6 +3,7 @@ package middleware;
 import middleware.listeners.SecondaryServerListener;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
+import server.GandaGotaServer;
 import spread.AdvancedMessageListener;
 import spread.SpreadConnection;
 import spread.SpreadGroup;
@@ -35,6 +36,7 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
         this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
                 false, true);
         this.spreadGroup.join(this.spreadConnection, "grupo");
+        this.spreadConnection.add(this.messageListener);
         runningCompletable.get();
     }
 
@@ -101,11 +103,18 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
     public void respondMessage(SpreadMessage spreadMessage) {
         try {
             Message received = (Message) spreadMessage.getObject();
-            Serializable bodyResponse = handleMessage(received);
+            System.out.println("Received message with id: "  + received.getId());
+            Message bodyResponse = handleMessage(received).from(received);
+            System.out.println("Handled message with id: "  + received.getId());
             Message response = new ContentMessage<>(bodyResponse);
             floodMessage(response, spreadMessage.getSender());
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Server server = new GandaGotaServer(4803, "2");
+        server.start();
     }
 }
