@@ -22,6 +22,11 @@ public class OrderImpl implements Order, Serializable{
 		this.products = new HashMap<>();
 	}
 
+	public OrderImpl(String id, Map<Product, Integer> products) {
+		this.id = id;
+		this.products = products;
+	}
+
 	@Override
 	public String getId() {
 		return id;

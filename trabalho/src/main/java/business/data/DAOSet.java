@@ -6,31 +6,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-public abstract class DAOSet<T> implements Set<T> {
-    private Connection c;
-    private String tableName;
+public class DAOSet<T> implements Set<T> {
+    private DAOSetPS<T> ps;
 
-    abstract T fromResultSet(ResultSet resultSet) throws SQLException;
-    abstract PreparedStatement getAllPS() throws SQLException;
-    abstract PreparedStatement sizePS() throws SQLException;
-    abstract PreparedStatement addPS(T o) throws SQLException;
-    abstract PreparedStatement removePS(Object o) throws SQLException;
-    abstract PreparedStatement clearPS() throws SQLException;
-    abstract PreparedStatement emptyPS() throws SQLException;
-    abstract PreparedStatement containsPS(Object o) throws SQLException;
-
-    public DAOSet(Connection c) throws SQLException {
-        this.c = c;
-    }
-
-    protected PreparedStatement prepareStatement(String sql) throws SQLException {
-        return c.prepareStatement(sql);
+    public DAOSet(DAOSetPS<T> ps) throws SQLException {
+        this.ps = ps;
     }
 
     @Override
     public int size() {
         try {
-            ResultSet rs = sizePS().executeQuery();
+            ResultSet rs = ps.size().executeQuery();
             rs.next();
             return rs.getInt(1);
         } catch (SQLException e) {
@@ -41,7 +27,7 @@ public abstract class DAOSet<T> implements Set<T> {
     @Override
     public boolean isEmpty() {
         try {
-            return !emptyPS().executeQuery().next();
+            return !ps.empty().executeQuery().next();
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -54,7 +40,7 @@ public abstract class DAOSet<T> implements Set<T> {
     public Iterator<T> iterator() {
         try {
             return new Iterator<T>() {
-                private ResultSet rs = getAllPS().executeQuery();
+                private ResultSet rs = ps.getAll().executeQuery();
                 private Boolean hasNext = null;
 
                 @Override
@@ -84,7 +70,7 @@ public abstract class DAOSet<T> implements Set<T> {
                     }
                     if(hasNext) {
                         try {
-                            return fromResultSet(rs);
+                            return ps.fromResultSet(rs);
                         } catch (SQLException e) {
                             e.printStackTrace();
                             return null;
@@ -113,7 +99,7 @@ public abstract class DAOSet<T> implements Set<T> {
     @Override
     public boolean contains(Object o) {
         try {
-            return containsPS(o).executeQuery().next();
+            return ps.contains(o).executeQuery().next();
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -123,7 +109,7 @@ public abstract class DAOSet<T> implements Set<T> {
     @Override
     public boolean add(T order) {
         try {
-            return addPS(order).executeUpdate() > 0;
+            return ps.add(order).executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -133,7 +119,7 @@ public abstract class DAOSet<T> implements Set<T> {
     @Override
     public boolean remove(Object o) {
         try {
-            return removePS(o).executeUpdate() > 0;
+            return ps.remove(o).executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -182,7 +168,7 @@ public abstract class DAOSet<T> implements Set<T> {
     @Override
     public void clear() {
         try {
-            clearPS().execute();
+            ps.clear().execute();
         } catch (SQLException e) {
             e.printStackTrace();
         }

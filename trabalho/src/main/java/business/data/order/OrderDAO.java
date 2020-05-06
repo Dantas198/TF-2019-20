@@ -1,12 +1,13 @@
-package business.data;
+package business.data.order;
 
+import business.data.DAO;
 import business.order.Order;
 import business.order.OrderImpl;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class OrderDAO implements DAO<String, Order>{
+public class OrderDAO implements DAO<String, Order> {
 
 	//DUMMY VARIABLE
 	Map<String, Order> orderMap;

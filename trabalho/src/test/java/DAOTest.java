@@ -1,33 +1,54 @@
 import business.customer.Customer;
 import business.customer.CustomerImpl;
-import business.data.CustomerSQLDAO;
+import business.data.DBInitialization;
+import business.data.customer.CustomerDAO;
+import business.data.customer.CustomerSQLDAO;
 import business.data.DAO;
-import business.data.OrderDAO;
+import business.data.order.OrderDAO;
+import business.data.order.OrderSQLDAO;
+import business.data.product.OrderProductDAO;
+import business.data.product.ProductDAO;
+import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.order.OrderImpl;
+import business.product.Product;
+import business.product.ProductImpl;
 import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.*;
 
 public class DAOTest {
 
-    @Test
-    public void OrderDAOTest(){
-        DAO<String, Order> orderDAO = new OrderDAO();
+    private void ProductDAOTest(DAO<String, Product> dao){
+        Product product1 = new ProductImpl("Product 1", 1.0f, "abcd");
+        daoTest(dao, product1.getName(), product1);
+    }
+
+    private void OrderDAOTest(DAO<String, Order> dao){
         Order order1 = new OrderImpl();
-        daoTest(orderDAO, order1.getId(), order1);
+        daoTest(dao, order1.getId(), order1);
     }
 
     @Test
-    public void CustomerDAOTest() throws SQLException {
+    public void SQLDAOTest() throws SQLException {
+        CustomerDAOTest(new CustomerDAO());
+        OrderDAOTest(new OrderDAO());
+        ProductDAOTest(new ProductDAO());
         Connection c = DriverManager.getConnection("jdbc:hsqldb:testdb;shutdown=true", "", "");
-        CustomerSQLDAO dao = new CustomerSQLDAO(c, true);
+        new DBInitialization(c).init();
+        CustomerDAOTest(new CustomerSQLDAO(c));
+        OrderDAOTest(new OrderSQLDAO(c));
+        ProductDAOTest(new ProductSQLDAO(c));
+    }
+
+    public void CustomerDAOTest(DAO<String, Customer> dao) {
         Customer customer1 = new CustomerImpl("Customer1");
         daoTest(dao, customer1.getId(), customer1);
         Customer customer = dao.get(customer1.getId());
@@ -46,10 +67,21 @@ public class DAOTest {
         list.add(new OrderImpl());
         list.add(new OrderImpl());
         int i = 0;
-        for (Order o:
-             list) {
+        for (Order o: oldOrders) {
             assertEquals("Iterator should contain same elements",
                     o, list.get(i));
+            Product product1 = new ProductImpl("Product 1", 1.0f, "Description");
+            Product product2 = new ProductImpl("Product 2", 1.0f, "Description");
+            o.addProduct(product1, 1);
+            o.addProduct(product2, 2);
+            assertEquals("Should have 1 product1 in the order", 1, o.getProducts().get(product1).intValue());
+            assertEquals("Should have 2 product2 in the order", 2, o.getProducts().get(product2).intValue());
+            Set<Map.Entry<Product, Integer>> entrySet = o.getProducts().entrySet();
+            assertEquals("Should have 2 products in the order", 2, entrySet.size());
+            entrySet.remove(Map.entry(product1, 1));
+            assertEquals("Should have 1 product in the order", 1, entrySet.size());
+            entrySet.remove(Map.entry(product2, 2));
+            assertTrue("Shouldn't have products in the order", entrySet.isEmpty());
             i++;
         }
     }

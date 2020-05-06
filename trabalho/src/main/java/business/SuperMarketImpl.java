@@ -2,13 +2,12 @@ package business;
 
 import business.customer.Customer;
 import business.customer.CustomerImpl;
-import business.data.CustomerDAO;
+import business.data.customer.CustomerDAO;
 import business.data.DAO;
-import business.data.OrderDAO;
-import business.data.ProductDAO;
+import business.data.order.OrderDAO;
+import business.data.product.ProductDAO;
 import business.order.Order;
 import business.product.Product;
-import business.product.ProductImpl;
 
 import java.io.Serializable;
 import java.util.*;

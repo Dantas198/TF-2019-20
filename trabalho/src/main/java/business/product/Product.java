@@ -7,5 +7,4 @@ public interface Product {
 	float getPrice();
 
 	String getDescription();
-
 }

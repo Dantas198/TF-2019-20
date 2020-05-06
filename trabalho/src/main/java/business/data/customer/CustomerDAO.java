@@ -1,7 +1,7 @@
-package business.data;
+package business.data.customer;
 
 import business.customer.Customer;
-import business.customer.CustomerImpl;
+import business.data.DAO;
 
 import java.util.HashMap;
 import java.util.Map;

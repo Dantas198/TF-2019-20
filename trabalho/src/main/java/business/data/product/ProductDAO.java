@@ -1,5 +1,6 @@
-package business.data;
+package business.data.product;
 
+import business.data.DAO;
 import business.product.Product;
 import business.product.ProductImpl;
 
