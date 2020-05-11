@@ -8,81 +8,29 @@ import client.message.AddCostumerMessage;
 import client.message.FinishOrderMessage;
 import client.message.GetCatalogProducts;
 import client.message.GetHistoryMessage;
-import io.atomix.cluster.messaging.ManagedMessagingService;
-import io.atomix.cluster.messaging.MessagingConfig;
-import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
-import io.atomix.utils.serializer.Serializer;
-import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.message.ContentMessage;
-import middleware.message.ErrorMessage;
 import middleware.message.Message;
 
-import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.*;
 
 public class SuperMarketStub implements SuperMarket {
-    private ManagedMessagingService mms;
-    private Address primaryServer;
-    private Serializer s;
-    private CompletableFuture<Message> res;
-    private ScheduledExecutorService ses;
-    private String privateCustumer;
+
+    private String privateCustomer;
     private Order currentOrder;
 
+    private MessagingService ms;
+
     public SuperMarketStub(int myPort, Address primaryServer){
-        this.res = new CompletableFuture<>();
+
         this.currentOrder = null;
-        this.primaryServer = primaryServer;
-        Address myAddress = io.atomix.utils.net.Address.from("localhost", myPort);
-        this.ses = Executors.newScheduledThreadPool(1);
-
-        this.mms = new NettyMessagingService(
-                "server",
-                myAddress,
-                new MessagingConfig());
-        this.mms.start();
-        this.s = new SerializerBuilder()
-                .withRegistrationRequired(false)
-                .build();
-
-        this.mms.registerHandler("reply", (a,b) -> {
-            try{
-                Message repm = s.decode(b);
-                res.complete(repm);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }, ses);
-    }
-
-    public Message getResponse(Message reqm) throws Exception{
-        res = new CompletableFuture<>();
-        ScheduledFuture<?> sf = scheduleTimeout(reqm);
-        //Caso a resposta tenha chegado cancela o timeout
-        res.whenComplete((m,t) -> { if(t != null) t.printStackTrace(); sf.cancel(true);});
-        mms.sendAsync(primaryServer, "request", s.encode(reqm));
-        return res.thenApply(cm ->
-            {System.out.println("Received message: "+ cm);
-            if(cm instanceof ErrorMessage)
-                throw new CompletionException(((ErrorMessage) cm).getBody());
-            return cm;}
-        ).get();
-    }
-
-
-    public ScheduledFuture<?> scheduleTimeout(Message reqm){
-        return ses.scheduleAtFixedRate(()->{
-            System.out.println("timeout...sending new request");
-            mms.sendAsync(primaryServer, "request", s.encode(reqm));
-        }, 1, 4, TimeUnit.SECONDS);
+        this.ms = new MessagingService(myPort, primaryServer);
     }
 
     @Override
     public boolean addCustomer(String customer) throws Exception {
-        this.privateCustumer = customer;
-        return (Boolean) ((ContentMessage) getResponse(new AddCostumerMessage(customer))).getBody();
+        this.privateCustomer = customer;
+        return ((ContentMessage<Boolean>) ms.sendAndReceive(new AddCostumerMessage(customer))).getBody();
     }
 
     @Override
@@ -93,14 +41,14 @@ public class SuperMarketStub implements SuperMarket {
 
     @Override
     public boolean finishOrder(String customer) throws Exception {
-        if(!customer.equals(privateCustumer))
+        if(!customer.equals(privateCustomer))
             return false;
-        return (Boolean) ((ContentMessage) getResponse(new FinishOrderMessage(customer, currentOrder))).getBody();
+        return ((ContentMessage<Boolean>) ms.sendAndReceive(new FinishOrderMessage(customer, currentOrder))).getBody();
     }
 
     @Override
     public boolean addProduct(String customer, String product, int amount) {
-        if(!customer.equals(privateCustumer))
+        if(!customer.equals(privateCustomer))
             return false;
         if(this.currentOrder == null)
             this.currentOrder = new OrderImpl();
@@ -116,14 +64,14 @@ public class SuperMarketStub implements SuperMarket {
 
     @Override
     public ArrayList<Order> getHistory(String customer) throws Exception {
-        ContentMessage<ArrayList<Order>> cm = ((ContentMessage)  getResponse(new GetHistoryMessage(customer)));
+        Message response = ms.sendAndReceive(new GetHistoryMessage(customer));
+        ContentMessage<ArrayList<Order>> cm = (ContentMessage<ArrayList<Order>>)  response;
         return cm.getBody();
     }
 
     @Override
     public ArrayList<Product> getCatalogProducts() throws Exception {
-        Message response = getResponse(new GetCatalogProducts());
-        System.out.println(response.getClass());
+        Message response = ms.sendAndReceive(new GetCatalogProducts());
         ContentMessage<ArrayList<Product>> cm = (ContentMessage<ArrayList<Product>>) response;
         return cm.getBody();
     }
