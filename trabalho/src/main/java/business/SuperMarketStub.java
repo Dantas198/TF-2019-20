@@ -2,7 +2,6 @@ package business;
 
 import business.order.Order;
 import business.order.OrderImpl;
-import business.product.MessagingService;
 import business.product.Product;
 import business.product.ProductImpl;
 import client.message.AddCostumerMessage;
@@ -31,7 +30,7 @@ public class SuperMarketStub implements SuperMarket {
     @Override
     public boolean addCustomer(String customer) throws Exception {
         this.privateCustomer = customer;
-        return ((ContentMessage<Boolean>) ms.getResponse(new AddCostumerMessage(customer))).getBody();
+        return ((ContentMessage<Boolean>) ms.sendAndReceive(new AddCostumerMessage(customer))).getBody();
     }
 
     @Override
@@ -44,7 +43,7 @@ public class SuperMarketStub implements SuperMarket {
     public boolean finishOrder(String customer) throws Exception {
         if(!customer.equals(privateCustomer))
             return false;
-        return ((ContentMessage<Boolean>) ms.getResponse(new FinishOrderMessage(customer, currentOrder))).getBody();
+        return ((ContentMessage<Boolean>) ms.sendAndReceive(new FinishOrderMessage(customer, currentOrder))).getBody();
     }
 
     @Override
@@ -65,14 +64,14 @@ public class SuperMarketStub implements SuperMarket {
 
     @Override
     public ArrayList<Order> getHistory(String customer) throws Exception {
-        ContentMessage<ArrayList<Order>> cm = ((ContentMessage<ArrayList<Order>>)  ms.getResponse(new GetHistoryMessage(customer)));
+        Message response = ms.sendAndReceive(new GetHistoryMessage(customer));
+        ContentMessage<ArrayList<Order>> cm = (ContentMessage<ArrayList<Order>>)  response;
         return cm.getBody();
     }
 
     @Override
     public ArrayList<Product> getCatalogProducts() throws Exception {
-        Message response = ms.getResponse(new GetCatalogProducts());
-        System.out.println(response.getClass());
+        Message response = ms.sendAndReceive(new GetCatalogProducts());
         ContentMessage<ArrayList<Product>> cm = (ContentMessage<ArrayList<Product>>) response;
         return cm.getBody();
     }

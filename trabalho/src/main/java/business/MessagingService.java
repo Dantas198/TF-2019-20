@@ -1,4 +1,4 @@
-package business.product;
+package business;
 
 import business.order.Order;
 import io.atomix.cluster.messaging.ManagedMessagingService;
@@ -46,11 +46,17 @@ public class MessagingService {
         }, ses);
     }
 
-    public Message getResponse(Message reqm) throws Exception {
+    public Message sendAndReceive(Message reqm) throws Exception {
         res = new CompletableFuture<>();
+
         ScheduledFuture<?> sf = scheduleTimeout(reqm);
         //Caso a resposta tenha chegado cancela o timeout
-        res.whenComplete((m,t) -> { if(t != null) t.printStackTrace(); sf.cancel(true);});
+        res.whenComplete((m,t) -> {
+            if(t != null)
+                t.printStackTrace();
+            sf.cancel(true);
+        });
+
         mms.sendAsync(primaryServer, "request", s.encode(reqm));
         return res.thenApply(cm ->
                 {System.out.println("Received message: "+ cm);
@@ -60,7 +66,7 @@ public class MessagingService {
         ).get();
     }
 
-    public ScheduledFuture<?> scheduleTimeout(Message reqm){
+    private ScheduledFuture<?> scheduleTimeout(Message reqm){
         return ses.scheduleAtFixedRate(()->{
             System.out.println("timeout...sending new request");
             mms.sendAsync(primaryServer, "request", s.encode(reqm));
