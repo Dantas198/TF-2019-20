@@ -6,7 +6,7 @@ import io.atomix.utils.net.Address;
 
 public class ClientCLI {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
 
         Address primaryServer = Address.from(6666);
         int myPort = 5555;

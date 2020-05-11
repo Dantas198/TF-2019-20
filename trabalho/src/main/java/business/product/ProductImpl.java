@@ -9,6 +9,10 @@ public class ProductImpl implements Product, Serializable {
 	private float price;
 	private String description;
 
+	public ProductImpl(String name){
+		this.name = name;
+	}
+
 	public ProductImpl(String name, float price, String description){
 		this.name = name;
 		this.price = price;
