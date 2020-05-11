@@ -43,7 +43,7 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
                 FinishOrderBody body = ((FinishOrderMessage) message).getBody();
                 Map<Product, Integer> products = body.getOrder().getProducts();
                 for(Product prod : products.keySet()){
-                    superMarket.addProduct(body.getCustomer(), prod, products.get(prod));
+                    superMarket.addProduct(body.getCustomer(), prod.getName(), products.get(prod));
                 }
                 return new ContentMessage<>(superMarket.finishOrder(body.getCustomer()));
             }
