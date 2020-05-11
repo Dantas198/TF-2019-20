@@ -13,7 +13,7 @@ import java.sql.SQLException;
 
 public class OrderSQLDAO extends SQLDAO<String, Order> {
     public OrderSQLDAO(Connection c) throws SQLException {
-        super(new DAOPS<String, Order>() {
+        super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"order\" WHERE \"id\" = ?");
             PreparedStatement putPS = c.prepareStatement("INSERT INTO \"order\" (\"id\") VALUES (?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"order\" WHERE \"id\" = ?");
@@ -57,7 +57,7 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
             }
 
             @Override
-            public PreparedStatement getAll() throws SQLException {
+            public PreparedStatement getAll() {
                 return getAllPS;
             }
         });

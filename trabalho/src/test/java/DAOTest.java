@@ -87,7 +87,10 @@ public class DAOTest {
             assertTrue("Shouldn't have products in the order", entrySet.isEmpty());
             i++;
         }
+        customer.getOldOrders().clear();
+        assertEquals("Should have no order", 0, customer.getOldOrders().size());
         dao.delete(customerName);
+        assertEquals("Should have no customer", 0, dao.getAll().size());
     }
 
     private <K,T> void daoTest(DAO<K, T>  dao, K key, T obj){

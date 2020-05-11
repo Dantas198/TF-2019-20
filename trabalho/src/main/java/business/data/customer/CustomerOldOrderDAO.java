@@ -13,7 +13,7 @@ import java.sql.SQLException;
 
 public class CustomerOldOrderDAO extends DAOSet<Order> {
     public CustomerOldOrderDAO(Connection c, String current_id) throws SQLException {
-        super(new DAOSetPS<Order>() {
+        super(new DAOSetPS<>() {
             @Override
             public Order fromResultSet(ResultSet resultSet) throws SQLException {
                 String id = resultSet.getString("id");
@@ -56,7 +56,9 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement clear() throws SQLException {
-                return c.prepareStatement("DELETE FROM \"order\" WHERE \"customer_id\" = ?");
+                PreparedStatement ps = c.prepareStatement("DELETE FROM \"order\" WHERE \"customer_id\" = ?");
+                ps.setString(1, current_id);
+                return ps;
             }
 
             @Override

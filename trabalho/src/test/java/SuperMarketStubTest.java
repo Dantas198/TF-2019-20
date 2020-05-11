@@ -1,10 +1,9 @@
 import business.SuperMarket;
-import business.SuperMarketImpl;
 import business.SuperMarketStub;
 import business.product.Product;
 import io.atomix.utils.net.Address;
 import org.junit.Test;
-import server.GandaGotaServer;
+import server.GandaGotaServerImpl;
 
 import java.util.*;
 
@@ -13,11 +12,11 @@ import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertNotNull;
 
 public class SuperMarketStubTest {
-    private GandaGotaServer server;
+    private GandaGotaServerImpl server;
     private SuperMarket stub;
 
     public SuperMarketStubTest() throws Exception{
-        server = new GandaGotaServer(4803, "5");
+        server = new GandaGotaServerImpl(4803, "5");
         new Thread(() ->{
             try {
                 server.start();

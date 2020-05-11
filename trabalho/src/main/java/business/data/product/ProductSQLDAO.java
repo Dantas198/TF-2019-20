@@ -12,7 +12,7 @@ import java.sql.SQLException;
 
 public class ProductSQLDAO extends SQLDAO<String, Product> {
     public ProductSQLDAO(Connection c) throws SQLException {
-        super(new DAOPS<>() {
+        super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"product\" WHERE \"name\" = ?");
             PreparedStatement putPS = c.prepareStatement("INSERT INTO \"product\" (\"name\", \"price\", \"description\", \"stock\") VALUES (?, ?, ?, ?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"product\" WHERE \"name\" = ?");
