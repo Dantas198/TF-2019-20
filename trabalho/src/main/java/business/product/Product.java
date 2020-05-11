@@ -8,5 +8,5 @@ public interface Product {
 
 	String getDescription();
 
-	int getQuantity();
+	int getStock();
 }

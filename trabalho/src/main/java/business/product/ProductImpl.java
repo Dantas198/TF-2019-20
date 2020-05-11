@@ -8,13 +8,13 @@ public class ProductImpl implements Product, Serializable {
 	private String name;
 	private float price;
 	private String description;
-	private int quantity;
+	private int stock;
 
-	public ProductImpl(String name, float price, String description, int quantity){
+	public ProductImpl(String name, float price, String description, int stock){
 		this.name = name;
 		this.price = price;
 		this.description = description;
-		this.quantity = quantity;
+		this.stock = stock;
 	}
 
 	public ProductImpl(String name){
@@ -53,7 +53,7 @@ public class ProductImpl implements Product, Serializable {
 		return Objects.hash(name);
 	}
 
-	public int getQuantity() {
-		return quantity;
+	public int getStock() {
+		return stock;
 	}
 }
