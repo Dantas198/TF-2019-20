@@ -9,4 +9,6 @@ public interface Product {
 	String getDescription();
 
 	int getStock();
+
+	void reduceStock(int quantity);
 }

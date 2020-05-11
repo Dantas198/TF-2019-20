@@ -17,11 +17,13 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	DAO<String, Order> orderDAO;
 	DAO<String, Product> productDAO;
 	DAO<String, Customer> customerDAO;
+	private int tmax;
 
-	public SuperMarketImpl(){
+	public SuperMarketImpl(int tmax){
 		this.orderDAO = new OrderDAO();
 		this.productDAO = new ProductDAO();
 		this.customerDAO = new CustomerDAO();
+		this.tmax = tmax;
 	}
 
 	@Override
@@ -41,12 +43,36 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 
 	@Override
 	public boolean finishOrder(String customer) {
+		// TODO tmax
 		Customer c = customerDAO.get(customer);
-		c.getOldOrders().add(c.getCurrentOrder());
+		Order order = c.getCurrentOrder();
+		Map<Product,Integer> products = order.getProducts();
+
+		// TODO trocar order por lista de Strings?
+		// verifica se existe stock e substitui keySet por produto completo do stock
+		for (Product p : products.keySet()) {
+			String name = p.getName();
+			int quantity = products.get(p);
+			Product product = productDAO.get(name);
+			products.put(product, quantity);
+			int stock = product.getStock();
+			if (!(stock - quantity < 0)) return false;
+		}
+
+		// atualiza stock
+		for (Product p : products.keySet()) {
+			int quantity = products.get(p);
+			p.reduceStock(quantity);
+			productDAO.update(p.getName(), p);
+		}
+
+		c.getOldOrders().add(order);
 		c.newCurrentOrder();
 		customerDAO.update(customer, c);
 		return true;
 	}
+
+
 
 	@Override
 	public boolean addProduct(String customer, String product, int amount) {

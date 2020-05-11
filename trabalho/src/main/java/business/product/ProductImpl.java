@@ -40,6 +40,11 @@ public class ProductImpl implements Product, Serializable {
 		return description;
 	}
 
+	public void reduceStock(int quantity) {
+		if(quantity > stock) return;
+		stock -= quantity;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
