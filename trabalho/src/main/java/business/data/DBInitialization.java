@@ -1,6 +1,7 @@
 package business.data;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class DBInitialization {
@@ -11,6 +12,7 @@ public class DBInitialization {
     }
 
     public void init() throws SQLException {
+        c.prepareStatement("DROP SCHEMA PUBLIC CASCADE").execute();
         // Customer table
         c.prepareStatement("DROP TABLE IF EXISTS \"customer\";\n").execute();
         c.prepareStatement("CREATE TABLE \"customer\" (\n" +
@@ -31,7 +33,7 @@ public class DBInitialization {
                 "    \"name\" varchar(255),\n" +
                 "    \"description\" varchar(255),\n" +
                 "    \"price\" int,\n" +
-                "    \"quantity\" int,\n" +
+                "    \"stock\" int,\n" +
                 "    PRIMARY KEY(\"name\")\n" +
                 "); ").execute();
         // Order <-> Product table

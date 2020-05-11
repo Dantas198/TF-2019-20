@@ -12,11 +12,11 @@ import java.sql.SQLException;
 
 public class ProductSQLDAO extends SQLDAO<String, Product> {
     public ProductSQLDAO(Connection c) throws SQLException {
-        super(new DAOPS<String, Product>() {
+        super(new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"product\" WHERE \"name\" = ?");
-            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"product\" (\"name\", \"price\", \"description\") VALUES (?, ?, ?)");
+            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"product\" (\"name\", \"price\", \"description\", \"stock\") VALUES (?, ?, ?, ?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"product\" WHERE \"name\" = ?");
-            PreparedStatement updatePS = c.prepareStatement("UPDATE \"product\" SET \"name\" = ?,  \"price\" = ?, \"description\" = ? WHERE \"name\" = ?");
+            PreparedStatement updatePS = c.prepareStatement("UPDATE \"product\" SET \"name\" = ?,  \"price\" = ?, \"description\" = ? , \"stock\" = ? WHERE \"name\" = ?");
             PreparedStatement getAllPS = c.prepareStatement("SELECT * FROM \"product\"");
 
             @Override
@@ -24,7 +24,8 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
                 String name = resultSet.getString("name");
                 float price = resultSet.getFloat("price");
                 String description = resultSet.getString("description");
-                return new ProductImpl(name, price, description);
+                int stock = resultSet.getInt("stock");
+                return new ProductImpl(name, price, description, stock);
             }
 
             @Override
@@ -43,6 +44,7 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
                 putPS.setString(1, o.getName());
                 putPS.setFloat(2, o.getPrice());
                 putPS.setString(3, o.getDescription());
+                putPS.setInt(4, o.getStock());
                 return putPS;
             }
 
@@ -57,12 +59,13 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
                 updatePS.setString(1, o.getName());
                 updatePS.setFloat(2, o.getPrice());
                 updatePS.setString(3, o.getDescription());
-                updatePS.setString(4, key);
+                updatePS.setInt(4, o.getStock());
+                updatePS.setString(5, key);
                 return null;
             }
 
             @Override
-            public PreparedStatement getAll() throws SQLException {
+            public PreparedStatement getAll() {
                 return getAllPS;
             }
         });

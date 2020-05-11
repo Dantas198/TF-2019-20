@@ -45,13 +45,16 @@ public class DAOTest {
         new DBInitialization(c).init();
         CustomerDAOTest(new CustomerSQLDAO(c));
         OrderDAOTest(new OrderSQLDAO(c));
+        System.out.println("OI");
         ProductDAOTest(new ProductSQLDAO(c));
     }
 
-    public void CustomerDAOTest(DAO<String, Customer> dao) {
+    private void CustomerDAOTest(DAO<String, Customer> dao) {
         Customer customer1 = new CustomerImpl("Customer1");
         daoTest(dao, customer1.getId(), customer1);
-        Customer customer = dao.get(customer1.getId());
+        String customerName = "Customer2";
+        dao.put(new CustomerImpl(customerName));
+        Customer customer = dao.get(customerName);
         Set<Order> oldOrders = customer.getOldOrders();
         assertTrue("Customer's old orders should initialize empty", oldOrders.isEmpty());
         assertEquals("Customer's old orders' size should be coherent with empty",
@@ -84,6 +87,7 @@ public class DAOTest {
             assertTrue("Shouldn't have products in the order", entrySet.isEmpty());
             i++;
         }
+        dao.delete(customerName);
     }
 
     private <K,T> void daoTest(DAO<K, T>  dao, K key, T obj){
@@ -91,12 +95,12 @@ public class DAOTest {
         T obj2 = dao.get(key);
         assertEquals("Adding and retrieving the object with same id aren't equal (" + key + "," + obj + ")",
                 obj, obj2);
-        dao.delete(key);
-        obj2 = dao.get(key);
-        assertNull("Retrieving an object after its deletion should be null", obj2);
         int beforeLength = dao.getAll().size();
         dao.put(obj);
         int length = dao.getAll().size();
-        assertEquals("Adding an existing object to dao should not increase database size", beforeLength + 1, length);
+        assertEquals("Adding an existing object to dao should not increase database size", beforeLength, length);
+        dao.delete(key);
+        obj2 = dao.get(key);
+        assertNull("Retrieving an object after its deletion should be null", obj2);
     }
 }
