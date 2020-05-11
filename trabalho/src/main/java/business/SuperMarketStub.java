@@ -3,6 +3,7 @@ package business;
 import business.order.Order;
 import business.order.OrderImpl;
 import business.product.Product;
+import business.product.ProductImpl;
 import client.message.AddCostumerMessage;
 import client.message.FinishOrderMessage;
 import client.message.GetCatalogProducts;
@@ -98,12 +99,13 @@ public class SuperMarketStub implements SuperMarket {
     }
 
     @Override
-    public boolean addProduct(String customer, Product product, int amount) {
+    public boolean addProduct(String customer, String product, int amount) {
         if(!customer.equals(privateCustumer))
             return false;
         if(this.currentOrder == null)
             this.currentOrder = new OrderImpl();
-        this.currentOrder.addProduct(product, amount);
+        Product p = new ProductImpl(product);
+        this.currentOrder.addProduct(p, amount);
         return true;
     }
 

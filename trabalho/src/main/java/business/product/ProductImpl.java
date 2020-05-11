@@ -17,6 +17,14 @@ public class ProductImpl implements Product, Serializable {
 		this.quantity = quantity;
 	}
 
+	public ProductImpl(String name){
+		this(name, 0, "", 0);
+	}
+
+	public ProductImpl(String name, float price, String description){
+		this(name, price, description, 0);
+	}
+
 	@Override
 	public String getName() {
 		return name;
