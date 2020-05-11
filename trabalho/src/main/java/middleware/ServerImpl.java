@@ -1,9 +1,8 @@
 package middleware;
 
-import middleware.listeners.SecondaryServerListener;
-import middleware.message.ContentMessage;
+import middleware.listeners.ServerListener;
 import middleware.message.Message;
-import server.GandaGotaServer;
+import server.GandaGotaServerImpl;
 import spread.AdvancedMessageListener;
 import spread.SpreadConnection;
 import spread.SpreadGroup;
@@ -13,8 +12,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class PassiveReplicationServer<STATE extends Serializable> implements Server {
-
+public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private String privateName;
     private AdvancedMessageListener messageListener;
     private SpreadConnection spreadConnection;
@@ -22,13 +20,13 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
     private int port;
     private CompletableFuture<Void> runningCompletable;
 
-    public PassiveReplicationServer(int port, String privateName){
+    public ServerImpl(int port, String privateName){
         this.privateName = privateName;
         this.port = port;
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.runningCompletable = new CompletableFuture<>();
-        this.messageListener = new SecondaryServerListener(spreadConnection, privateName, this);
+        this.messageListener = new ServerListener(this, 7777);
     }
 
     @Override
@@ -110,8 +108,31 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
         }
     }
 
+    public String getPrivateName(){
+        return privateName;
+    }
+
+    public AdvancedMessageListener getMessageListener() {
+        return messageListener;
+    }
+
+    public SpreadConnection getSpreadConnection() {
+        return spreadConnection;
+    }
+
+    public SpreadGroup getSpreadGroup() {
+        return spreadGroup;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+
+
+
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServer(4803, "2");
+        Server server = new GandaGotaServerImpl(4803, "2");
         server.start();
     }
 }

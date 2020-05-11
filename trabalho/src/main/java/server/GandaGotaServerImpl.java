@@ -3,28 +3,25 @@ package server;
 import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.product.Product;
-import business.product.ProductImpl;
 import client.bodies.FinishOrderBody;
 import client.message.AddCostumerMessage;
 import client.message.FinishOrderMessage;
 import client.message.GetCatalogProducts;
 import client.message.GetHistoryMessage;
-import middleware.PassiveReplicationServer;
+import middleware.ServerImpl;
 import middleware.Server;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
 
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Map;
 
-public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
+public class GandaGotaServerImpl extends ServerImpl<SuperMarket> {
 
     private SuperMarket superMarket;
 
-    public GandaGotaServer(int port, String privateName) {
+    public GandaGotaServerImpl(int port, String privateName) {
         super(port, privateName);
         this.superMarket = new SuperMarketImpl();
     }
@@ -66,7 +63,7 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServer(4803, "2");
+        Server server = new GandaGotaServerImpl(4803, "2");
         server.start();
     }
 }
