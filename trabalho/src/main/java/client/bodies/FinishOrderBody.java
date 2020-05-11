@@ -13,4 +13,12 @@ public class FinishOrderBody implements Serializable {
         this.customer = customer;
         this.order = order;
     }
+
+    public String getCustomer() {
+        return customer;
+    }
+
+    public Order getOrder() {
+        return order;
+    }
 }

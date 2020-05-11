@@ -68,7 +68,6 @@ public class PrimaryServerListener implements AdvancedMessageListener {
 
             res.thenAccept(message -> {
                 System.out.println("Sending response message: " + message);
-                System.out.println(a);
                 mms.sendAsync(a,"reply",s.encode(message)).whenComplete((m,t) -> {
                     if(t != null){
                         t.printStackTrace();
@@ -84,11 +83,8 @@ public class PrimaryServerListener implements AdvancedMessageListener {
             Message received = (Message) spreadMessage.getObject();
             cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
             List<Message> messagesReceived = cachedMessages.get(received.getId());
-            System.out.println("Received message with id: "  + received.getId());
             Message myResponse = server.handleMessage(received).from(received);
-            System.out.println("Handled message with id: "  + myResponse.getId() + "; " + myResponse);
             messagesReceived.add(myResponse);
-            System.out.println("Received " + messagesReceived.size() +" from "+ nServers +": " + received.getId());
             if(messagesReceived.size() >= nServers){
                 finishedMessages.get(received.getId()).complete(myResponse);
             }

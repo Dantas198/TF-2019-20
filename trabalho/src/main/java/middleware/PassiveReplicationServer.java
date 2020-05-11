@@ -103,9 +103,7 @@ public abstract class PassiveReplicationServer<STATE extends Serializable> imple
     public void respondMessage(SpreadMessage spreadMessage) {
         try {
             Message received = (Message) spreadMessage.getObject();
-            System.out.println("Received message with id: "  + received.getId());
             Message response = handleMessage(received).from(received);
-            System.out.println("Handled message with id: "  + response.getId() + "; " + response);
             floodMessage(response, spreadMessage.getSender());
         } catch (Exception e) {
             e.printStackTrace();

@@ -4,16 +4,21 @@ import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.product.Product;
 import business.product.ProductImpl;
+import client.bodies.FinishOrderBody;
 import client.message.AddCostumerMessage;
+import client.message.FinishOrderMessage;
 import client.message.GetCatalogProducts;
+import client.message.GetHistoryMessage;
 import middleware.PassiveReplicationServer;
 import middleware.Server;
 import middleware.message.ContentMessage;
+import middleware.message.ErrorMessage;
 import middleware.message.Message;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 
 public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
 
@@ -32,25 +37,36 @@ public class GandaGotaServer extends PassiveReplicationServer<SuperMarket> {
                 return new ContentMessage<>(superMarket.addCustomer(customer));
             } else if(message instanceof GetCatalogProducts){
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
+            } else if(message instanceof GetHistoryMessage) {
+                return new ContentMessage<>(new ArrayList<>(superMarket.getHistory(((GetHistoryMessage) message).getBody())));
+            } else if(message instanceof FinishOrderMessage){
+                FinishOrderBody body = ((FinishOrderMessage) message).getBody();
+                Map<Product, Integer> products = body.getOrder().getProducts();
+                for(Product prod : products.keySet()){
+                    superMarket.addProduct(body.getCustomer(), prod, products.get(prod));
+                }
+                return new ContentMessage<>(superMarket.finishOrder(body.getCustomer()));
             }
         } catch (Exception e){
-            return new ContentMessage<>(null).from(message);
+            return new ErrorMessage(e).from(message);
         }
-        return new ContentMessage<>(null).from(message);
+        return new ErrorMessage(new Exception("Not function for message " + message.getId() + ": " + message));
     }
 
     @Override
     public SuperMarket getState() {
+        System.out.println("Retrieving state");
         return superMarket;
     }
 
     @Override
     public void setState(SuperMarket superMarket) {
+        System.out.println("Setting state");
         this.superMarket = superMarket;
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServer(4803, "1");
+        Server server = new GandaGotaServer(4803, "2");
         server.start();
     }
 }

@@ -8,11 +8,13 @@ public class ProductImpl implements Product, Serializable {
 	private String name;
 	private float price;
 	private String description;
+	private int quantity;
 
-	public ProductImpl(String name, float price, String description){
+	public ProductImpl(String name, float price, String description, int quantity){
 		this.name = name;
 		this.price = price;
 		this.description = description;
+		this.quantity = quantity;
 	}
 
 	@Override
@@ -41,5 +43,9 @@ public class ProductImpl implements Product, Serializable {
 	@Override
 	public int hashCode() {
 		return Objects.hash(name);
+	}
+
+	public int getQuantity() {
+		return quantity;
 	}
 }

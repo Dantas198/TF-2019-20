@@ -14,6 +14,7 @@ import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.message.ContentMessage;
+import middleware.message.ErrorMessage;
 import middleware.message.Message;
 
 import java.io.Serializable;
@@ -30,7 +31,7 @@ public class SuperMarketStub implements SuperMarket {
     private Order currentOrder;
 
     public SuperMarketStub(int myPort, Address primaryServer){
-        this.res = null;
+        this.res = new CompletableFuture<>();
         this.currentOrder = null;
         this.primaryServer = primaryServer;
         Address myAddress = io.atomix.utils.net.Address.from("localhost", myPort);
@@ -47,11 +48,8 @@ public class SuperMarketStub implements SuperMarket {
 
         this.mms.registerHandler("reply", (a,b) -> {
             try{
-                System.out.println("HELLO1");
                 Message repm = s.decode(b);
-                System.out.println("HELLO2");
                 res.complete(repm);
-                System.out.println("HELLO3");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -62,9 +60,14 @@ public class SuperMarketStub implements SuperMarket {
         res = new CompletableFuture<>();
         ScheduledFuture<?> sf = scheduleTimeout(reqm);
         //Caso a resposta tenha chegado cancela o timeout
-        res.whenComplete((m,t) -> { t.printStackTrace(); sf.cancel(true);});
+        res.whenComplete((m,t) -> { if(t != null) t.printStackTrace(); sf.cancel(true);});
         mms.sendAsync(primaryServer, "request", s.encode(reqm));
-        return res.thenApply(cm -> {System.out.println("CLIENT: Received -> " + cm.getId()); return cm;}).get();
+        return res.thenApply(cm ->
+            {System.out.println("Received message: "+ cm);
+            if(cm instanceof ErrorMessage)
+                throw new CompletionException(((ErrorMessage) cm).getBody());
+            return cm;}
+        ).get();
     }
 
 
@@ -78,7 +81,7 @@ public class SuperMarketStub implements SuperMarket {
     @Override
     public boolean addCustomer(String customer) throws Exception {
         this.privateCustumer = customer;
-        return (Boolean) ((ContentMessage) (new AddCostumerMessage(customer))).getBody();
+        return (Boolean) ((ContentMessage) getResponse(new AddCostumerMessage(customer))).getBody();
     }
 
     @Override
