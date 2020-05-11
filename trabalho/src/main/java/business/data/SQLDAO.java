@@ -1,5 +1,6 @@
 package business.data;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -7,9 +8,12 @@ import java.util.Map;
 
 public class SQLDAO<K, T> implements DAO<K, T> {
     private DAOPS<K, T> ps;
+    private Connection connection;
 
-    public SQLDAO(DAOPS<K, T> ps) {
+    public SQLDAO(Connection connection, DAOPS<K, T> ps) throws SQLException {
         this.ps = ps;
+        this.connection = connection;
+        connection.setAutoCommit(false);
     }
 
     @Override
@@ -67,5 +71,13 @@ public class SQLDAO<K, T> implements DAO<K, T> {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public void commit() throws SQLException {
+        connection.commit();
+    }
+
+    public void rollback() throws SQLException {
+        connection.rollback();
     }
 }

@@ -9,7 +9,7 @@ import java.sql.*;
 
 public class CustomerSQLDAO extends SQLDAO<String, Customer> {
     public CustomerSQLDAO(Connection c) throws SQLException {
-        super(new DAOPS<String, Customer>() {
+        super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"customer\" WHERE \"id\" = ?");
             PreparedStatement putPS = c.prepareStatement("INSERT INTO \"customer\" (\"id\") VALUES (?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"customer\" WHERE \"id\" = ?");
@@ -53,7 +53,7 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
             }
 
             @Override
-            public PreparedStatement getAll() throws SQLException {
+            public PreparedStatement getAll() {
                 return getAllPS;
             }
         });

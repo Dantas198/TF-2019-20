@@ -30,5 +30,4 @@ public interface DAO<K,T> {
 	boolean update(K key, T obj);
 
 	Map<K, T> getAll();
-
 }
