@@ -1,85 +1,85 @@
 package middleware;
 
-import middleware.listeners.ServerListener;
+import io.atomix.cluster.messaging.ManagedMessagingService;
+import io.atomix.cluster.messaging.MessagingConfig;
+import io.atomix.cluster.messaging.impl.NettyMessagingService;
+import io.atomix.utils.net.Address;
+import io.atomix.utils.serializer.Serializer;
+import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.message.Message;
-import server.GandaGotaServerImpl;
-import spread.AdvancedMessageListener;
-import spread.SpreadConnection;
-import spread.SpreadGroup;
-import spread.SpreadMessage;
+import middleware.message.WriteMessage;
+import middleware.message.replication.CertifyWriteMessage;
 
 import java.io.Serializable;
-import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class ServerImpl<STATE extends Serializable> implements Server {
-    private String privateName;
-    private AdvancedMessageListener messageListener;
-    private SpreadConnection spreadConnection;
-    private SpreadGroup spreadGroup;
-    private int port;
-    private CompletableFuture<Void> runningCompletable;
+    private final ClusterReplicationService spreadService;
+    private final ExecutorService e;
+    private final Serializer s;
+    private final ManagedMessagingService mms;
+    private final CompletableFuture<Void> runningCompletable;
+    private ReentrantLock rl;
+    private Map<String, CompletableFuture<Boolean>> pendingWrites;
 
-    public ServerImpl(int port, String privateName){
-        this.privateName = privateName;
-        this.port = port;
-        this.spreadGroup = new SpreadGroup();
-        this.spreadConnection = new SpreadConnection();
+    public ServerImpl(int spreadPort, String privateName, int atomixPort){
+        this.spreadService = new ClusterReplicationService(spreadPort, privateName, this);
+        this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
-        this.messageListener = new ServerListener(this, 7777);
-    }
-
-    @Override
-    public void start() throws Exception {
-        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
-                false, true);
-        this.spreadGroup.join(this.spreadConnection, "grupo");
-        this.spreadConnection.add(this.messageListener);
-        runningCompletable.get();
-    }
-
-    @Override
-    public void stop() throws Exception {
-        this.runningCompletable.complete(null);
+        this.rl = new ReentrantLock();
+        this.pendingWrites = new HashMap<>();
+        this.s = new SerializerBuilder().withRegistrationRequired(false).build();
+        Address myAddress = Address.from("localhost", atomixPort);
+        this.mms = new NettyMessagingService(
+                "server",
+                myAddress,
+                new MessagingConfig());
     }
 
     /**
-     * Called when necessary from regularMessageReceived (Spread), used to get the correct response from the extended
+     * Called from atomix clientListener, used to get the correct response from the extended
+     * It is handled locally and doesnt need replication
      * server
      * @param message The body Message received
      * @return the message body of the response
      */
     public abstract Message handleMessage(Message message);
 
-    public void setMessageListener(AdvancedMessageListener messageListener){
-        this.spreadConnection.remove(this.messageListener);
-        this.messageListener = messageListener;
-        this.spreadConnection.add(this.messageListener);
-    }
+    /**
+     * Called from atomix clientListener, used to get the writeSet after application custom preprocessors
+     * the request and then it is passed down the certification pipeline
+     * server
+     * @param message The body Message received
+     * @return the message body of the response
+     */
+    public abstract CertifyWriteMessage<?> preprocessMessage(Message message);
 
     /**
-     * Used to respond to all Servers in the current spread group
-     * @param message the body message that should be passed to all Servers
-     * @throws Exception
+     * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
+     * Needs to persist the incoming changes
+     * server
+     * @param message contains the state to persist
      */
-    public void floodMessage(Message message) throws Exception{
-        floodMessage(message, this.spreadGroup);
-    }
+    public abstract void updateStateFromCommitedWrite(CertifyWriteMessage<?> message);
 
     /**
-     * Used to respond to all Servers connected in the corresponding spread group
-     * @param message
-     * @param sg
-     * @throws Exception
+     * Called from handleCertifierAnswer when a write request was made and is considered valid.
+     * Needs to make changes effective
+     * server
      */
-    public void floodMessage(Message message, SpreadGroup sg) throws Exception{
-        SpreadMessage m = new SpreadMessage();
-        m.addGroup(sg);
-        m.setObject(message);
-        m.setReliable();
-        spreadConnection.multicast(m);
-        System.out.println("Flooding to group ("+ this.spreadGroup+ "): " + message);
-    }
+    public abstract void commit();
+
+    /**
+     * Called from handleCertifierAnswer when a write request was made and is considered invalid.
+     * Needs to cancel the transaction
+     * server
+     */
+    public abstract void rollback();
 
     /**
      * Get of the state of the current Server
@@ -95,44 +95,129 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public abstract void setState(STATE state);
 
     /**
-     * Method used to respond to the Sender the message defined in the handleMessage abstract method
-     * @param spreadMessage
+     * Starts the server communication listeners. First it starts the ClusterReplicationService so that a replica that is
+     * joining the server reaches a consistent state. When on a consistent state the server can listen to clients requests
+     * server
      */
-    public void respondMessage(SpreadMessage spreadMessage) {
-        try {
-            Message received = (Message) spreadMessage.getObject();
-            Message response = handleMessage(received).from(received);
-            floodMessage(response, spreadMessage.getSender());
-        } catch (Exception e) {
-            e.printStackTrace();
+    //TODO pode ouvir os pedidos dos clientes mesmo sem estar consistente e guarda-os,
+    // mas é discutível, porque um cliente pode ligar-se a outro e talvez ser atendido mais rapidamente
+    @Override
+    public void start() throws Exception {
+        spreadService.start().thenAccept(x -> {
+            startClientListener();
+            System.out.println("Primary Server initialized");
+        });
+        runningCompletable.get();
+    }
+
+    /**
+     * Called from regularMessageListener in ClusterReplicationServer when a write request passed through the certification
+     * process and got answered.
+     * server
+     */
+    protected void handleCertifierAnswer(CertifyWriteMessage<?> message, boolean isWritable){
+        try{
+            rl.lock();
+            CompletableFuture<Boolean> res = this.pendingWrites.get(message.getId());
+            rl.unlock();
+            // se for null então não foi iniciada a escrita neste servidor
+            if(res == null){
+                if(isWritable) {
+                    updateStateFromCommitedWrite(message);
+                    //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
+                    //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
+                    spreadService.certifier.commit(message.getWriteSet());
+                }
+            }
+            else{
+                //Eu acho que a execução do res após o complete continua na thread do spread ....terá de ser assim para funcionar
+                //Chama a callback de onde foi iniciado o pedido de escrita
+                res.complete(isWritable);
+            }
+        }finally {
+            rl.unlock();
         }
     }
 
-    public String getPrivateName(){
-        return privateName;
+    /**
+     * Called from clientListener handler when a writeMessage arrived. Starts a transaction by getting the current starting
+     * timestamp and pre-processing the request.
+     * server
+     * @param reqm request being made
+     * @return the information necessary to certify and replicate the transaction that is for now in a transient state
+     */
+    private CertifyWriteMessage<?> startTransaction(Message reqm) {
+        long ts = spreadService.certifier.getTimestamp();
+        //pre-processamento: colocar transação com estado não commit e calcular o estado resultado
+        CertifyWriteMessage<?> cwm = preprocessMessage(reqm);
+        cwm.setTimestamp(ts);
+        return cwm;
     }
 
-    public AdvancedMessageListener getMessageListener() {
-        return messageListener;
+    /**
+     * Called from clientListener handler when a writeMessage arrived. Tries to commit a transient transaction and also
+     * formulates logic of the incoming answer
+     * server
+     * @param cwm message necessary for the certification and replication of the transaction
+     * @param a address of the requester
+     */
+    private void tryCommit(Address a, CertifyWriteMessage<?> cwm) throws Exception {
+        try {
+            CompletableFuture<Boolean> res = new CompletableFuture<>();
+            rl.lock();
+            this.pendingWrites.put(cwm.getId(), res);
+            rl.unlock();
+            res.thenAccept(isWritable -> {
+                if (isWritable) {
+                    //Primeiro persite o estado
+                    commit();
+                    //Atualiza as transações que foram feitas
+                    spreadService.certifier.commit(cwm.getWriteSet());
+                } else {
+                    rollback();
+                }
+                // TODO msg de resposta
+                Message message = new Message();
+                System.out.println("Sending response message: " + message);
+                mms.sendAsync(a, "reply", s.encode(message)).whenComplete((m, t) -> {
+                    if (t != null) {
+                        t.printStackTrace();
+                    }
+                });
+            });
+            spreadService.floodCertifyMessage(cwm);
+        }finally {
+            rl.unlock();
+        }
     }
 
-    public SpreadConnection getSpreadConnection() {
-        return spreadConnection;
+
+    /**
+     * Provides middleware logic to receive and reply to clients requests.
+     * server
+     */
+    public void startClientListener(){
+        this.mms.start();
+        mms.registerHandler("request", (a,b) -> {
+            Message reqm = s.decode(b);
+            try {
+                if(reqm instanceof WriteMessage) {
+                    System.out.println("Handling the request with group members");
+                    CertifyWriteMessage<?> cwm = startTransaction(reqm);
+                    tryCommit(a, cwm);
+                }
+                else{
+                    System.out.println("Handling the request locally");
+                    handleMessage(reqm);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        },e);
     }
 
-    public SpreadGroup getSpreadGroup() {
-        return spreadGroup;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-
-
-
-    public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "2");
-        server.start();
+    @Override
+    public void stop() throws Exception {
+        this.runningCompletable.complete(null);
     }
 }

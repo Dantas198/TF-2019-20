@@ -1,13 +1,17 @@
 package middleware;
 
 import middleware.message.Message;
-import middleware.message.StateMessage;
+import middleware.message.replication.StateTransferMessage;
 import spread.SpreadException;
 import spread.SpreadMessage;
 
 import java.util.LinkedList;
 import java.util.Queue;
-
+import java.util.function.Consumer;
+//TODO Servidores à escuta veem que entrou um servidor ou novo ou que tinha ido abaixo.
+// Enviam o número de linhas que teem (Refletir sobre a melhor maneiro)
+// Initializor espera por isso e compara com os seus logs
+// Envia pedido do que falta e recebe o estado que falta
 public class Initializor {
 
     private Queue<SpreadMessage> messageQueue;
@@ -20,25 +24,17 @@ public class Initializor {
         this.initializing = true;
     }
 
-    public boolean isInitializing(SpreadMessage spreadMessage){
+    public boolean isInitializing(SpreadMessage spreadMessage, Consumer<SpreadMessage> respondMessage){
         try {
-            Message received = (Message) spreadMessage.getObject();
-            if(received instanceof StateMessage){
-                StateMessage stateMessage = (StateMessage) received;
-                if(stateMessage.getServerName().equals(server.getPrivateName())){
-                    initializing = false;
-                    messageQueue = null;
-                }
-            }
-
             if(initializing){
-                if(received instanceof StateMessage){
+                Message received = (Message) spreadMessage.getObject();
+                if(received instanceof StateTransferMessage){
+                    server.setState(((StateTransferMessage) received).getState());
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){
-                        server.respondMessage(sm);
+                        respondMessage.accept(sm);
                     }
                     messageQueue = null;
-                    server.setState(((StateMessage) received).getBody());
                 } else {
                     messageQueue.add(spreadMessage);
                 }
@@ -47,5 +43,9 @@ public class Initializor {
             e.printStackTrace();
         }
         return initializing;
+    }
+
+    public void initialized(){
+        this.initializing = false;
     }
 }

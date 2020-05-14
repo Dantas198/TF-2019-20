@@ -1,6 +1,5 @@
 package client.bodies;
 
-import business.customer.Customer;
 import business.order.Order;
 
 import java.io.Serializable;

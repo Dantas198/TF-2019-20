@@ -3,7 +3,7 @@ package middleware.message;
 import java.io.Serializable;
 import java.util.UUID;
 
-public class ContentMessage<T extends Serializable> extends Message implements Serializable{
+public class ContentMessage<T extends Serializable> extends Message{
 
     private T body;
 

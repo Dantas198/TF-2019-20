@@ -1,5 +1,4 @@
 package middleware;
-import spread.AdvancedMessageListener;
 import spread.SpreadConnection;
 import spread.SpreadGroup;
 import spread.SpreadMessage;
@@ -9,6 +8,7 @@ import java.util.*;
 /**
  * Class responsible to notify when a server if it is a secondary server or a primary server
  */
+@Deprecated  //em discussão
 public class ElectionManager {
 
     // Remaining groups to le elected as primary
@@ -39,7 +39,6 @@ public class ElectionManager {
 
         return removeSpreadGroups(info) >= 0 && this.groupsLeftForPrimary.isEmpty();
     }
-
 
     /**
      * Removes the groups that left the spreadGroup

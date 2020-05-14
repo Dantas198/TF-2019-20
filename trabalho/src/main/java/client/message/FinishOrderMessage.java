@@ -2,9 +2,13 @@ package client.message;
 
 import business.order.Order;
 import client.bodies.FinishOrderBody;
-import middleware.message.ContentMessage;
+import middleware.message.WriteMessage;
 
-public class FinishOrderMessage extends ContentMessage<FinishOrderBody> {
+
+/**
+ * Used to make a finish order request. This request needs certification.
+ */
+public class FinishOrderMessage extends WriteMessage<FinishOrderBody> {
     public FinishOrderMessage(String customer, Order order){
         super(new FinishOrderBody(customer, order));
     }

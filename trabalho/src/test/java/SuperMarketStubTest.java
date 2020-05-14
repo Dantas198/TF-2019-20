@@ -16,7 +16,7 @@ public class SuperMarketStubTest {
     private SuperMarket stub;
 
     public SuperMarketStubTest() throws Exception{
-        server = new GandaGotaServerImpl(4803, "5");
+        server = new GandaGotaServerImpl(4803, "5", 7777);
         new Thread(() ->{
             try {
                 server.start();
