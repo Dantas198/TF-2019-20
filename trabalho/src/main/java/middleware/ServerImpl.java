@@ -6,12 +6,18 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
+import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 
 import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -26,8 +32,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private final CompletableFuture<Void> runningCompletable;
     private ReentrantLock rl;
     private Map<String, CompletableFuture<Boolean>> pendingWrites;
+    private String privateName;
+    private LogReader logReader;
 
     public ServerImpl(int spreadPort, String privateName, int atomixPort){
+        this.privateName = privateName;
         this.spreadService = new ClusterReplicationService(spreadPort, privateName, this);
         this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
@@ -39,6 +48,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 "server",
                 myAddress,
                 new MessagingConfig());
+        this.logReader = new LogReader("./testdb.sql.log");
     }
 
     /**
@@ -85,6 +95,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * Get of the state of the current Server
      * @return the state of the current Server
      */
+    @Deprecated
     public abstract STATE getState();
 
     /**
@@ -92,7 +103,29 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * receives the updated version
      * @param state the updated state of the server
      */
+    @Deprecated
     public abstract void setState(STATE state);
+
+    public Collection<String> getQueries(int from){
+        try {
+            return logReader.getQueries(from);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            //alterar
+            return new LinkedList<>();
+        }
+    }
+
+    public void updateQueries(Collection<String> queries){
+        try {
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
+            for(String querie : queries) {
+                c.prepareStatement(querie).execute();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
 
     /**
      * Starts the server communication listeners. First it starts the ClusterReplicationService so that a replica that is
@@ -219,5 +252,9 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     @Override
     public void stop() throws Exception {
         this.runningCompletable.complete(null);
+    }
+
+    public String getPrivateName() {
+        return privateName;
     }
 }
