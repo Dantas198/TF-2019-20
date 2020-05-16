@@ -1,0 +1,171 @@
+2020-05-15 23:55:49.764 2 COMMIT 
+2020-05-15 23:55:49.775 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-15 23:55:49.776 2 COMMIT 
+2020-05-15 23:55:49.777 2 COMMIT 
+2020-05-15 23:55:49.777 2 DROP TABLE IF EXISTS "customer" 
+2020-05-15 23:55:49.778 2 COMMIT 
+2020-05-15 23:55:49.779 2 COMMIT 
+2020-05-15 23:55:49.780 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-15 23:55:49.782 2 COMMIT 
+2020-05-15 23:55:49.783 2 COMMIT 
+2020-05-15 23:55:49.783 2 DROP TABLE IF EXISTS "order" 
+2020-05-15 23:55:49.784 2 COMMIT 
+2020-05-15 23:55:49.785 2 COMMIT 
+2020-05-15 23:55:49.786 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-15 23:55:49.786 2 COMMIT 
+2020-05-15 23:55:49.788 2 COMMIT 
+2020-05-15 23:55:49.789 2 DROP TABLE IF EXISTS "product" 
+2020-05-15 23:55:49.789 2 COMMIT 
+2020-05-15 23:55:49.790 2 COMMIT 
+2020-05-15 23:55:49.790 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-15 23:55:49.790 2 COMMIT 
+2020-05-15 23:55:49.791 2 COMMIT 
+2020-05-15 23:55:49.791 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-15 23:55:49.791 2 COMMIT 
+2020-05-15 23:55:49.793 2 COMMIT 
+2020-05-15 23:55:49.794 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-15 23:55:49.794 2 COMMIT 
+2020-05-15 23:55:49.802 2 COMMIT 
+2020-05-15 23:55:49.806 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer1')
+2020-05-15 23:55:49.807 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-15 23:55:49.823 2 SELECT * FROM "customer" 
+2020-05-15 23:55:49.824 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer1')
+2020-05-15 23:55:49.837 2 SELECT * FROM "customer" 
+2020-05-15 23:55:49.840 2 DELETE FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-15 23:55:49.841 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-15 23:55:49.841 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-15 23:55:49.842 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-15 23:55:49.843 2 SELECT 1 FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.844 2 SELECT COUNT(*) FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.849 2 INSERT INTO "order" ("id", "customer_id") VALUES (?, ?) ('9f583562-0997-49a3-b23e-5a9 ...,'Customer2')
+2020-05-15 23:55:49.850 2 SELECT 1 FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.850 2 SELECT COUNT(*) FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.851 2 SELECT 1 FROM "order" WHERE "id" = ? ('9f583562-0997-49a3-b23e-5a9 ...)
+2020-05-15 23:55:49.854 2 SELECT * FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.855 2 DELETE FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.856 2 SELECT COUNT(*) FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-15 23:55:49.856 2 DELETE FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-15 23:55:49.857 2 SELECT * FROM "customer" 
+2020-05-15 23:55:49.873 2 INSERT INTO "order" ("id") VALUES (?) ('623f5d36-256b-4afd-aeed-051 ...)
+2020-05-15 23:55:49.873 2 SELECT * FROM "order" WHERE "id" = ? ('623f5d36-256b-4afd-aeed-051 ...)
+2020-05-15 23:55:49.879 2 SELECT * FROM "order" 
+2020-05-15 23:55:49.880 2 INSERT INTO "order" ("id") VALUES (?) ('623f5d36-256b-4afd-aeed-051 ...)
+2020-05-15 23:55:49.887 2 SELECT * FROM "order" 
+2020-05-15 23:55:49.888 2 DELETE FROM "order" WHERE "id" = ? ('623f5d36-256b-4afd-aeed-051 ...)
+2020-05-15 23:55:49.888 2 SELECT * FROM "order" WHERE "id" = ? ('623f5d36-256b-4afd-aeed-051 ...)
+2020-05-15 23:55:49.896 2 INSERT INTO "product" ("name", "price", "description", "stock") VALUES (?, ?, ?, ?) ('Product 1',1,'abcd',0)
+2020-05-15 23:55:49.897 2 SELECT * FROM "product" WHERE "name" = ? ('Product 1')
+2020-05-15 23:55:49.898 2 SELECT * FROM "product" 
+2020-05-15 23:55:49.899 2 INSERT INTO "product" ("name", "price", "description", "stock") VALUES (?, ?, ?, ?) ('Product 1',1,'abcd',0)
+2020-05-15 23:55:49.933 2 SELECT * FROM "product" 
+2020-05-15 23:55:49.934 2 DELETE FROM "product" WHERE "name" = ? ('Product 1')
+2020-05-15 23:55:49.934 2 SELECT * FROM "product" WHERE "name" = ? ('Product 1')
+2020-05-16 00:27:42.379 2 COMMIT 
+2020-05-16 00:27:42.385 2 INSERT INTO "customer" ("id") VALUES (?) ('Hey')
+2020-05-16 00:27:42.386 2 SELECT * FROM "customer" WHERE "id" = ? ('HEY')
+2020-05-16 00:29:46.366 2 COMMIT 
+2020-05-16 00:29:46.376 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-16 00:29:46.376 2 COMMIT 
+2020-05-16 00:29:46.377 2 COMMIT 
+2020-05-16 00:29:46.377 2 DROP TABLE IF EXISTS "customer" 
+2020-05-16 00:29:46.377 2 COMMIT 
+2020-05-16 00:29:46.378 2 COMMIT 
+2020-05-16 00:29:46.378 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-16 00:29:46.378 2 COMMIT 
+2020-05-16 00:29:46.379 2 COMMIT 
+2020-05-16 00:29:46.379 2 DROP TABLE IF EXISTS "order" 
+2020-05-16 00:29:46.379 2 COMMIT 
+2020-05-16 00:29:46.380 2 COMMIT 
+2020-05-16 00:29:46.380 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-16 00:29:46.380 2 COMMIT 
+2020-05-16 00:29:46.381 2 COMMIT 
+2020-05-16 00:29:46.381 2 DROP TABLE IF EXISTS "product" 
+2020-05-16 00:29:46.381 2 COMMIT 
+2020-05-16 00:29:46.382 2 COMMIT 
+2020-05-16 00:29:46.382 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-16 00:29:46.383 2 COMMIT 
+2020-05-16 00:29:46.383 2 COMMIT 
+2020-05-16 00:29:46.384 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-16 00:29:46.384 2 COMMIT 
+2020-05-16 00:29:46.385 2 COMMIT 
+2020-05-16 00:29:46.386 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-16 00:29:46.386 2 COMMIT 
+2020-05-16 00:29:46.394 2 COMMIT 
+2020-05-16 00:29:46.398 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer1')
+2020-05-16 00:29:46.399 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-16 00:29:46.414 2 SELECT * FROM "customer" 
+2020-05-16 00:29:46.415 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer1')
+2020-05-16 00:29:46.426 2 SELECT * FROM "customer" 
+2020-05-16 00:29:46.429 2 DELETE FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-16 00:29:46.429 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-16 00:29:46.430 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-16 00:29:46.430 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-16 00:29:46.431 2 SELECT 1 FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.433 2 SELECT COUNT(*) FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.434 2 INSERT INTO "order" ("id", "customer_id") VALUES (?, ?) ('75fe58cb-e126-47cc-bc12-ed9 ...,'Customer2')
+2020-05-16 00:29:46.435 2 SELECT 1 FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.435 2 SELECT COUNT(*) FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.436 2 SELECT 1 FROM "order" WHERE "id" = ? ('75fe58cb-e126-47cc-bc12-ed9 ...)
+2020-05-16 00:29:46.440 2 SELECT * FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.441 2 DELETE FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.442 2 SELECT COUNT(*) FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-16 00:29:46.442 2 DELETE FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-16 00:29:46.442 2 SELECT * FROM "customer" 
+2020-05-16 00:29:46.449 2 INSERT INTO "order" ("id") VALUES (?) ('4a49ecdd-593e-40af-8d46-9a6 ...)
+2020-05-16 00:29:46.450 2 SELECT * FROM "order" WHERE "id" = ? ('4a49ecdd-593e-40af-8d46-9a6 ...)
+2020-05-16 00:29:46.456 2 SELECT * FROM "order" 
+2020-05-16 00:29:46.457 2 INSERT INTO "order" ("id") VALUES (?) ('4a49ecdd-593e-40af-8d46-9a6 ...)
+2020-05-16 00:29:46.462 2 SELECT * FROM "order" 
+2020-05-16 00:29:46.462 2 DELETE FROM "order" WHERE "id" = ? ('4a49ecdd-593e-40af-8d46-9a6 ...)
+2020-05-16 00:29:46.462 2 SELECT * FROM "order" WHERE "id" = ? ('4a49ecdd-593e-40af-8d46-9a6 ...)
+2020-05-16 00:29:46.473 2 INSERT INTO "product" ("name", "price", "description", "stock") VALUES (?, ?, ?, ?) ('Product 1',1,'abcd',0)
+2020-05-16 00:29:46.473 2 SELECT * FROM "product" WHERE "name" = ? ('Product 1')
+2020-05-16 00:29:46.474 2 SELECT * FROM "product" 
+2020-05-16 00:29:46.474 2 INSERT INTO "product" ("name", "price", "description", "stock") VALUES (?, ?, ?, ?) ('Product 1',1,'abcd',0)
+2020-05-16 00:29:46.479 2 SELECT * FROM "product" 
+2020-05-16 00:29:46.480 2 DELETE FROM "product" WHERE "name" = ? ('Product 1')
+2020-05-16 00:29:46.480 2 SELECT * FROM "product" WHERE "name" = ? ('Product 1')
+2020-05-16 00:31:09.726 2 COMMIT 
+2020-05-16 00:31:09.734 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-16 00:31:09.735 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-16 00:33:07.169 2 COMMIT 
+2020-05-16 00:33:07.174 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-16 00:33:07.175 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')

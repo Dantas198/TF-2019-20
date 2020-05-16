@@ -37,17 +37,28 @@ public class DAOTest {
     }
 
     @Test
+    public void test() throws Exception {
+        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
+        CustomerSQLDAO dao = new CustomerSQLDAO(c);
+        String customerName = "Customer2";
+        dao.put(new CustomerImpl(customerName));
+        Customer customer = dao.get(customerName);
+        System.out.println(customer.getId());
+    }
+
+
     public void SQLDAOTest() throws SQLException {
         CustomerDAOTest(new CustomerDAO());
         OrderDAOTest(new OrderDAO());
         ProductDAOTest(new ProductDAO());
-        Connection c = DriverManager.getConnection("jdbc:hsqldb:testdb;shutdown=true", "", "");
+        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
         new DBInitialization(c).init();
         CustomerDAOTest(new CustomerSQLDAO(c));
         OrderDAOTest(new OrderSQLDAO(c));
         System.out.println("OI");
         ProductDAOTest(new ProductSQLDAO(c));
     }
+
 
     private void CustomerDAOTest(DAO<String, Customer> dao) {
         Customer customer1 = new CustomerImpl("Customer1");
