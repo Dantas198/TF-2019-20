@@ -18,12 +18,14 @@ public class LogReader {
 
     public int size() throws Exception{
         String fileStr = getFileString();
-        return getQueriesFromString(fileStr).size();
+        getQueriesFromString(fileStr);
+        return queries.size();
     }
 
-    public Collection<String> getQueries() throws Exception{
+    public Collection<String> getQueries() throws Exception {
         String fileStr = getFileString();
-        return getQueriesFromString(fileStr);
+        getQueriesFromString(fileStr);
+        return queries;
     }
 
     private String getFileString() throws Exception{
@@ -32,7 +34,17 @@ public class LogReader {
         return new String(inputStream.readAllBytes());
     }
 
-    private Collection<String> getQueriesFromString(String filestr){
+    private Collection<String> getQueries(int lowerBound, int upperBound) throws Exception{
+        List<String> res = new ArrayList<>(upperBound-lowerBound);
+        lowerBound = lowerBound < 0 ? 0 : lowerBound;
+        upperBound = upperBound > size()-1 ? size()-1 : upperBound;
+        for(int i = lowerBound; i < upperBound; i++){
+            res.add(queries.get(i));
+        }
+        return res;
+    }
+
+    private void getQueriesFromString(String filestr){
         if(queries == null){
             queries = new ArrayList<>();
             String splitRegex = "\n(?=\\d{4}-\\d+-\\d+)";
@@ -48,7 +60,6 @@ public class LogReader {
                 }
             }
         }
-        return queries;
     }
 
     public static void main(String[] args)  throws  Exception{
