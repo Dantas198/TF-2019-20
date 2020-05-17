@@ -7,8 +7,7 @@ import java.util.LinkedHashMap;
  * Class that deals with certification logic.
  */
 
-//TODO garbage collection
-// Não está grande coisa isto dos timestamps
+//TODO garbage collection. 3pc?
 public class Certifier {
     //Holds current global timestamp
     private long timestamp;
@@ -29,19 +28,19 @@ public class Certifier {
     }
 
     public boolean hasConflict(BitWriteSet ws, long ts) {
-        for (long i = ts; i <= timestamp; i++) {
+        for (long i = ts; i < timestamp; i++) {
             BitWriteSet set = writes.get(i);
                 if(set.intersects(ws)) {
-                    return false;
+                    return true;
                 }
             }
-       return true;
+       return false;
     }
 
     public void commit(BitWriteSet ws){
         //Commit also increases current timestamp
-        nextTimestamp();
         this.writes.put(this.timestamp, ws);
+        nextTimestamp();
     }
 
     public synchronized void nextTimestamp(){
