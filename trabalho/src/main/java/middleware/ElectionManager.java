@@ -8,6 +8,7 @@ import java.util.*;
 /**
  * Class responsible to notify when a server if it is a secondary server or a primary server
  */
+
 public class ElectionManager {
     // Remaining groups to le elected as primary
     private Set<SpreadGroup> groupsLeftForPrimary;
