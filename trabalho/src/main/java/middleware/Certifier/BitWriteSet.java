@@ -8,7 +8,6 @@ import java.util.BitSet;
  * WriteSet used to certify writes.
  */
 public class BitWriteSet implements Serializable {
-
     private BitSet set;
 
     public BitWriteSet() {

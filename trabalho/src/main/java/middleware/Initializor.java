@@ -29,7 +29,8 @@ public class Initializor {
             if(initializing){
                 Message received = (Message) spreadMessage.getObject();
                 if(received instanceof StateTransferMessage){
-                    server.setState(((StateTransferMessage) received).getState());
+                    //TODO URGENTE
+                    //server.setState(((StateTransferMessage) received).getState());
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){
                         respondMessage.accept(sm);
@@ -42,7 +43,7 @@ public class Initializor {
         } catch (SpreadException e) {
             e.printStackTrace();
         }
-        return initializing;
+         return initializing;
     }
 
     public void initialized(){

@@ -6,7 +6,9 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
+import middleware.Certifier.BitWriteSet;
 import middleware.logreader.LogReader;
+import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
@@ -15,10 +17,7 @@ import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,7 +41,9 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
         this.pendingWrites = new HashMap<>();
-        this.s = new SerializerBuilder().withRegistrationRequired(false).build();
+        this.s = new SerializerBuilder()
+                .withRegistrationRequired(false)
+                .build();
         Address myAddress = Address.from("localhost", atomixPort);
         this.mms = new NettyMessagingService(
                 "server",
@@ -138,7 +139,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public void start() throws Exception {
         spreadService.start().thenAccept(x -> {
             startClientListener();
-            System.out.println("Primary Server initialized");
+            System.out.println("Server : " + privateName + " Primary Server initialized");
         });
         runningCompletable.get();
     }
@@ -149,27 +150,29 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * server
      */
     protected void handleCertifierAnswer(CertifyWriteMessage<?> message, boolean isWritable){
+        CompletableFuture<Boolean> res;
         try{
             rl.lock();
-            CompletableFuture<Boolean> res = this.pendingWrites.get(message.getId());
-            rl.unlock();
-            // se for null então não foi iniciada a escrita neste servidor
-            if(res == null){
-                if(isWritable) {
-                    updateStateFromCommitedWrite(message);
-                    //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
-                    //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
-                    spreadService.certifier.commit(message.getWriteSet());
-                }
-            }
-            else{
-                //Eu acho que a execução do res após o complete continua na thread do spread ....terá de ser assim para funcionar
-                //Chama a callback de onde foi iniciado o pedido de escrita
-                res.complete(isWritable);
-            }
+            res = this.pendingWrites.get(message.getId());
         }finally {
             rl.unlock();
         }
+        // se for null então não foi iniciada a escrita neste servidor
+        if(res == null){
+            if(isWritable) {
+                updateStateFromCommitedWrite(message);
+                //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
+                //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
+                System.out.println("Server " + privateName + " commiting to certifier");
+                spreadService.certifier.commit(message.getWriteSet());
+            }
+        }
+        else{
+            //Eu acho que a execução do res após o complete continua na thread do spread ....terá de ser assim para funcionar
+            //Chama a callback de onde foi iniciado o pedido de escrita
+            res.complete(isWritable);
+        }
+
     }
 
     /**
@@ -184,6 +187,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         //pre-processamento: colocar transação com estado não commit e calcular o estado resultado
         CertifyWriteMessage<?> cwm = preprocessMessage(reqm);
         cwm.setTimestamp(ts);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException interruptedException) {
+            interruptedException.printStackTrace();
+        }
         return cwm;
     }
 
@@ -195,33 +203,37 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @param a address of the requester
      */
     private void tryCommit(Address a, CertifyWriteMessage<?> cwm) throws Exception {
+        CompletableFuture<Boolean> res = new CompletableFuture<>();
         try {
-            CompletableFuture<Boolean> res = new CompletableFuture<>();
             rl.lock();
             this.pendingWrites.put(cwm.getId(), res);
-            rl.unlock();
-            res.thenAccept(isWritable -> {
-                if (isWritable) {
-                    //Primeiro persite o estado
-                    commit();
-                    //Atualiza as transações que foram feitas
-                    spreadService.certifier.commit(cwm.getWriteSet());
-                } else {
-                    rollback();
-                }
-                // TODO msg de resposta
-                Message message = new Message();
-                System.out.println("Sending response message: " + message);
-                mms.sendAsync(a, "reply", s.encode(message)).whenComplete((m, t) -> {
-                    if (t != null) {
-                        t.printStackTrace();
-                    }
-                });
-            });
-            spreadService.floodCertifyMessage(cwm);
         }finally {
             rl.unlock();
         }
+        res.thenAccept(isWritable -> {
+            if (isWritable) {
+                //Primeiro persite o estado
+                System.out.println("Server " + privateName + " flushing write to db");
+                commit();
+                //Atualiza as transações que foram feitas
+                System.out.println("Server " + privateName + " commiting to certifier");
+                spreadService.certifier.commit(cwm.getWriteSet());
+            } else {
+                System.out.println("Server " + privateName + " rolling back write from db");
+                rollback();
+            }
+            // TODO msg de resposta
+            Message message = new ContentMessage<>(isWritable);
+            System.out.println("Sending response message: " + message);
+            mms.sendAsync(a, "reply", s.encode(message)).whenComplete((m, t) -> {
+                if (t != null) {
+                    t.printStackTrace();
+                }
+            });
+        });
+        System.out.println("Server: " + privateName + " trying to commit " + cwm.getId());
+        spreadService.floodCertifyMessage(cwm);
+
     }
 
 
@@ -235,12 +247,12 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             Message reqm = s.decode(b);
             try {
                 if(reqm instanceof WriteMessage) {
-                    System.out.println("Handling the request with group members");
+                    System.out.println("Server " + privateName + " handling the request with group members");
                     CertifyWriteMessage<?> cwm = startTransaction(reqm);
                     tryCommit(a, cwm);
                 }
                 else{
-                    System.out.println("Handling the request locally");
+                    System.out.println("Server " + privateName + " handling the request locally");
                     handleMessage(reqm);
                 }
             } catch (Exception ex) {

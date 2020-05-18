@@ -1,8 +1,10 @@
 package middleware;
 
 import middleware.Certifier.Certifier;
+import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.replication.CertifyWriteMessage;
+import middleware.message.replication.StateTransferMessage;
 import spread.*;
 
 import java.net.InetAddress;
@@ -17,16 +19,20 @@ public class ClusterReplicationService {
     private final SpreadConnection spreadConnection;
     private final SpreadGroup spreadGroup;
     private final int port;
+
     //Caso sejam necessário acks poderá ser utilizada esta estrutura
     //private Map<String, List<Message>> cachedMessages;
 
-    private final Initializor initializor;
-    public final Certifier certifier;
-    private ServerImpl server;
-    private CompletableFuture<Void> started;
     // number of servers on the spread group
     private int nServers;
-    private Set<SpreadGroup> currentElements;
+    private Set<SpreadGroup> currentMembers;
+    private final Initializor initializor;
+    public final Certifier certifier;
+    private final ElectionManager electionManager;
+    private boolean imLeader;
+
+    private ServerImpl server;
+    private CompletableFuture<Void> started;
 
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server){
         this.privateName = privateName;
@@ -39,7 +45,8 @@ public class ClusterReplicationService {
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
         this.certifier = new Certifier();
-        this.currentElements = new HashSet<>();
+        this.electionManager = new ElectionManager(this.spreadConnection);
+        this.imLeader = false;
     }
 
     public CompletableFuture<Void> start() throws Exception {
@@ -60,7 +67,7 @@ public class ClusterReplicationService {
         try {
             Message received = (Message) spreadMessage.getObject();
             Message response = server.handleMessage(received).from(received);
-            floodMessage(response, spreadMessage.getSender());
+            noAgreementFloodMessage(response, spreadMessage.getSender());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -71,13 +78,16 @@ public class ClusterReplicationService {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
+                    System.out.println("Server : " + privateName + " RegularpMessageReceived");
                     if (!initializor.isInitializing(spreadMessage, respondMessage)) {
                         if(!started.isDone())
                             started.complete(null);
                         Message received = (Message) spreadMessage.getObject();
                         if (received instanceof CertifyWriteMessage){
                             CertifyWriteMessage<?> cwm = (CertifyWriteMessage<?>) received;
-                            boolean isWritable = certifier.hasConflict(cwm.getWriteSet(), cwm.getStartTimestamp());
+                            System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
+                            boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(), cwm.getStartTimestamp());
+                            System.out.println("Server : " + privateName + " isWritable: " + isWritable);
                             server.handleCertifierAnswer(cwm, isWritable);
                         }
                         /*
@@ -99,35 +109,60 @@ public class ClusterReplicationService {
             @Override
             public void membershipMessageReceived(SpreadMessage spreadMessage) {
                 try {
+                    System.out.println("Server : " + privateName + " MembershipMessageReceived");
                     SpreadGroup[] members = spreadMessage.getMembershipInfo().getMembers();
                     nServers = members.length;
-                    if(nServers > currentElements.size()) {
-                        if(nServers == 1){
-                            initializor.initialized();
-                            if(!started.isDone())
-                                started.complete(null);
+                    if (!imLeader) {
+                        imLeader = electionManager.amILeader(spreadMessage);
+                        if (imLeader){
+                            System.out.println("Assuming leader role");
+                            currentMembers = new HashSet<>(Arrays.asList(members));
                         }
-                        currentElements.add(members[0]);
-                        //TODO enviar o estado correto. De momento não funciona
-                        //Message message = new ContentMessage<>(server.getState());
-                        //floodMessage(message, sender);
-                    }
-                    else{
-                        HashSet<SpreadGroup> updatedMembers = new HashSet<>(Arrays.asList(members));
-                        SpreadGroup toRemove = null;
-                        for(SpreadGroup sg : currentElements){
-                            if(!updatedMembers.contains(sg))
-                                toRemove = sg;
+                    } else {
+                        if (nServers > currentMembers.size()) {
+                            System.out.println("Server : " + privateName + " a member entered");
+                            SpreadGroup newMember = getNewMember(members);
+                            currentMembers.add(newMember);
+
+                            //TODO ENVIAR ESTADO CORRETO. De momento não funciona
+                            System.out.println("Server : " + privateName + " I'm leader. Sending state to " + newMember);
+                            Message message = new StateTransferMessage<>(1);
+                            noAgreementFloodMessage(message, newMember);
+                        } else {
+                            System.out.println("Server : " + privateName + " a member left");
+                            HashSet<SpreadGroup> updatedMembers = new HashSet<>(Arrays.asList(members));
+                            SpreadGroup toRemove = getLeavingMember(updatedMembers);
+                            if (toRemove != null)
+                                currentMembers.remove(toRemove);
                         }
-                        if(toRemove != null)
-                            currentElements.remove(toRemove);
                     }
-                } catch (Exception e) {
+                    if (nServers == 1) {
+                        initializor.initialized();
+                        if (!started.isDone())
+                            started.complete(null);
+                    }
+                }catch(Exception e){
                     e.printStackTrace();
                 }
             }
         };
     }
+
+    private SpreadGroup getNewMember(SpreadGroup[] newMembers){
+        for(SpreadGroup sg : newMembers)
+            if (!this.currentMembers.contains(sg))
+                return sg;
+        return null;
+    }
+
+    private SpreadGroup getLeavingMember(HashSet<SpreadGroup> updatedMembers){
+        for(SpreadGroup sg : this.currentMembers){
+            if(!updatedMembers.contains(sg))
+                return sg;
+        }
+        return null;
+    }
+
 
     public void floodCertifyMessage(CertifyWriteMessage<?> cwm) throws Exception {
         safeFloodMessage(cwm, this.spreadGroup);
@@ -140,7 +175,7 @@ public class ClusterReplicationService {
         m.setObject(message);
         m.setSafe();
         spreadConnection.multicast(m);
-        System.out.println("Safe flooding to group ("+ this.spreadGroup+ "): " + message);
+        System.out.println("Safe flooding to group ("+ this.spreadGroup+ "): ");
     }
 
     /**
@@ -149,8 +184,8 @@ public class ClusterReplicationService {
      * @throws Exception
      */
     @Deprecated
-    public void floodMessage(Message message) throws Exception{
-        floodMessage(message, this.spreadGroup);
+    public void noAgreementFloodMessage(Message message) throws Exception{
+        noAgreementFloodMessage(message, this.spreadGroup);
     }
 
     /**
@@ -160,13 +195,13 @@ public class ClusterReplicationService {
      * @throws Exception
      */
     @Deprecated
-    public void floodMessage(Message message, SpreadGroup sg) throws Exception{
+    public void noAgreementFloodMessage(Message message, SpreadGroup sg) throws Exception{
         SpreadMessage m = new SpreadMessage();
         m.addGroup(sg);
         m.setObject(message);
         m.setReliable();
         spreadConnection.multicast(m);
-        System.out.println("Flooding to group ("+ this.spreadGroup+ "): " + message);
+        //System.out.println("Sending to group ("+ sg + "): " + message);
     }
 
 }

@@ -30,6 +30,7 @@ public class Certifier {
     public boolean hasConflict(BitWriteSet ws, long ts) {
         for (long i = ts; i < timestamp; i++) {
             BitWriteSet set = writes.get(i);
+            System.out.println(i);
                 if(set.intersects(ws)) {
                     return true;
                 }
@@ -37,13 +38,9 @@ public class Certifier {
        return false;
     }
 
-    public void commit(BitWriteSet ws){
+    public synchronized void commit(BitWriteSet ws){
         //Commit also increases current timestamp
         this.writes.put(this.timestamp, ws);
-        nextTimestamp();
-    }
-
-    public synchronized void nextTimestamp(){
         this.timestamp++;
     }
 

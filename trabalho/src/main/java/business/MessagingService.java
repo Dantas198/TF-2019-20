@@ -7,9 +7,14 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
+import middleware.Certifier.BitWriteSet;
+import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
+import middleware.message.WriteMessage;
+import middleware.message.replication.CertifyWriteMessage;
 
+import java.util.BitSet;
 import java.util.concurrent.*;
 
 public class MessagingService {
@@ -48,7 +53,7 @@ public class MessagingService {
 
     public Message sendAndReceive(Message reqm) throws Exception {
         res = new CompletableFuture<>();
-
+        /*
         ScheduledFuture<?> sf = scheduleTimeout(reqm);
         //Caso a resposta tenha chegado cancela o timeout
         res.whenComplete((m,t) -> {
@@ -56,7 +61,7 @@ public class MessagingService {
                 t.printStackTrace();
             sf.cancel(true);
         });
-
+        */
         mms.sendAsync(primaryServer, "request", s.encode(reqm));
         return res.thenApply(cm ->
                 {System.out.println("Received message: "+ cm);
