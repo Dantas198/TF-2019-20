@@ -169,3 +169,380 @@
 2020-05-16 00:33:07.169 2 COMMIT 
 2020-05-16 00:33:07.174 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
 2020-05-16 00:33:07.175 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-18 10:05:47.685 2 COMMIT 
+2020-05-18 10:05:47.700 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:05:47.701 2 COMMIT 
+2020-05-18 10:05:47.701 2 COMMIT 
+2020-05-18 10:05:47.701 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:05:47.701 2 COMMIT 
+2020-05-18 10:06:17.876 2 COMMIT 
+2020-05-18 10:06:17.879 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:06:17.880 2 COMMIT 
+2020-05-18 10:06:17.880 2 COMMIT 
+2020-05-18 10:06:17.880 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:06:17.880 2 COMMIT 
+2020-05-18 10:06:17.880 2 COMMIT 
+2020-05-18 10:06:17.881 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("current_order_id") REFERENCES "order"("id")) 
+2020-05-18 10:06:17.881 2 ROLLBACK 
+2020-05-18 10:12:09.563 2 COMMIT 
+2020-05-18 10:12:09.566 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:12:09.566 2 COMMIT 
+2020-05-18 10:12:09.566 2 COMMIT 
+2020-05-18 10:12:09.566 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:12:09.566 2 COMMIT 
+2020-05-18 10:12:09.567 2 COMMIT 
+2020-05-18 10:12:09.567 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:12:09.567 2 COMMIT 
+2020-05-18 10:12:09.567 2 COMMIT 
+2020-05-18 10:12:09.567 2 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:12:09.567 2 COMMIT 
+2020-05-18 10:12:09.568 2 COMMIT 
+2020-05-18 10:12:09.568 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:12:09.568 2 COMMIT 
+2020-05-18 10:14:31.128 2 COMMIT 
+2020-05-18 10:14:31.130 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:14:31.130 2 COMMIT 
+2020-05-18 10:14:31.130 2 COMMIT 
+2020-05-18 10:14:31.130 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:14:31.130 2 COMMIT 
+2020-05-18 10:14:31.131 2 COMMIT 
+2020-05-18 10:14:31.131 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:14:31.131 2 COMMIT 
+2020-05-18 10:14:31.131 2 COMMIT 
+2020-05-18 10:14:31.131 2 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:14:31.131 2 COMMIT 
+2020-05-18 10:14:31.131 2 COMMIT 
+2020-05-18 10:14:31.132 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:14:31.132 2 COMMIT 
+2020-05-18 10:14:31.132 2 COMMIT 
+2020-05-18 10:14:31.132 2 ALTER TABLE "customer"
+   ADD CONSTRAINT FK_customer_current_order_id_order_id
+   FOREIGN KEY ("current_order_id") REFERENCES "order"("id") 
+2020-05-18 10:14:31.132 2 COMMIT 
+2020-05-18 10:14:31.132 2 COMMIT 
+2020-05-18 10:14:31.133 2 DROP TABLE IF EXISTS "product" 
+2020-05-18 10:14:31.133 2 COMMIT 
+2020-05-18 10:14:31.133 2 COMMIT 
+2020-05-18 10:14:31.133 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-18 10:14:31.133 2 COMMIT 
+2020-05-18 10:14:31.133 2 COMMIT 
+2020-05-18 10:14:31.133 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-18 10:14:31.133 2 COMMIT 
+2020-05-18 10:14:31.134 2 COMMIT 
+2020-05-18 10:14:31.134 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-18 10:14:31.134 2 COMMIT 
+2020-05-18 10:14:44.654 3 COMMIT 
+2020-05-18 10:14:44.656 3 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:14:44.657 3 COMMIT 
+2020-05-18 10:14:44.657 3 COMMIT 
+2020-05-18 10:14:44.657 3 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:14:44.657 3 COMMIT 
+2020-05-18 10:14:44.657 3 COMMIT 
+2020-05-18 10:14:44.657 3 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:14:44.657 3 COMMIT 
+2020-05-18 10:14:44.657 3 COMMIT 
+2020-05-18 10:14:44.658 3 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:14:44.658 3 COMMIT 
+2020-05-18 10:14:44.658 3 COMMIT 
+2020-05-18 10:14:44.658 3 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:14:44.658 3 COMMIT 
+2020-05-18 10:14:44.658 3 COMMIT 
+2020-05-18 10:14:44.659 3 ALTER TABLE "customer"
+   ADD CONSTRAINT FK_customer_current_order_id_order_id
+   FOREIGN KEY ("current_order_id") REFERENCES "order"("id") 
+2020-05-18 10:14:44.659 3 COMMIT 
+2020-05-18 10:14:44.659 3 COMMIT 
+2020-05-18 10:14:44.659 3 DROP TABLE IF EXISTS "product" 
+2020-05-18 10:14:44.659 3 COMMIT 
+2020-05-18 10:14:44.659 3 COMMIT 
+2020-05-18 10:14:44.660 3 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-18 10:14:44.660 3 COMMIT 
+2020-05-18 10:14:44.660 3 COMMIT 
+2020-05-18 10:14:44.660 3 DROP TABLE IF EXISTS "order_product" 
+2020-05-18 10:14:44.660 3 COMMIT 
+2020-05-18 10:14:44.660 3 COMMIT 
+2020-05-18 10:14:44.660 3 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-18 10:14:44.661 3 COMMIT 
+2020-05-18 10:14:44.665 3 COMMIT 
+2020-05-18 10:31:11.016 2 COMMIT 
+2020-05-18 10:31:11.019 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:31:11.019 2 COMMIT 
+2020-05-18 10:31:11.020 2 COMMIT 
+2020-05-18 10:31:11.020 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:31:11.020 2 COMMIT 
+2020-05-18 10:31:11.020 2 COMMIT 
+2020-05-18 10:31:11.020 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:31:11.020 2 COMMIT 
+2020-05-18 10:31:11.020 2 COMMIT 
+2020-05-18 10:31:11.021 2 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:31:11.021 2 COMMIT 
+2020-05-18 10:31:11.021 2 COMMIT 
+2020-05-18 10:31:11.021 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:31:11.021 2 COMMIT 
+2020-05-18 10:31:11.022 2 COMMIT 
+2020-05-18 10:31:11.022 2 ALTER TABLE "customer"
+   ADD CONSTRAINT FK_customer_current_order_id_order_id
+   FOREIGN KEY ("current_order_id") REFERENCES "order"("id") 
+2020-05-18 10:31:11.022 2 COMMIT 
+2020-05-18 10:31:11.022 2 COMMIT 
+2020-05-18 10:31:11.022 2 DROP TABLE IF EXISTS "product" 
+2020-05-18 10:31:11.022 2 COMMIT 
+2020-05-18 10:31:11.023 2 COMMIT 
+2020-05-18 10:31:11.023 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-18 10:31:11.023 2 COMMIT 
+2020-05-18 10:31:11.023 2 COMMIT 
+2020-05-18 10:31:11.023 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-18 10:31:11.023 2 COMMIT 
+2020-05-18 10:31:11.024 2 COMMIT 
+2020-05-18 10:31:11.024 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-18 10:31:11.024 2 COMMIT 
+2020-05-18 10:31:11.026 2 COMMIT 
+2020-05-18 10:31:49.357 2 COMMIT 
+2020-05-18 10:31:49.359 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:31:49.360 2 COMMIT 
+2020-05-18 10:31:49.360 2 COMMIT 
+2020-05-18 10:31:49.360 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:31:49.360 2 COMMIT 
+2020-05-18 10:31:49.360 2 COMMIT 
+2020-05-18 10:31:49.360 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:31:49.360 2 COMMIT 
+2020-05-18 10:31:49.360 2 COMMIT 
+2020-05-18 10:31:49.360 2 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:31:49.361 2 COMMIT 
+2020-05-18 10:31:49.361 2 COMMIT 
+2020-05-18 10:31:49.361 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:31:49.361 2 COMMIT 
+2020-05-18 10:31:49.361 2 COMMIT 
+2020-05-18 10:31:49.361 2 ALTER TABLE "customer"
+   ADD CONSTRAINT FK_customer_current_order_id_order_id
+   FOREIGN KEY ("current_order_id") REFERENCES "order"("id") 
+2020-05-18 10:31:49.361 2 COMMIT 
+2020-05-18 10:31:49.361 2 COMMIT 
+2020-05-18 10:31:49.362 2 DROP TABLE IF EXISTS "product" 
+2020-05-18 10:31:49.362 2 COMMIT 
+2020-05-18 10:31:49.362 2 COMMIT 
+2020-05-18 10:31:49.362 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-18 10:31:49.362 2 COMMIT 
+2020-05-18 10:31:49.362 2 COMMIT 
+2020-05-18 10:31:49.362 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-18 10:31:49.362 2 COMMIT 
+2020-05-18 10:31:49.363 2 COMMIT 
+2020-05-18 10:31:49.363 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-18 10:31:49.363 2 COMMIT 
+2020-05-18 10:31:49.365 2 COMMIT 
+2020-05-18 10:31:49.367 2 INSERT INTO "customer" ("id", "current_order_id") VALUES (?, ?) ('Customer1',NULL)
+2020-05-18 10:31:49.367 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-18 10:32:43.800 2 COMMIT 
+2020-05-18 10:32:43.802 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:32:43.802 2 COMMIT 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.803 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.803 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.803 2 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.803 2 COMMIT 
+2020-05-18 10:32:43.804 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:32:43.804 2 COMMIT 
+2020-05-18 10:32:43.804 2 COMMIT 
+2020-05-18 10:32:43.804 2 ALTER TABLE "customer"
+   ADD CONSTRAINT FK_customer_current_order_id_order_id
+   FOREIGN KEY ("current_order_id") REFERENCES "order"("id") 
+2020-05-18 10:32:43.804 2 COMMIT 
+2020-05-18 10:32:43.804 2 COMMIT 
+2020-05-18 10:32:43.804 2 DROP TABLE IF EXISTS "product" 
+2020-05-18 10:32:43.804 2 COMMIT 
+2020-05-18 10:32:43.805 2 COMMIT 
+2020-05-18 10:32:43.805 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-18 10:32:43.805 2 COMMIT 
+2020-05-18 10:32:43.805 2 COMMIT 
+2020-05-18 10:32:43.805 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-18 10:32:43.805 2 COMMIT 
+2020-05-18 10:32:43.805 2 COMMIT 
+2020-05-18 10:32:43.805 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-18 10:32:43.805 2 COMMIT 
+2020-05-18 10:32:43.807 2 COMMIT 
+2020-05-18 10:32:43.809 2 INSERT INTO "customer" ("id", "current_order_id") VALUES (?, ?) ('Customer1',NULL)
+2020-05-18 10:32:43.809 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-18 10:34:09.637 2 COMMIT 
+2020-05-18 10:34:09.640 2 DROP SCHEMA PUBLIC CASCADE 
+2020-05-18 10:34:09.640 2 COMMIT 
+2020-05-18 10:34:09.640 2 COMMIT 
+2020-05-18 10:34:09.640 2 DROP TABLE IF EXISTS "customer" 
+2020-05-18 10:34:09.640 2 COMMIT 
+2020-05-18 10:34:09.641 2 COMMIT 
+2020-05-18 10:34:09.641 2 CREATE TABLE "customer" (
+    "id" varchar(255),
+    "current_order_id" varchar(255),
+    PRIMARY KEY("id")
+) 
+2020-05-18 10:34:09.641 2 COMMIT 
+2020-05-18 10:34:09.641 2 COMMIT 
+2020-05-18 10:34:09.641 2 DROP TABLE IF EXISTS "order" 
+2020-05-18 10:34:09.641 2 COMMIT 
+2020-05-18 10:34:09.642 2 COMMIT 
+2020-05-18 10:34:09.642 2 CREATE TABLE "order" (
+    "id" varchar(255),
+    "customer_id" varchar(255),
+    PRIMARY KEY("id"),
+    FOREIGN KEY ("customer_id") REFERENCES "customer"("id")) 
+2020-05-18 10:34:09.642 2 COMMIT 
+2020-05-18 10:34:09.642 2 COMMIT 
+2020-05-18 10:34:09.643 2 ALTER TABLE "customer"
+   ADD CONSTRAINT FK_customer_current_order_id_order_id
+   FOREIGN KEY ("current_order_id") REFERENCES "order"("id") 
+2020-05-18 10:34:09.643 2 COMMIT 
+2020-05-18 10:34:09.643 2 COMMIT 
+2020-05-18 10:34:09.643 2 DROP TABLE IF EXISTS "product" 
+2020-05-18 10:34:09.643 2 COMMIT 
+2020-05-18 10:34:09.644 2 COMMIT 
+2020-05-18 10:34:09.644 2 CREATE TABLE "product" (
+    "name" varchar(255),
+    "description" varchar(255),
+    "price" int,
+    "stock" int,
+    PRIMARY KEY("name")
+) 
+2020-05-18 10:34:09.644 2 COMMIT 
+2020-05-18 10:34:09.644 2 COMMIT 
+2020-05-18 10:34:09.644 2 DROP TABLE IF EXISTS "order_product" 
+2020-05-18 10:34:09.644 2 COMMIT 
+2020-05-18 10:34:09.644 2 COMMIT 
+2020-05-18 10:34:09.645 2 CREATE TABLE "order_product" (
+    "order_id" varchar(255),
+    "product_name" varchar(255),
+    "quantity" int,
+    PRIMARY KEY("order_id", "product_name"),
+    FOREIGN KEY ("order_id") REFERENCES "order"("id"),
+    FOREIGN KEY ("product_name") REFERENCES 
+2020-05-18 10:34:09.645 2 COMMIT 
+2020-05-18 10:34:09.648 2 COMMIT 
+2020-05-18 10:34:09.650 2 INSERT INTO "customer" ("id", "current_order_id") VALUES (?, ?) ('Customer1',NULL)
+2020-05-18 10:34:09.651 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-18 10:34:09.655 2 SELECT * FROM "customer" 
+2020-05-18 10:34:09.656 2 INSERT INTO "customer" ("id", "current_order_id") VALUES (?, ?) ('Customer1',NULL)
+2020-05-18 10:34:09.660 2 SELECT * FROM "customer" 
+2020-05-18 10:34:09.661 2 DELETE FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-18 10:34:09.662 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer1')
+2020-05-18 10:34:09.662 2 INSERT INTO "customer" ("id", "current_order_id") VALUES (?, ?) ('Customer2',NULL)
+2020-05-18 10:34:09.662 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-18 10:34:09.662 2 SELECT 1 FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-18 10:34:09.663 2 SELECT COUNT(*) FROM "order" INNER JOIN "customer" ON "order"."customer_id" = "customer"."id" WHERE "order"."customer_id" = ? AND "order"."id" <> "customer"."current_order_id" ('Customer2')
+2020-05-18 10:34:09.663 2 INSERT INTO "order" ("id", "customer_id") VALUES (?, ?) ('78bf9e02-03d0-4e08-bb97-057 ...,'Customer2')
+2020-05-18 10:34:09.663 2 SELECT 1 FROM "order" WHERE "customer_id" = ? ('Customer2')
+2020-05-18 10:34:09.663 2 SELECT COUNT(*) FROM "order" INNER JOIN "customer" ON "order"."customer_id" = "customer"."id" WHERE "order"."customer_id" = ? AND "order"."id" <> "customer"."current_order_id" ('Customer2')

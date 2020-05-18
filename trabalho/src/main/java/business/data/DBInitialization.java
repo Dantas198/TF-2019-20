@@ -17,6 +17,7 @@ public class DBInitialization {
         c.prepareStatement("DROP TABLE IF EXISTS \"customer\";\n").execute();
         c.prepareStatement("CREATE TABLE \"customer\" (\n" +
                 "    \"id\" varchar(255),\n" +
+                "    \"current_order_id\" varchar(255),\n" +
                 "    PRIMARY KEY(\"id\")\n" +
                 "); ").execute();
         // Order table
@@ -27,6 +28,9 @@ public class DBInitialization {
                 "    PRIMARY KEY(\"id\"),\n" +
                 "    FOREIGN KEY (\"customer_id\") REFERENCES \"customer\"(\"id\")" +
                 "); ").execute();
+        c.prepareStatement("ALTER TABLE \"customer\"\n" +
+                "   ADD CONSTRAINT FK_customer_current_order_id_order_id\n" +
+                "   FOREIGN KEY (\"current_order_id\") REFERENCES \"order\"(\"id\")").execute();
         // Product table
         c.prepareStatement("DROP TABLE IF EXISTS \"product\";\n").execute();
         c.prepareStatement("CREATE TABLE \"product\" (\n" +
