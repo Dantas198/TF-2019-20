@@ -1,7 +1,6 @@
 package middleware;
 
 import middleware.Certifier.Certifier;
-import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.StateTransferMessage;
@@ -86,7 +85,7 @@ public class ClusterReplicationService {
                         if (received instanceof CertifyWriteMessage){
                             CertifyWriteMessage<?> cwm = (CertifyWriteMessage<?>) received;
                             System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
-                            boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(), cwm.getStartTimestamp());
+                            boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp());
                             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
                             server.handleCertifierAnswer(cwm, isWritable);
                         }

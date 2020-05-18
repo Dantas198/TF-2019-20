@@ -8,10 +8,12 @@ import spread.SpreadMessage;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.function.Consumer;
+
 //TODO Servidores à escuta veem que entrou um servidor ou novo ou que tinha ido abaixo.
 // Enviam o número de linhas que teem (Refletir sobre a melhor maneiro)
 // Initializor espera por isso e compara com os seus logs
 // Envia pedido do que falta e recebe o estado que falta
+
 public class Initializor {
 
     private Queue<SpreadMessage> messageQueue;

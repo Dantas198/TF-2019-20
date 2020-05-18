@@ -24,7 +24,11 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
             public Customer fromResultSet(ResultSet resultSet) throws SQLException {
                 String id = resultSet.getString("id");
                 String currentOrder = resultSet.getString("current_order_id");
-                return new CustomerSQLImpl(id, new OrderImpl(currentOrder), new CustomerOldOrderDAO(c, id), orderDAO);
+                return new CustomerSQLImpl(id,
+                        new OrderImpl(currentOrder),
+                        new CustomerOldOrderDAO(c, id, currentOrder),
+                        orderDAO
+                );
             }
 
             @Override

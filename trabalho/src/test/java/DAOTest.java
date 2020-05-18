@@ -60,6 +60,7 @@ public class DAOTest {
         dao.put(new CustomerImpl(customerName));
         Customer customer = dao.get(customerName);
         Set<Order> oldOrders = customer.getOldOrders();
+        customer.newCurrentOrder();
         assertTrue("Customer's old orders should initialize empty", oldOrders.isEmpty());
         assertEquals("Customer's old orders' size should be coherent with empty",
                 0, oldOrders.size());

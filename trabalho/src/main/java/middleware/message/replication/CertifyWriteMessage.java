@@ -4,6 +4,7 @@ import middleware.Certifier.BitWriteSet;
 import middleware.message.Message;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Generic class to represent an operation that requires certification.
@@ -14,12 +15,14 @@ public class CertifyWriteMessage<V extends Serializable> extends Message
         implements Certifiable, Replicable<V>, Serializable {
 
     private final BitWriteSet bws;
+    private List<String> tables;
     private long timestamp;
     private final V state;
 
-    public CertifyWriteMessage(BitWriteSet bws, V state){
+    public CertifyWriteMessage(BitWriteSet bws, V state, List<String> tables){
         this.bws = bws;
         this.state = state;
+        this.tables = tables;
     }
 
     @Override
@@ -35,6 +38,11 @@ public class CertifyWriteMessage<V extends Serializable> extends Message
     @Override
     public long getStartTimestamp() {
         return timestamp;
+    }
+
+    @Override
+    public List<String> getTables() {
+        return tables;
     }
 
     public void setTimestamp(long timestamp){
