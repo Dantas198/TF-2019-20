@@ -1,0 +1,22 @@
+/*C3*/SET SCHEMA PUBLIC
+DROP SCHEMA PUBLIC CASCADE
+DROP TABLE IF EXISTS "customer"
+CREATE TABLE "customer" (\u000a    "id" varchar(255),\u000a    PRIMARY KEY("id")\u000a)
+DROP TABLE IF EXISTS "order"
+CREATE TABLE "order" (\u000a    "id" varchar(255),\u000a    "customer_id" varchar(255),\u000a    PRIMARY KEY("id"),\u000a    FOREIGN KEY ("customer_id
+") REFERENCES "customer"("id"))
+DROP TABLE IF EXISTS "product"
+CREATE TABLE "product" (\u000a    "name" varchar(255),\u000a    "description" varchar(255),\u000a    "price" int,\u000a    "stock" int,\u000a    PRIMA
+RY KEY("name")\u000a)
+DROP TABLE IF EXISTS "order_product"
+CREATE TABLE "order_product" (\u000a    "order_id" varchar(255),\u000a    "product_name" varchar(255),\u000a    "quantity" int,\u000a    PRIMARY KEY("
+order_id", "product_name"),\u000a    FOREIGN KEY ("order_id") REFERENCES "order"("id"),\u000a    FOREIGN KEY ("product_name") REFERENCES "product"("na
+me"))
+SET SCHEMA PUBLIC
+INSERT INTO "customer" VALUES('Customer1')
+DELETE FROM "customer" WHERE "id"='Customer1'
+INSERT INTO "customer" VALUES('Customer2')
+INSERT INTO "order" VALUES('d6b72338-3a88-45b6-b670-e32c0f1cc6ec','Customer2')
+DELETE FROM "order" WHERE "id"='d6b72338-3a88-45b6-b670-e32c0f1cc6ec'
+DELETE FROM "customer" WHERE "id"='Customer2'
+COMMIT

@@ -51,13 +51,13 @@ public class LogReader {
     private void getQueriesFromString(String filestr){
         if(queries == null){
             queries = new ArrayList<>();
-            String splitRegex = "\n(?=\\d{4}-\\d+-\\d+)";
-            Pattern logLine = Pattern.compile("\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
+            String splitRegex = "\n(?=DROP|SET|INSERT|DELETE|CREATE|COMMIT)"; //"\n(?=\\d{4}-\\d+-\\d+)";
+            Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
             String[] split = filestr.split(splitRegex);
             for(String log : split){
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
-                    String query = matcher.group(1);
+                    String query = matcher.group(0);
                     queries.add(query);
                 } else {
                     System.out.println("Log " + log + " couldn't be parsed");
@@ -67,7 +67,7 @@ public class LogReader {
     }
 
     public static void main(String[] args)  throws  Exception{
-        LogReader logReader = new LogReader("./testdb.sql.log");
+        LogReader logReader = new LogReader("./testdb.log");
         logReader.size();
     }
 }

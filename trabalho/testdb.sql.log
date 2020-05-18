@@ -169,3 +169,12 @@
 2020-05-16 00:33:07.169 2 COMMIT 
 2020-05-16 00:33:07.174 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
 2020-05-16 00:33:07.175 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-18 09:50:26.797 2 COMMIT 
+2020-05-18 09:50:26.801 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-18 09:50:26.802 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-18 09:51:45.606 2 COMMIT 
+2020-05-18 09:51:45.619 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-18 09:51:45.620 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')
+2020-05-18 09:59:24.979 2 COMMIT 
+2020-05-18 09:59:24.987 2 INSERT INTO "customer" ("id") VALUES (?) ('Customer2')
+2020-05-18 09:59:24.988 2 SELECT * FROM "customer" WHERE "id" = ? ('Customer2')

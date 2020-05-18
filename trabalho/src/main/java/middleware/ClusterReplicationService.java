@@ -1,8 +1,10 @@
 package middleware;
 
 import middleware.Certifier.Certifier;
+import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.replication.CertifyWriteMessage;
+import middleware.message.replication.StateTransferLengthMessage;
 import spread.*;
 
 import java.net.InetAddress;
@@ -26,6 +28,7 @@ public class ClusterReplicationService {
     private CompletableFuture<Void> started;
     // number of servers on the spread group
     private int nServers;
+    private LogReader logReader;
     private Set<SpreadGroup> currentElements;
 
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server){
@@ -40,6 +43,7 @@ public class ClusterReplicationService {
         //TODO recover do estado
         this.certifier = new Certifier();
         this.currentElements = new HashSet<>();
+        this.logReader = new LogReader("./" + privateName + ".sql.log");
     }
 
     public CompletableFuture<Void> start() throws Exception {
@@ -48,6 +52,9 @@ public class ClusterReplicationService {
         this.spreadGroup.join(this.spreadConnection, "grupo");
         this.spreadConnection.add(messageListener());
         this.started = new CompletableFuture<>();
+        int logSize = logReader.size();
+        StateTransferLengthMessage logs = new StateTransferLengthMessage(logSize);
+        safeFloodMessage(logs, this.spreadGroup);
         return started;
     }
 
@@ -109,8 +116,8 @@ public class ClusterReplicationService {
                         }
                         currentElements.add(members[0]);
                         //TODO enviar o estado correto. De momento não funciona
-                        //Message message = new ContentMessage<>(server.getState());
-                        //floodMessage(message, sender);
+                        Message message = new StateTransferLengthMessage(logReader.size());
+                        floodMessage(message, sender);
                     }
                     else{
                         HashSet<SpreadGroup> updatedMembers = new HashSet<>(Arrays.asList(members));

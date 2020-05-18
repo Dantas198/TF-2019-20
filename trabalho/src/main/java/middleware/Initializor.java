@@ -28,6 +28,7 @@ public class Initializor {
         try {
             if(initializing){
                 Message received = (Message) spreadMessage.getObject();
+                // apagar este if e o seu conteudo quando se remover o state
                 if(received instanceof StateTransferMessage){
                     server.setState(((StateTransferMessage) received).getState());
                     initializing = false;
