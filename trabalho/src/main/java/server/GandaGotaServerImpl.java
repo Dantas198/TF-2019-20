@@ -28,6 +28,7 @@ public class GandaGotaServerImpl extends ServerImpl<SuperMarket> {
         this.superMarket = new SuperMarketImpl(1000);
     }
 
+    //TODO classe á parte?
     @Override
     public Message handleMessage(Message message) {
         try{

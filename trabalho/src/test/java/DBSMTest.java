@@ -1,8 +1,6 @@
-import business.MessagingService;
+import client.MessagingService;
 import io.atomix.utils.net.Address;
-import middleware.Certifier.BitWriteSet;
 import middleware.message.WriteMessage;
-import middleware.message.replication.CertifyWriteMessage;
 import org.junit.Test;
 
 import java.util.HashSet;

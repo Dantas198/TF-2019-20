@@ -12,12 +12,12 @@ public class ElectionManager {
     // Remaining groups to le elected as primary
     private Set<SpreadGroup> groupsLeftForPrimary;
     // true if its the first time it receives a membership message, false otherwise
-    private boolean isJoinning;
+    private boolean isJoining;
     private SpreadConnection spreadConnection;
 
     public ElectionManager(SpreadConnection spreadConnection){
         this.groupsLeftForPrimary = new HashSet<>();
-        this.isJoinning = true;
+        this.isJoining = true;
         this.spreadConnection = spreadConnection;
     }
 
@@ -29,10 +29,10 @@ public class ElectionManager {
      */
     public boolean amILeader(SpreadMessage msg){
         List<SpreadGroup> info = Arrays.asList(msg.getMembershipInfo().getMembers());
-        if(isJoinning) {
+        if(isJoining) {
             groupsLeftForPrimary.addAll(info);
             groupsLeftForPrimary.remove(spreadConnection.getPrivateGroup());
-            isJoinning = false;
+            isJoining = false;
         }
 
         return removeSpreadGroups(info) >= 0 && this.groupsLeftForPrimary.isEmpty();

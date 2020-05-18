@@ -14,16 +14,14 @@ import java.util.*;
 
 public class SuperMarketImpl implements SuperMarket, Serializable {
 
-	DAO<String, Order> orderDAO;
-	DAO<String, Product> productDAO;
-	DAO<String, Customer> customerDAO;
-	private int tmax;
+	private DAO<String, Order> orderDAO;
+	private DAO<String, Product> productDAO;
+	private DAO<String, Customer> customerDAO;
 
-	public SuperMarketImpl(int tmax){
+	public SuperMarketImpl(){
 		this.orderDAO = new OrderDAO();
 		this.productDAO = new ProductDAO();
 		this.customerDAO = new CustomerDAO();
-		this.tmax = tmax;
 	}
 
 	@Override

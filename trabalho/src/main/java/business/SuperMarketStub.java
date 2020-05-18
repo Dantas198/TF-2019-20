@@ -4,10 +4,8 @@ import business.order.Order;
 import business.order.OrderImpl;
 import business.product.Product;
 import business.product.ProductImpl;
-import client.message.AddCostumerMessage;
-import client.message.FinishOrderMessage;
-import client.message.GetCatalogProducts;
-import client.message.GetHistoryMessage;
+import client.MessagingService;
+import client.message.*;
 import io.atomix.utils.net.Address;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
@@ -16,63 +14,51 @@ import java.util.*;
 
 public class SuperMarketStub implements SuperMarket {
 
-    private String privateCustomer;
-    private Order currentOrder;
-
     private MessagingService ms;
 
     public SuperMarketStub(int myPort, Address primaryServer){
-
-        this.currentOrder = null;
         this.ms = new MessagingService(myPort, primaryServer);
     }
 
     @Override
     public boolean addCustomer(String customer) throws Exception {
-        this.privateCustomer = customer;
-        return ((ContentMessage<Boolean>) ms.sendAndReceive(new AddCostumerMessage(customer))).getBody();
+        Message msg = new AddCostumerMessage(customer);
+        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
     }
 
     @Override
-    public boolean resetOrder(String customer) {
-        this.currentOrder.reset();
-        return true;
+    public boolean resetOrder(String customer) throws Exception {
+        Message msg = new ResetOrderMessage(customer);
+        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
     }
 
     @Override
     public boolean finishOrder(String customer) throws Exception {
-        if(!customer.equals(privateCustomer))
-            return false;
-        return ((ContentMessage<Boolean>) ms.sendAndReceive(new FinishOrderMessage(customer, currentOrder))).getBody();
+        Message msg = new FinishOrderMessage(customer);
+        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
     }
 
     @Override
-    public boolean addProduct(String customer, String product, int amount) {
-        if(!customer.equals(privateCustomer))
-            return false;
-        if(this.currentOrder == null)
-            this.currentOrder = new OrderImpl();
-        Product p = new ProductImpl(product);
-        this.currentOrder.addProduct(p, amount);
-        return true;
+    public boolean addProduct(String customer, String product, int amount) throws Exception {
+        Message msg = new AddProductMessage(customer, product, amount);
+        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
     }
 
     @Override
-    public Map<Product, Integer> getCurrentOrderProducts(String customer) {
-        return this.currentOrder.getProducts();
+    public Map<Product, Integer> getCurrentOrderProducts(String customer) throws Exception {
+        Message msg = new GetOrderMessage(customer);
+        return ms.new Request<ContentMessage<HashMap<Product,Integer>>>().sendAndReceive(msg).getBody();
     }
 
     @Override
     public ArrayList<Order> getHistory(String customer) throws Exception {
-        Message response = ms.sendAndReceive(new GetHistoryMessage(customer));
-        ContentMessage<ArrayList<Order>> cm = (ContentMessage<ArrayList<Order>>)  response;
-        return cm.getBody();
+        Message msg = new GetHistoryMessage(customer);
+        return ms.new Request<ContentMessage<ArrayList<Order>>>().sendAndReceive(msg).getBody();
     }
 
     @Override
     public ArrayList<Product> getCatalogProducts() throws Exception {
-        Message response = ms.sendAndReceive(new GetCatalogProducts());
-        ContentMessage<ArrayList<Product>> cm = (ContentMessage<ArrayList<Product>>) response;
-        return cm.getBody();
+        Message msg = new GetCatalogProducts();
+        return ms.new Request<ContentMessage<ArrayList<Product>>>().sendAndReceive(msg).getBody();
     }
 }
