@@ -14,13 +14,13 @@ import java.util.function.Consumer;
 // Initializor espera por isso e compara com os seus logs
 // Envia pedido do que falta e recebe o estado que falta
 
-public class Initializor {
+public class Initializer {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
     private ServerImpl server;
 
-    public Initializor(ServerImpl server){
+    public Initializer(ServerImpl server){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;

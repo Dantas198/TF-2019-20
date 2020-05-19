@@ -7,9 +7,6 @@ import middleware.message.replication.StateTransferMessage;
 import spread.*;
 
 import java.net.InetAddress;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -23,9 +20,7 @@ public class ClusterReplicationService {
     //private Map<String, List<Message>> cachedMessages;
 
     // number of servers on the spread group
-    private int nServers;
-    private Set<SpreadGroup> currentMembers;
-    private final Initializor initializor;
+    private final Initializer initializer;
     public final Certifier certifier;
     private final ElectionManager electionManager;
     private boolean imLeader;
@@ -39,8 +34,7 @@ public class ClusterReplicationService {
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.nServers = 1;
-        this.initializor = new Initializor(server);
+        this.initializer = new Initializer(server);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
         this.certifier = new Certifier();
@@ -72,13 +66,48 @@ public class ClusterReplicationService {
         }
     };
 
+    private void handleNetworkPartition(MembershipInfo info) {
+        SpreadGroup[] stayed = info.getStayed();
+        // ver se está no grupo menor, se estiver para
+
+    }
+
+    private void handleJoin(MembershipInfo info) throws Exception {
+        System.out.println("Server : " + privateName + " a member joined");
+        SpreadGroup newMember = info.getJoined();
+
+        //TODO ENVIAR ESTADO CORRETO. De momento não funciona
+        System.out.println("Server : " + privateName + " I'm leader. Sending state to " + newMember);
+        Message message = new StateTransferMessage<>(1);
+        noAgreementFloodMessage(message, newMember);
+    }
+
+    private void handleDisconnect(MembershipInfo info) {
+        SpreadGroup member = info.getDisconnected();
+        System.out.println("Server : " + privateName + " a member disconnected");
+        imLeader = electionManager.amILeader(member);
+        if (imLeader){
+            System.out.println("Assuming leader role");
+        }
+    }
+
+    private void handleLeave(MembershipInfo info) {
+        SpreadGroup member = info.getLeft();
+        System.out.println("Server : " + privateName + " a member left");
+        imLeader = electionManager.amILeader(member);
+        if (imLeader){
+            System.out.println("Assuming leader role");
+        }
+    }
+
+
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
                     System.out.println("Server : " + privateName + " RegularpMessageReceived");
-                    if (!initializor.isInitializing(spreadMessage, respondMessage)) {
+                    if (!initializer.isInitializing(spreadMessage, respondMessage)) {
                         if(!started.isDone())
                             started.complete(null);
                         Message received = (Message) spreadMessage.getObject();
@@ -109,57 +138,40 @@ public class ClusterReplicationService {
             public void membershipMessageReceived(SpreadMessage spreadMessage) {
                 try {
                     System.out.println("Server : " + privateName + " MembershipMessageReceived");
-                    SpreadGroup[] members = spreadMessage.getMembershipInfo().getMembers();
-                    nServers = members.length;
-                    if (!imLeader) {
-                        imLeader = electionManager.amILeader(spreadMessage);
-                        if (imLeader){
-                            System.out.println("Assuming leader role");
-                            currentMembers = new HashSet<>(Arrays.asList(members));
-                        }
-                    } else {
-                        if (nServers > currentMembers.size()) {
-                            System.out.println("Server : " + privateName + " a member entered");
-                            SpreadGroup newMember = getNewMember(members);
-                            currentMembers.add(newMember);
+                    MembershipInfo info = spreadMessage.getMembershipInfo();
+                    SpreadGroup[] members = info.getMembers();
 
-                            //TODO ENVIAR ESTADO CORRETO. De momento não funciona
-                            System.out.println("Server : " + privateName + " I'm leader. Sending state to " + newMember);
-                            Message message = new StateTransferMessage<>(1);
-                            noAgreementFloodMessage(message, newMember);
-                        } else {
-                            System.out.println("Server : " + privateName + " a member left");
-                            HashSet<SpreadGroup> updatedMembers = new HashSet<>(Arrays.asList(members));
-                            SpreadGroup toRemove = getLeavingMember(updatedMembers);
-                            if (toRemove != null)
-                                currentMembers.remove(toRemove);
-                        }
-                    }
-                    if (nServers == 1) {
-                        initializor.initialized();
+                    // é o primeiro servidor, não precisa de transferência de estado
+                    if (members.length == 1) {
+                        electionManager.joinedGroup(members);
+                        initializer.initialized();
                         if (!started.isDone())
                             started.complete(null);
                     }
-                }catch(Exception e){
+
+                    if(info.isCausedByNetwork()) {
+                        handleNetworkPartition(info);
+                        return;
+                    }
+
+                    if(imLeader) {
+                        if(info.isCausedByJoin()) {
+                            handleJoin(info);
+                        }
+                    }
+                    else {
+                        if(info.isCausedByDisconnect()) {
+                            handleDisconnect(info);
+                        } else
+                        if(info.isCausedByLeave()) {
+                            handleLeave(info);
+                        }
+                    }
+                } catch(Exception e){
                     e.printStackTrace();
                 }
             }
         };
-    }
-
-    private SpreadGroup getNewMember(SpreadGroup[] newMembers){
-        for(SpreadGroup sg : newMembers)
-            if (!this.currentMembers.contains(sg))
-                return sg;
-        return null;
-    }
-
-    private SpreadGroup getLeavingMember(HashSet<SpreadGroup> updatedMembers){
-        for(SpreadGroup sg : this.currentMembers){
-            if(!updatedMembers.contains(sg))
-                return sg;
-        }
-        return null;
     }
 
 
