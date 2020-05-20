@@ -36,7 +36,8 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     public ServerImpl(int spreadPort, String privateName, int atomixPort){
         this.privateName = privateName;
-        this.spreadService = new ClusterReplicationService(spreadPort, privateName, this);
+        // TODO numero de servidores max/total
+        this.spreadService = new ClusterReplicationService(spreadPort, privateName, this, 3);
         this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();

@@ -29,6 +29,11 @@ public class ElectionManager {
         return this.groupsLeftForPrimary.isEmpty();
     }
 
+    public boolean amILeader(SpreadGroup[] updatedMembers){
+        groupsLeftForPrimary.retainAll(Arrays.asList(updatedMembers));
+        return this.groupsLeftForPrimary.isEmpty();
+    }
+
 
     public void joinedGroup(SpreadGroup[] members) {
         groupsLeftForPrimary.addAll(Arrays.asList(members));

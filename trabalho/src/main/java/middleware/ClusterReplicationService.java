@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class ClusterReplicationService {
+    private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
     private final SpreadGroup spreadGroup;
@@ -19,7 +20,6 @@ public class ClusterReplicationService {
     //Caso sejam necessário acks poderá ser utilizada esta estrutura
     //private Map<String, List<Message>> cachedMessages;
 
-    // number of servers on the spread group
     private final Initializer initializer;
     public final Certifier certifier;
     private final ElectionManager electionManager;
@@ -28,7 +28,8 @@ public class ClusterReplicationService {
     private ServerImpl server;
     private CompletableFuture<Void> started;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers){
+        this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
         this.spreadGroup = new SpreadGroup();
@@ -67,26 +68,40 @@ public class ClusterReplicationService {
     };
 
     private void handleNetworkPartition(MembershipInfo info) {
-        SpreadGroup[] stayed = info.getStayed();
-        // ver se está no grupo menor, se estiver para
+        SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
 
+        // está no grupo maioritário
+        if(stayed.length > totalServers/2) {
+            System.out.println("Server : " + privateName + ", network partition, im in main group");
+            if(!imLeader) {
+                imLeader = electionManager.amILeader(stayed);
+                if (imLeader){
+                    System.out.println("Assuming leader role");
+                }
+            }
+        } else {
+            System.out.println("Server : " + privateName + ", network partition, im not in main group, will stop working");
+            // TODO parar
+        }
     }
 
     private void handleJoin(MembershipInfo info) throws Exception {
-        System.out.println("Server : " + privateName + " a member joined");
+        System.out.println("Server : " + privateName + ", a member joined");
         SpreadGroup newMember = info.getJoined();
 
         //TODO ENVIAR ESTADO CORRETO. De momento não funciona
-        System.out.println("Server : " + privateName + " I'm leader. Sending state to " + newMember);
+        System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
         Message message = new StateTransferMessage<>(1);
         noAgreementFloodMessage(message, newMember);
     }
 
     private void handleSelfJoin(MembershipInfo info) {
+        System.out.println("Server : " + privateName + ", I joined");
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);
         // é o primeiro servidor, não precisa de transferência de estado
         if (members.length == 1) {
+            System.out.println("Server : " + privateName + ", and I'm the first member");
             initializer.initialized();
             if (!started.isDone())
                 started.complete(null);
@@ -95,7 +110,7 @@ public class ClusterReplicationService {
 
     private void handleDisconnect(MembershipInfo info) {
         SpreadGroup member = info.getDisconnected();
-        System.out.println("Server : " + privateName + " a member disconnected");
+        System.out.println("Server : " + privateName + ", a member disconnected");
         imLeader = electionManager.amILeader(member);
         if (imLeader){
             System.out.println("Assuming leader role");
@@ -104,7 +119,7 @@ public class ClusterReplicationService {
 
     private void handleLeave(MembershipInfo info) {
         SpreadGroup member = info.getLeft();
-        System.out.println("Server : " + privateName + " a member left");
+        System.out.println("Server : " + privateName + ", a member left");
         imLeader = electionManager.amILeader(member);
         if (imLeader){
             System.out.println("Assuming leader role");
@@ -117,7 +132,7 @@ public class ClusterReplicationService {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    System.out.println("Server : " + privateName + " RegularpMessageReceived");
+                    System.out.println("Server : " + privateName + ", RegularpMessageReceived");
                     if (!initializer.isInitializing(spreadMessage, respondMessage)) {
                         if(!started.isDone())
                             started.complete(null);
@@ -148,7 +163,7 @@ public class ClusterReplicationService {
             @Override
             public void membershipMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    System.out.println("Server : " + privateName + " MembershipMessageReceived");
+                    System.out.println("Server : " + privateName + ", MembershipMessageReceived -------------");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
 
                     if(info.isCausedByJoin() && info.getJoined() == spreadGroup) {
@@ -174,6 +189,7 @@ public class ClusterReplicationService {
                             handleLeave(info);
                         }
                     }
+                    System.out.println("Server : " + privateName + ", ---------------------------------------");
                 } catch(Exception e){
                     e.printStackTrace();
                 }
