@@ -82,6 +82,17 @@ public class ClusterReplicationService {
         noAgreementFloodMessage(message, newMember);
     }
 
+    private void handleSelfJoin(MembershipInfo info) {
+        SpreadGroup[] members = info.getMembers();
+        electionManager.joinedGroup(members);
+        // é o primeiro servidor, não precisa de transferência de estado
+        if (members.length == 1) {
+            initializer.initialized();
+            if (!started.isDone())
+                started.complete(null);
+        }
+    }
+
     private void handleDisconnect(MembershipInfo info) {
         SpreadGroup member = info.getDisconnected();
         System.out.println("Server : " + privateName + " a member disconnected");
@@ -139,14 +150,10 @@ public class ClusterReplicationService {
                 try {
                     System.out.println("Server : " + privateName + " MembershipMessageReceived");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
-                    SpreadGroup[] members = info.getMembers();
 
-                    // é o primeiro servidor, não precisa de transferência de estado
-                    if (members.length == 1) {
-                        electionManager.joinedGroup(members);
-                        initializer.initialized();
-                        if (!started.isDone())
-                            started.complete(null);
+                    if(info.isCausedByJoin() && info.getJoined() == spreadGroup) {
+                        handleSelfJoin(info);
+                        return;
                     }
 
                     if(info.isCausedByNetwork()) {
