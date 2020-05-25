@@ -14,7 +14,11 @@ public class ClientCLI {
 
         AutoCLI<SuperMarket> cli = new AutoCLI<>(SuperMarket.class, sm);
 
-        cli.startInputLoop();
+        try {
+            cli.startInputLoop();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

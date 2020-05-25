@@ -1,12 +1,15 @@
 import middleware.Certifier.BitWriteSet;
 import middleware.Certifier.Certifier;
+import middleware.Certifier.NoTableDefinedException;
 import org.junit.Test;
+
+import java.util.ArrayList;
 
 public class CertifierTest {
 
-    private void checkConflict(Certifier c, BitWriteSet ws, long ts){
-        if (!c.hasConflict(ws, ts)) {
-            c.commit(ws);
+    private void checkConflict(Certifier c, BitWriteSet ws, long ts) throws NoTableDefinedException {
+        if (!c.hasConflict(ws, new ArrayList<>(), ts)) {
+            c.commit(ws, new ArrayList<>());
             System.out.println("Commited");
         }
         else
@@ -14,7 +17,7 @@ public class CertifierTest {
     }
 
     @Test
-    public void test(){
+    public void test() throws NoTableDefinedException {
         Certifier c = new Certifier();
 
         BitWriteSet ws1 = new BitWriteSet();

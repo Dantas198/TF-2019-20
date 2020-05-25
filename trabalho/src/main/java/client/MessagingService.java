@@ -10,7 +10,6 @@ import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
 
-import java.io.Serializable;
 import java.util.concurrent.*;
 
 public class MessagingService {
@@ -55,8 +54,12 @@ public class MessagingService {
         }, 1, 4, TimeUnit.SECONDS);
     }
 
+    public<R extends Message> R sendAndReceive(Message request) throws ExecutionException, InterruptedException {
+        return new Request<R>().sendAndReceive(request);
+    }
+
     @SuppressWarnings("unchecked")
-    public class Request<R extends Message> {
+    private class Request<R extends Message> {
 
         public R sendAndReceive(Message request) throws ExecutionException, InterruptedException {
             res = new CompletableFuture<>();

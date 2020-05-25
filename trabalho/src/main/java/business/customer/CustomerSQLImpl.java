@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class CustomerSQLImpl extends CustomerImpl {
 
-    OrderSQLDAO orderDAO;
+    private OrderSQLDAO orderDAO;
 
     public CustomerSQLImpl(String id, Order currentOrder, Set<Order> oldOrder, OrderSQLDAO orderDAO) {
         super(id, currentOrder, oldOrder);

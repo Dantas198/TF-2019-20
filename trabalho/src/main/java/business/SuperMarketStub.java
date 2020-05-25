@@ -23,42 +23,42 @@ public class SuperMarketStub implements SuperMarket {
     @Override
     public boolean addCustomer(String customer) throws Exception {
         Message msg = new AddCostumerMessage(customer);
-        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<Boolean>>sendAndReceive(msg).getBody();
     }
 
     @Override
     public boolean resetOrder(String customer) throws Exception {
         Message msg = new ResetOrderMessage(customer);
-        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<Boolean>>sendAndReceive(msg).getBody();
     }
 
     @Override
     public boolean finishOrder(String customer) throws Exception {
         Message msg = new FinishOrderMessage(customer);
-        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<Boolean>>sendAndReceive(msg).getBody();
     }
 
     @Override
     public boolean addProduct(String customer, String product, int amount) throws Exception {
         Message msg = new AddProductMessage(customer, product, amount);
-        return ms.new Request<ContentMessage<Boolean>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<Boolean>>sendAndReceive(msg).getBody();
     }
 
     @Override
     public Map<Product, Integer> getCurrentOrderProducts(String customer) throws Exception {
         Message msg = new GetOrderMessage(customer);
-        return ms.new Request<ContentMessage<HashMap<Product,Integer>>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<HashMap<Product,Integer>>>sendAndReceive(msg).getBody();
     }
 
     @Override
     public ArrayList<Order> getHistory(String customer) throws Exception {
         Message msg = new GetHistoryMessage(customer);
-        return ms.new Request<ContentMessage<ArrayList<Order>>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<ArrayList<Order>>>sendAndReceive(msg).getBody();
     }
 
     @Override
     public ArrayList<Product> getCatalogProducts() throws Exception {
         Message msg = new GetCatalogProducts();
-        return ms.new Request<ContentMessage<ArrayList<Product>>>().sendAndReceive(msg).getBody();
+        return ms.<ContentMessage<ArrayList<Product>>>sendAndReceive(msg).getBody();
     }
 }

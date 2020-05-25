@@ -1,5 +1,6 @@
 import client.MessagingService;
 import io.atomix.utils.net.Address;
+import middleware.message.ContentMessage;
 import middleware.message.WriteMessage;
 import org.junit.Test;
 
