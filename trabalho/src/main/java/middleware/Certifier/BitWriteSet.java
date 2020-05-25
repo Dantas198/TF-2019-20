@@ -8,7 +8,6 @@ import java.util.BitSet;
  * WriteSet used to certify writes.
  */
 public class BitWriteSet implements Serializable {
-
     private BitSet set;
 
     public BitWriteSet() {
@@ -20,7 +19,7 @@ public class BitWriteSet implements Serializable {
     }
 
     public void add(byte[] key) {
-        int index = Arrays.hashCode(key) % set.size();
+        int index = (Arrays.hashCode(key) & 0x7fffffff) % set.size();
         set.set(index, true);
     }
 

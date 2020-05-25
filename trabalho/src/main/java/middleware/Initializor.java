@@ -1,10 +1,12 @@
 package middleware;
 
 import middleware.message.Message;
+import middleware.message.replication.StateLengthRequestMessage;
 import middleware.message.replication.StateTransferMessage;
 import spread.SpreadException;
 import spread.SpreadMessage;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.function.Consumer;
@@ -17,11 +19,13 @@ public class Initializor {
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
     private ServerImpl server;
+    private ClusterReplicationService service;
 
-    public Initializor(ServerImpl server){
+    public Initializor(ServerImpl server, ClusterReplicationService service){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
+        this.service = service;
     }
 
     public boolean isInitializing(SpreadMessage spreadMessage, Consumer<SpreadMessage> respondMessage){
@@ -30,20 +34,27 @@ public class Initializor {
                 Message received = (Message) spreadMessage.getObject();
                 // apagar este if e o seu conteudo quando se remover o state
                 if(received instanceof StateTransferMessage){
-                    server.setState(((StateTransferMessage) received).getState());
+                    //TODO URGENTE
+                    //server.setState(((StateTransferMessage) received).getState());
+                    ArrayList<String> logs = (ArrayList<String>) ((StateTransferMessage) received).getState();
+                    server.updateQueries(logs);
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){
                         respondMessage.accept(sm);
                     }
                     messageQueue = null;
+                } else if (received instanceof StateLengthRequestMessage){
+                    System.out.println("Received logs length request");
+                    Message logsLength = new StateLengthRequestMessage(service.getLogReader().size());
+                    service.noAgreementFloodMessage(logsLength, spreadMessage.getSender());
                 } else {
                     messageQueue.add(spreadMessage);
                 }
             }
-        } catch (SpreadException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return initializing;
+         return initializing;
     }
 
     public void initialized(){

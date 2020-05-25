@@ -10,17 +10,12 @@ import java.io.Serializable;
  * Class to pass state changes
  */
 public class StateTransferMessage<V extends Serializable> extends Message implements Serializable, Replicable<V> {
-    private String serverName;
     private V state;
 
-    public StateTransferMessage(String serverName, V state) {
-        this.serverName = serverName;
+    public StateTransferMessage(V state) {
         this.state = state;
     }
 
-    public String getServerName(){
-        return serverName;
-    }
 
     public void setState(V state) {
         this.state = state;

@@ -8,9 +8,7 @@ import java.util.*;
 /**
  * Class responsible to notify when a server if it is a secondary server or a primary server
  */
-@Deprecated  //em discussão
 public class ElectionManager {
-
     // Remaining groups to le elected as primary
     private Set<SpreadGroup> groupsLeftForPrimary;
     // true if its the first time it receives a membership message, false otherwise
@@ -29,7 +27,7 @@ public class ElectionManager {
      * @param msg The spread message received by a membership message handler
      * @return if the current message allows the server to be the Leader or not
      */
-    public boolean amIPrimary(SpreadMessage msg){
+    public boolean amILeader(SpreadMessage msg){
         List<SpreadGroup> info = Arrays.asList(msg.getMembershipInfo().getMembers());
         if(isJoinning) {
             groupsLeftForPrimary.addAll(info);

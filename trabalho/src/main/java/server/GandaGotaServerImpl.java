@@ -5,17 +5,20 @@ import business.SuperMarketImpl;
 import business.product.Product;
 import client.bodies.FinishOrderBody;
 import client.message.*;
+import middleware.Certifier.BitWriteSet;
 import middleware.Server;
 import middleware.ServerImpl;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
+import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Map;
 
 public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
@@ -46,8 +49,9 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public FinishOrderPreProcessedMessage preprocessMessage(Message message){
+    public CertifyWriteMessage<?> preprocessMessage(Message message){
         //TODO PRE-PROCESSAMENTO
+        /*
         FinishOrderBody body = ((FinishOrderMessage) message).getBody();
         Map<Product, Integer> products = body.getOrder().getProducts();
         for(Product prod : products.keySet()){
@@ -55,21 +59,35 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         }
         // return new ContentMessage<>(superMarket.finishOrder(body.getCustomer()));
         return new FinishOrderPreProcessedMessage(null, null);
+         */
+
+        //Para testes
+        WriteMessage<HashSet<String>> wm = (WriteMessage) message;
+        BitWriteSet bws = new BitWriteSet();
+        for(String s : wm.getBody()){
+            bws.add(s.getBytes());
+        }
+        return new CertifyWriteMessage<>(bws, 1);
     }
 
     @Override
     public void updateStateFromCommitedWrite(CertifyWriteMessage<?> message) {
         //TODO
+        //TESTE
+        System.out.println("Server : " + this.getPrivateName() + " update state from commit");
+        int state = (Integer) message.getState();
     }
 
     @Override
     public void commit(){
         //TODO
+        System.out.println("Server : " + this.getPrivateName() + " commit");
     }
 
     @Override
     public void rollback(){
         //TODO
+        System.out.println("Server : " + this.getPrivateName() + " rollback");
     }
 
     @Override
@@ -90,7 +108,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "2", 7777);
+        Server server = new GandaGotaServerImpl(4803, "2", 7778);
         server.start();
     }
 }

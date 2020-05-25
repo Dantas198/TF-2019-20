@@ -37,7 +37,7 @@ public class LogReader {
     public Collection<String> getQueries(int lowerBound, int upperBound) throws Exception{
         List<String> res = new ArrayList<>(upperBound-lowerBound);
         lowerBound = lowerBound < 0 ? 0 : lowerBound;
-        upperBound = upperBound > size()-1 ? size()-1 : upperBound;
+        upperBound = upperBound > size() ? size() : upperBound;
         for(int i = lowerBound; i < upperBound; i++){
             res.add(queries.get(i));
         }
@@ -45,7 +45,7 @@ public class LogReader {
     }
 
     public Collection<String> getQueries(int lowerBound) throws Exception {
-        return getQueries(lowerBound, size()-1);
+        return getQueries(lowerBound, size());
     }
 
     private void getQueriesFromString(String filestr){
