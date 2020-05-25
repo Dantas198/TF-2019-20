@@ -3,7 +3,7 @@ package server;
 import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.product.Product;
-import client.bodies.FinishOrderBody;
+import client.bodies.AddProductBody;
 import client.message.*;
 import middleware.Certifier.BitWriteSet;
 import middleware.Server;
@@ -18,9 +18,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 
 public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
@@ -36,9 +35,24 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     @Override
     public Message handleMessage(Message message) {
         try{
-            if(message instanceof AddCostumerMessage){
+            if(message instanceof AddCostumerMessage) {
                 String customer = ((AddCostumerMessage) message).getBody();
                 return new ContentMessage<>(superMarket.addCustomer(customer));
+            } else if(message instanceof GetOrderMessage) {
+                String customer = ((GetOrderMessage) message).getBody();
+                return new ContentMessage<>((HashMap<Product, Integer>) superMarket.getCurrentOrderProducts(customer));
+            } else if(message instanceof AddProductMessage) {
+                AddProductBody body = ((AddProductMessage) message).getBody();
+                String customer = body.getCustomer();
+                String product = body.getProduct();
+                int amount = body.getAmount();
+                return new ContentMessage<>(superMarket.addProduct(customer, product, amount));
+            } else if(message instanceof FinishOrderMessage) {
+                String customer = ((FinishOrderMessage) message).getBody();
+                return new ContentMessage<>(superMarket.finishOrder(customer));
+            } else if(message instanceof ResetOrderMessage) {
+                String customer = ((ResetOrderMessage) message).getBody();
+                return new ContentMessage<>(superMarket.resetOrder(customer));
             } else if(message instanceof GetCatalogProducts){
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             } else if(message instanceof GetHistoryMessage) {
@@ -64,7 +78,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
          */
 
         //Para testes
-        WriteMessage<HashSet<String>> wm = (WriteMessage) message;
+        WriteMessage<HashSet<String>> wm = (WriteMessage<HashSet<String>>) message;
         BitWriteSet bws = new BitWriteSet();
         for(String s : wm.getBody()){
             bws.add(s.getBytes());
