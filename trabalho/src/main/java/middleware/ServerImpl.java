@@ -6,7 +6,7 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
-import middleware.Certifier.BitWriteSet;
+import middleware.Certifier.NoTableDefinedException;
 import middleware.logreader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
@@ -36,7 +36,8 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     public ServerImpl(int spreadPort, String privateName, int atomixPort){
         this.privateName = privateName;
-        this.spreadService = new ClusterReplicationService(spreadPort, privateName, this);
+        // TODO numero de servidores max/total
+        this.spreadService = new ClusterReplicationService(spreadPort, privateName, this, 3);
         this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -107,6 +108,14 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     @Deprecated
     public abstract void setState(STATE state);
 
+
+    /**
+     * Set of tables for certifier module
+     */
+    public void addTablesToCertifier(List<String> tables){
+        this.spreadService.certifier.addTables(tables);
+    }
+
     public Collection<String> getQueries(int from){
         try {
             return logReader.getQueries(from);
@@ -151,7 +160,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * process and got answered.
      * server
      */
-    protected void handleCertifierAnswer(CertifyWriteMessage<?> message, boolean isWritable){
+    protected void handleCertifierAnswer(CertifyWriteMessage<?> message, boolean isWritable) throws NoTableDefinedException {
         CompletableFuture<Boolean> res;
         try{
             rl.lock();
@@ -166,7 +175,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
                 //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
                 System.out.println("Server " + privateName + " commiting to certifier");
-                spreadService.certifier.commit(message.getWriteSet());
+                spreadService.certifier.commit(message.getWriteSet(), message.getTables());
             }
         }
         else{
@@ -184,11 +193,13 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @param reqm request being made
      * @return the information necessary to certify and replicate the transaction that is for now in a transient state
      */
-    private CertifyWriteMessage<?> startTransaction(Message reqm) {
+    private CertifyWriteMessage<?> startTransaction(Message reqm) throws NoTableDefinedException {
         long ts = spreadService.certifier.getTimestamp();
         //pre-processamento: colocar transação com estado não commit e calcular o estado resultado
         CertifyWriteMessage<?> cwm = preprocessMessage(reqm);
+        spreadService.certifier.transactionStarted(cwm.getTables(), ts, cwm.getId());
         cwm.setTimestamp(ts);
+        //TODO tirar o sleep após testes
         try {
             Thread.sleep(5000);
         } catch (InterruptedException interruptedException) {
@@ -219,7 +230,12 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 commit();
                 //Atualiza as transações que foram feitas
                 System.out.println("Server " + privateName + " commiting to certifier");
-                spreadService.certifier.commit(cwm.getWriteSet());
+                try {
+                    spreadService.certifier.commitLocalStartedTransaction(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp(), cwm.getId());
+                } catch (NoTableDefinedException noTableDefinedException) {
+                    noTableDefinedException.printStackTrace();
+                }
+
             } else {
                 System.out.println("Server " + privateName + " rolling back write from db");
                 rollback();

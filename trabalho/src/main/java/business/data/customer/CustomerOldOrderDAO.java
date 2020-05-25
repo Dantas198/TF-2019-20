@@ -12,7 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class CustomerOldOrderDAO extends DAOSet<Order> {
-    public CustomerOldOrderDAO(Connection c, String current_id) throws SQLException {
+    public CustomerOldOrderDAO(Connection c, String current_id, String current_order_id) throws SQLException {
         super(new DAOSetPS<>() {
             @Override
             public Order fromResultSet(ResultSet resultSet) throws SQLException {
@@ -22,15 +22,21 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement getAll() throws SQLException {
-                PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ?");
+                String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ?" + current_order_restrinction);
                 ps.setString(1, current_id);
+                if(current_order_id != null)
+                    ps.setString(2, current_order_id);
                 return ps;
             }
 
             @Override
             public PreparedStatement size() throws SQLException {
-                PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM \"order\" WHERE \"customer_id\" = ?");
+                String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
+                PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM \"order\" WHERE \"customer_id\" = ?" + current_order_restrinction);
                 ps.setString(1, current_id);
+                if(current_order_id != null)
+                    ps.setString(2, current_order_id);
                 return ps;
             }
 
@@ -63,9 +69,7 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement empty() throws SQLException {
-                PreparedStatement ps = c.prepareStatement("SELECT 1 FROM \"order\" WHERE \"customer_id\" = ?");
-                ps.setString(1, current_id);
-                return ps;
+                return null;
             }
 
             @Override

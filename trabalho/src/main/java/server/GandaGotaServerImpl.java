@@ -31,6 +31,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         this.superMarket = new SuperMarketImpl(1000);
     }
 
+    //TODO classe á parte?
     @Override
     public Message handleMessage(Message message) {
         try{

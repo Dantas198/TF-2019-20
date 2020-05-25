@@ -30,7 +30,7 @@ public class AutoCLI<I> {
     recebe comandos na forma: metodo arg1 arg2 ...
     termina com input vazio
     */
-    public void startInputLoop() {
+    public void startInputLoop() throws Exception {
         Scanner scanner = new Scanner(System.in);
         while (true) {
             String input = scanner.nextLine();
@@ -41,24 +41,24 @@ public class AutoCLI<I> {
         }
     }
 
-    public String runCommand(List<String> args) {
+    public String runCommand(List<String> args) throws Exception {
 
         String command = args.get(0);
 
         if(command.equals("-help")) {
-            return "metodos: " + listMethods();
+            return "methods: " + listMethods();
         }
 
         Method m = methods.get(command);
         if(m == null)
-            return "metodo não existe"; // TODO NoSuchMethodException
+            throw new NoSuchMethodException();
 
 
         Type[] types = m.getGenericParameterTypes();
 
         int pSize = types.length;
         if(pSize > args.size()-1)
-            return "args insuficientes, n args: " + pSize; // TODO exception
+            throw new Exception("args insuficientes, n args: " + pSize);
 
         Object[] params = parseParams(types, args.subList(1, args.size()));
 
@@ -75,21 +75,20 @@ public class AutoCLI<I> {
     }
 
 
-    private String invokeMethod(Method method, Object[] params) {
+    private String invokeMethod(Method method, Object[] params) throws Exception {
         try {
             Object o = method.invoke(obj, params);
             return o.toString();
         } catch (InvocationTargetException x) {
-            // Handle any exceptions thrown by method to be invoked.
             Throwable cause = x.getCause();
-            return cause.getMessage();
+            throw new Exception(cause.getMessage());
         } catch (IllegalAccessException e) {
             e.printStackTrace();
             return e.getMessage();
         }
     }
 
-    private Object[] parseParams(Type[] types, List<String> args) {
+    private Object[] parseParams(Type[] types, List<String> args) throws Exception {
 
         int pSize = types.length;
 
@@ -107,7 +106,7 @@ public class AutoCLI<I> {
                     params[i] = Integer.parseInt(param);
                     break;
                 default:
-                    return params; // TODO exception
+                    throw new Exception("type must be string or int");
             }
         }
         return params;

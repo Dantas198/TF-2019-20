@@ -52,13 +52,13 @@ public class CustomerImpl implements Customer, Serializable {
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (!(o instanceof CustomerImpl)) return false;
 		CustomerImpl customer = (CustomerImpl) o;
-		return Objects.equals(id, customer.id);
+		return getId().equals(customer.getId());
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(id);
+		return Objects.hash(getId());
 	}
 }

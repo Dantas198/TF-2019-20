@@ -21,6 +21,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.*;
 
@@ -36,24 +38,15 @@ public class DAOTest {
         daoTest(dao, order1.getId(), order1);
     }
 
+
     @Test
-    public void test() throws Exception {
-        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
-        CustomerSQLDAO dao = new CustomerSQLDAO(c);
-        String customerName = "Customer2";
-        dao.put(new CustomerImpl(customerName));
-        Customer customer = dao.get(customerName);
-        System.out.println(customer.getId());
-    }
-
-
-    public void SQLDAOTest() throws SQLException {
+    public void SQLDAOTest() throws SQLException, ExecutionException, InterruptedException {
         CustomerDAOTest(new CustomerDAO());
         OrderDAOTest(new OrderDAO());
         ProductDAOTest(new ProductDAO());
         Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;", "", "");
         new DBInitialization(c).init();
-        CustomerDAOTest(new CustomerSQLDAO(c));
+        CustomerDAOTest(new CustomerSQLDAO(c, new OrderSQLDAO(c)));
         OrderDAOTest(new OrderSQLDAO(c));
         System.out.println("OI");
         ProductDAOTest(new ProductSQLDAO(c));
@@ -67,6 +60,7 @@ public class DAOTest {
         dao.put(new CustomerImpl(customerName));
         Customer customer = dao.get(customerName);
         Set<Order> oldOrders = customer.getOldOrders();
+        customer.newCurrentOrder();
         assertTrue("Customer's old orders should initialize empty", oldOrders.isEmpty());
         assertEquals("Customer's old orders' size should be coherent with empty",
                 0, oldOrders.size());

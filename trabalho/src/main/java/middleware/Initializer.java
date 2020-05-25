@@ -10,18 +10,20 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.function.Consumer;
+
 //TODO Servidores à escuta veem que entrou um servidor ou novo ou que tinha ido abaixo.
 // Enviam o número de linhas que teem (Refletir sobre a melhor maneiro)
 // Initializor espera por isso e compara com os seus logs
 // Envia pedido do que falta e recebe o estado que falta
-public class Initializor {
+
+public class Initializer {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
     private ServerImpl server;
     private ClusterReplicationService service;
 
-    public Initializor(ServerImpl server, ClusterReplicationService service){
+    public Initializer(ServerImpl server, ClusterReplicationService service){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;

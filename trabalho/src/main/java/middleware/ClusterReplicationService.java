@@ -1,22 +1,17 @@
 package middleware;
 
 import middleware.Certifier.Certifier;
-import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.replication.CertifyWriteMessage;
-import middleware.message.replication.StateLengthRequestMessage;
 import middleware.message.replication.StateTransferMessage;
 import spread.*;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class ClusterReplicationService {
+    private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
     private final SpreadGroup spreadGroup;
@@ -25,38 +20,28 @@ public class ClusterReplicationService {
     //Caso sejam necessário acks poderá ser utilizada esta estrutura
     //private Map<String, List<Message>> cachedMessages;
 
-    // number of servers on the spread group
-    private int nServers;
-    private Set<SpreadGroup> currentMembers;
-    private final Initializor initializor;
+    private final Initializer initializer;
     public final Certifier certifier;
     private final ElectionManager electionManager;
     private boolean imLeader;
 
     private ServerImpl server;
     private CompletableFuture<Void> started;
-    private LogReader logReader;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers){
+        this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.nServers = 1;
-        this.initializor = new Initializor(server, this);
+        this.initializer = new Initializer(server);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
         this.certifier = new Certifier();
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
-        this.logReader = new LogReader("testdb.log");
     }
-
-    public LogReader getLogReader() {
-        return logReader;
-    }
-
 
     public CompletableFuture<Void> start() throws Exception {
         this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
@@ -82,34 +67,87 @@ public class ClusterReplicationService {
         }
     };
 
+    private void handleNetworkPartition(MembershipInfo info) {
+        SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
+
+        // está no grupo maioritário
+        if(stayed.length > totalServers/2) {
+            System.out.println("Server : " + privateName + ", network partition, im in main group");
+            if(!imLeader) {
+                imLeader = electionManager.amILeader(stayed);
+                if (imLeader){
+                    System.out.println("Assuming leader role");
+                }
+            }
+        } else {
+            System.out.println("Server : " + privateName + ", network partition, im not in main group, will stop working");
+            // TODO parar
+        }
+    }
+
+    private void handleJoin(MembershipInfo info) throws Exception {
+        System.out.println("Server : " + privateName + ", a member joined");
+        SpreadGroup newMember = info.getJoined();
+
+        //TODO ENVIAR ESTADO CORRETO. De momento não funciona
+        System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
+        Message message = new StateTransferMessage<>(1);
+        noAgreementFloodMessage(message, newMember);
+    }
+
+    private void handleSelfJoin(MembershipInfo info) {
+        System.out.println("Server : " + privateName + ", I joined");
+        SpreadGroup[] members = info.getMembers();
+        electionManager.joinedGroup(members);
+        // é o primeiro servidor, não precisa de transferência de estado
+        if (members.length == 1) {
+            System.out.println("Server : " + privateName + ", and I'm the first member");
+            initializer.initialized();
+            if (!started.isDone())
+                started.complete(null);
+        }
+    }
+
+    private void handleDisconnect(MembershipInfo info) {
+        SpreadGroup member = info.getDisconnected();
+        System.out.println("Server : " + privateName + ", a member disconnected");
+        imLeader = electionManager.amILeader(member);
+        if (imLeader){
+            System.out.println("Assuming leader role");
+        }
+    }
+
+    private void handleLeave(MembershipInfo info) {
+        SpreadGroup member = info.getLeft();
+        System.out.println("Server : " + privateName + ", a member left");
+        imLeader = electionManager.amILeader(member);
+        if (imLeader){
+            System.out.println("Assuming leader role");
+        }
+    }
+
+
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    System.out.println("Server : " + privateName + " RegularpMessageReceived");
-                    if (!initializor.isInitializing(spreadMessage, respondMessage)) {
+                    System.out.println("Server : " + privateName + ", RegularpMessageReceived");
+                    if (!initializer.isInitializing(spreadMessage, respondMessage)) {
                         if(!started.isDone())
                             started.complete(null);
                         Message received = (Message) spreadMessage.getObject();
                         if (received instanceof CertifyWriteMessage){
                             CertifyWriteMessage<?> cwm = (CertifyWriteMessage<?>) received;
                             System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
-                            boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(), cwm.getStartTimestamp());
+                            boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp());
                             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
                             server.handleCertifierAnswer(cwm, isWritable);
-                        } else if(received instanceof StateLengthRequestMessage){
-                            int lowerBound = ((StateLengthRequestMessage) received).getBody();
-                            System.out.println("New server has " + lowerBound + " logs");
-                            ArrayList<String> logs = new ArrayList<>(logReader.getQueries(lowerBound));
-                            Message state = new StateTransferMessage<>(logs);
-                            noAgreementFloodMessage(state, spreadMessage.getSender());
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
                         List<Message> messagesReceived = cachedMessages.get(received.getId());
-                        // se for escrita terá de vir ogetQueries(lowerBound);
-                        //                            noAgreementFlo estado já calculado para ser genérico
+                        // se for escrita terá de vir o estado já calculado para ser genérico
                         Message myResponse = server.handleMessage(received).from(received);
                         messagesReceived.add(myResponse);
                         if (messagesReceived.size() >= nServers) {
@@ -124,58 +162,38 @@ public class ClusterReplicationService {
             @Override
             public void membershipMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    System.out.println("Server : " + privateName + " MembershipMessageReceived");
-                    SpreadGroup[] members = spreadMessage.getMembershipInfo().getMembers();
-                    nServers = members.length;
-                    if (!imLeader) {
-                        imLeader = electionManager.amILeader(spreadMessage);
-                        if (imLeader){
-                            System.out.println("Assuming leader role");
-                            currentMembers = new HashSet<>(Arrays.asList(members));
-                        }
-                    } else {
-                        if (nServers > currentMembers.size()) {
-                            System.out.println("Server : " + privateName + " a member entered");
-                            SpreadGroup newMember = getNewMember(members);
-                            currentMembers.add(newMember);
+                    System.out.println("Server : " + privateName + ", MembershipMessageReceived -------------");
+                    MembershipInfo info = spreadMessage.getMembershipInfo();
 
-                            //TODO ENVIAR ESTADO CORRETO. De momento não funciona
-                            System.out.println("Server : " + privateName + " I'm leader. Sending state to " + newMember);
-                            Message message = new StateLengthRequestMessage(logReader.size());
-                            noAgreementFloodMessage(message, newMember);
-                        } else {
-                            System.out.println("Server : " + privateName + " a member left");
-                            HashSet<SpreadGroup> updatedMembers = new HashSet<>(Arrays.asList(members));
-                            SpreadGroup toRemove = getLeavingMember(updatedMembers);
-                            if (toRemove != null)
-                                currentMembers.remove(toRemove);
+                    if(info.isCausedByJoin() && info.getJoined() == spreadGroup) {
+                        handleSelfJoin(info);
+                        return;
+                    }
+
+                    if(info.isCausedByNetwork()) {
+                        handleNetworkPartition(info);
+                        return;
+                    }
+
+                    if(imLeader) {
+                        if(info.isCausedByJoin()) {
+                            handleJoin(info);
                         }
                     }
-                    if (nServers == 1) {
-                        initializor.initialized();
-                        if (!started.isDone())
-                            started.complete(null);
+                    else {
+                        if(info.isCausedByDisconnect()) {
+                            handleDisconnect(info);
+                        } else
+                        if(info.isCausedByLeave()) {
+                            handleLeave(info);
+                        }
                     }
-                }catch(Exception e){
+                    System.out.println("Server : " + privateName + ", ---------------------------------------");
+                } catch(Exception e){
                     e.printStackTrace();
                 }
             }
         };
-    }
-
-    private SpreadGroup getNewMember(SpreadGroup[] newMembers){
-        for(SpreadGroup sg : newMembers)
-            if (!this.currentMembers.contains(sg))
-                return sg;
-        return null;
-    }
-
-    private SpreadGroup getLeavingMember(HashSet<SpreadGroup> updatedMembers){
-        for(SpreadGroup sg : this.currentMembers){
-            if(!updatedMembers.contains(sg))
-                return sg;
-        }
-        return null;
     }
 
 
