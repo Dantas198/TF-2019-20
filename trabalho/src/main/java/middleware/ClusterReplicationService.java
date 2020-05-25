@@ -43,6 +43,7 @@ public class ClusterReplicationService {
         this.imLeader = false;
     }
 
+
     public CompletableFuture<Void> start() throws Exception {
         this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
                 false, true);
@@ -80,8 +81,8 @@ public class ClusterReplicationService {
                 }
             }
         } else {
+            server.pause();
             System.out.println("Server : " + privateName + ", network partition, im not in main group, will stop working");
-            // TODO parar
         }
     }
 
@@ -96,6 +97,7 @@ public class ClusterReplicationService {
     }
 
     private void handleSelfJoin(MembershipInfo info) {
+        server.unpause(); // TODO deu joinno principal?
         System.out.println("Server : " + privateName + ", I joined");
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);
@@ -166,7 +168,7 @@ public class ClusterReplicationService {
                     System.out.println("Server : " + privateName + ", MembershipMessageReceived -------------");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
 
-                    if(info.isCausedByJoin() && info.getJoined() == spreadGroup) {
+                    if(info.isCausedByJoin() && info.getJoined() == spreadConnection.getPrivateGroup()) {
                         handleSelfJoin(info);
                         return;
                     }
