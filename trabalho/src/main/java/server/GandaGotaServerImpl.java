@@ -19,6 +19,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
@@ -28,7 +29,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) {
         super(spreadPort, privateName, atomixPort);
         //TODO tmax não à sorte poderá aumentar/diminuir consoante a quantidade de aborts
-        this.superMarket = new SuperMarketImpl(1000);
+        this.superMarket = new SuperMarketImpl();
     }
 
     //TODO classe á parte?
@@ -68,7 +69,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         for(String s : wm.getBody()){
             bws.add(s.getBytes());
         }
-        return new CertifyWriteMessage<>(bws, 1);
+        return new CertifyWriteMessage<>(bws, 1, new ArrayList<>());
     }
 
     @Override
@@ -109,7 +110,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "2", 7778);
+        Server server = new GandaGotaServerImpl(4803, "2", 7779);
         server.start();
     }
 }

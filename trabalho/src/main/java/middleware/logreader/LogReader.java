@@ -58,6 +58,7 @@ public class LogReader {
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
                     String query = matcher.group(0);
+                    //System.out.println("Query--" + query);
                     queries.add(query);
                 } else {
                     System.out.println("Log " + log + " couldn't be parsed");
@@ -68,6 +69,6 @@ public class LogReader {
 
     public static void main(String[] args)  throws  Exception{
         LogReader logReader = new LogReader("./testdb.log");
-        logReader.size();
+        logReader.getQueries(18).forEach(System.out::println);
     }
 }

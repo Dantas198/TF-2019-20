@@ -3,7 +3,7 @@ import middleware.Certifier.Certifier;
 import org.junit.Test;
 
 public class CertifierTest {
-
+/*
     private void checkConflict(Certifier c, BitWriteSet ws, long ts){
         if (!c.hasConflict(ws, ts)) {
             c.commit(ws);
@@ -39,4 +39,5 @@ public class CertifierTest {
         System.out.println("WS 2");
         checkConflict(c, ws2, t2);
     }
+    */
 }

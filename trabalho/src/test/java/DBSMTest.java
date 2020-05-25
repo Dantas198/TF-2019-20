@@ -41,7 +41,7 @@ public class DBSMTest {
 
         WriteMessage<HashSet<String>> wm2 = new WriteMessage<>(ws2);
 
-
+/*
         new Thread(() ->{
             try {
                 this.client1.sendAndReceive(wm1);
@@ -58,6 +58,8 @@ public class DBSMTest {
             }
         }).start();
         this.run.get();
+        */
+
     }
 
 }

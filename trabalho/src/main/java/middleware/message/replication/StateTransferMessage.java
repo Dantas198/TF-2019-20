@@ -3,25 +3,26 @@ package middleware.message.replication;
 import middleware.message.Message;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 
 //TODO poderá servir para fazer a passagem de estado, quando uma replica fica para trás
 /**
  * Class to pass state changes
  */
-public class StateTransferMessage<V extends Serializable> extends Message implements Serializable, Replicable<V> {
-    private V state;
+public class StateTransferMessage extends Message implements Serializable, Replicable<ArrayList> {
+    private ArrayList<String> state;
 
-    public StateTransferMessage(V state) {
+    public StateTransferMessage(ArrayList<String> state) {
         this.state = state;
     }
 
 
-    public void setState(V state) {
+    public void setState(ArrayList<String> state) {
         this.state = state;
     }
 
-    public V getState() {
+    public ArrayList<String> getState() {
         return state;
     }
 }

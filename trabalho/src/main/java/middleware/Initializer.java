@@ -1,6 +1,7 @@
 package middleware;
 
 import middleware.message.Message;
+import middleware.message.replication.GetLengthRequestMessage;
 import middleware.message.replication.StateLengthRequestMessage;
 import middleware.message.replication.StateTransferMessage;
 import spread.SpreadException;
@@ -38,6 +39,7 @@ public class Initializer {
                 if(received instanceof StateTransferMessage){
                     //TODO URGENTE
                     //server.setState(((StateTransferMessage) received).getState());
+                    System.out.println("Received state transfer");
                     ArrayList<String> logs = (ArrayList<String>) ((StateTransferMessage) received).getState();
                     server.updateQueries(logs);
                     initializing = false;
@@ -45,11 +47,11 @@ public class Initializer {
                         respondMessage.accept(sm);
                     }
                     messageQueue = null;
-                } else if (received instanceof StateLengthRequestMessage){
+                } else if (received instanceof GetLengthRequestMessage){
                     System.out.println("Received logs length request");
                     Message logsLength = new StateLengthRequestMessage(service.getLogReader().size());
                     service.noAgreementFloodMessage(logsLength, spreadMessage.getSender());
-                } else {
+                }  else {
                     messageQueue.add(spreadMessage);
                 }
             }
