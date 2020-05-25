@@ -14,6 +14,7 @@ import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,16 +23,16 @@ public class GandaGotaServerImpl extends ServerImpl<SuperMarket> {
 
     private SuperMarket superMarket;
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) {
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) throws SQLException {
         super(spreadPort, privateName, atomixPort);
         //TODO tmax não à sorte poderá aumentar/diminuir consoante a quantidade de aborts
-        this.superMarket = new SuperMarketImpl();
+        this.superMarket = new SuperMarketImpl(privateName);
     }
 
     //TODO classe á parte?
     @Override
     public Message handleMessage(Message message) {
-        try{
+        try {
             if(message instanceof AddCostumerMessage) {
                 String customer = ((AddCostumerMessage) message).getBody();
                 return new ContentMessage<>(superMarket.addCustomer(customer));

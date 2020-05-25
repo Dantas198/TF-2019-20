@@ -3,15 +3,13 @@ package business.order;
 import business.product.Product;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public class OrderImpl implements Order, Serializable{
 
 	private String id;
 	private Map<Product, Integer> products;
+	private Date timestamp;
 
 	public OrderImpl(){
 		this(UUID.randomUUID().toString());
@@ -20,11 +18,19 @@ public class OrderImpl implements Order, Serializable{
 	public OrderImpl(String id){
 		this.id = id;
 		this.products = new HashMap<>();
+		this.timestamp = Calendar.getInstance().getTime();
 	}
 
 	public OrderImpl(String id, Map<Product, Integer> products) {
 		this.id = id;
 		this.products = products;
+		this.timestamp = Calendar.getInstance().getTime();
+	}
+
+	public OrderImpl(String id, Map<Product, Integer> products, Date timestamp) {
+		this.id = id;
+		this.products = products;
+		this.timestamp = timestamp;
 	}
 
 	@Override
@@ -70,5 +76,13 @@ public class OrderImpl implements Order, Serializable{
 	@Override
 	public int hashCode() {
 		return Objects.hash(id);
+	}
+
+	public Date getTimestamp() {
+		return timestamp;
+	}
+
+	public void setTimestamp(Date timestamp) {
+		this.timestamp = timestamp;
 	}
 }
