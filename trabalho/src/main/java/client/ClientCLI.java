@@ -2,6 +2,7 @@ package client;
 
 import business.SuperMarket;
 import business.SuperMarketStub;
+import client.autocli.AutoCLI;
 import io.atomix.utils.net.Address;
 
 public class ClientCLI {
