@@ -16,8 +16,8 @@ public class SuperMarketStub implements SuperMarket {
 
     private MessagingService ms;
 
-    public SuperMarketStub(int myPort, Address primaryServer){
-        this.ms = new MessagingService(myPort, primaryServer);
+    public SuperMarketStub(int myPort, List<Address> servers){
+        this.ms = new MessagingService(myPort, servers);
     }
 
     @Override
