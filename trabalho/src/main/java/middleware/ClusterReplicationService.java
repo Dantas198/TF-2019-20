@@ -68,11 +68,16 @@ public class ClusterReplicationService {
         }
     };
 
+
+    private boolean isInMainPartition(SpreadGroup[] partition) {
+        return partition.length > totalServers/2;
+    }
+
+
     private void handleNetworkPartition(MembershipInfo info) {
         SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
 
-        // está no grupo maioritário
-        if(stayed.length > totalServers/2) {
+        if(isInMainPartition(stayed)) {
             System.out.println("Server : " + privateName + ", network partition, im in main group");
             if(!imLeader) {
                 imLeader = electionManager.amILeader(stayed);
@@ -97,7 +102,9 @@ public class ClusterReplicationService {
     }
 
     private void handleSelfJoin(MembershipInfo info) {
-        server.unpause(); // TODO deu joinno principal?
+        if(isInMainPartition(info.getMembers()))
+            server.unpause();
+
         System.out.println("Server : " + privateName + ", I joined");
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);

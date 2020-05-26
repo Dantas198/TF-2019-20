@@ -52,6 +52,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 myAddress,
                 new MessagingConfig());
         this.logReader = new LogReader("./testdb.sql.log");
+        this.isPaused = false;
     }
 
     /**
@@ -269,7 +270,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public void startClientListener(){
         this.mms.start();
         mms.registerHandler("request", (a,b) -> {
-            if(isPaused) return; // TODO talvez mudar
+            if(isPaused) return; // TODO verificar
             Message reqm = s.decode(b);
             try {
                 if(reqm instanceof WriteMessage) {
