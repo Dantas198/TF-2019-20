@@ -51,4 +51,8 @@ public class DBInitialization {
                 "    FOREIGN KEY (\"product_name\") REFERENCES \"product\"(\"name\")" +
                 "); ").execute();
     }
+
+    public boolean exists() throws SQLException{
+        return c.getMetaData().getSchemas().next();
+    }
 }

@@ -129,7 +129,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public void updateQueries(Collection<String> queries){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db"+ privateName +";shutdown=true;hsqldb.sqllog=2", "", "");
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:"+ privateName +";shutdown=true;hsqldb.sqllog=2", "", "");
             for(String querie : queries) {
                 c.prepareStatement(querie).execute();
                 System.out.println("querie: " + querie);
