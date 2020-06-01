@@ -49,6 +49,7 @@ public class ClusterReplicationService {
         this.logReader = new LogReader("testdb.log");
     }
 
+
     public CompletableFuture<Void> start() throws Exception {
         this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
                 false, true);
@@ -73,11 +74,16 @@ public class ClusterReplicationService {
         }
     };
 
+
+    private boolean isInMainPartition(SpreadGroup[] partition) {
+        return partition.length > totalServers/2;
+    }
+
+
     private void handleNetworkPartition(MembershipInfo info) {
         SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
 
-        // está no grupo maioritário
-        if(stayed.length > totalServers/2) {
+        if(isInMainPartition(stayed)) {
             System.out.println("Server : " + privateName + ", network partition, im in main group");
             if(!imLeader) {
                 imLeader = electionManager.amILeader(stayed);
@@ -86,8 +92,8 @@ public class ClusterReplicationService {
                 }
             }
         } else {
+            server.pause();
             System.out.println("Server : " + privateName + ", network partition, im not in main group, will stop working");
-            // TODO parar
         }
     }
 
@@ -102,6 +108,9 @@ public class ClusterReplicationService {
     }
 
     private void handleSelfJoin(MembershipInfo info) {
+        if(isInMainPartition(info.getMembers()))
+            server.unpause();
+
         System.out.println("Server : " + privateName + ", I joined");
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);

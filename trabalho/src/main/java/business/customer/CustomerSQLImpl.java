@@ -1,11 +1,8 @@
 package business.customer;
 
-import business.data.order.OrderDAO;
 import business.data.order.OrderSQLDAO;
 import business.order.Order;
-import business.order.OrderImpl;
 
-import java.util.Objects;
 import java.util.Set;
 
 public class CustomerSQLImpl extends CustomerImpl {

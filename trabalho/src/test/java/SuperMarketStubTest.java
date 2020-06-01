@@ -24,7 +24,10 @@ public class SuperMarketStubTest {
                 e.printStackTrace();
             }
         }).start();
-        this.stub = new SuperMarketStub(8888, Address.from("localhost", 7777));
+        List<Address> servers = new ArrayList<>();
+        servers.add(Address.from("localhost", 7777));
+        //...
+        this.stub = new SuperMarketStub(8888, servers);
     }
 
     @Test

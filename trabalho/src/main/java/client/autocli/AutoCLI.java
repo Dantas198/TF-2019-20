@@ -1,4 +1,4 @@
-package client;
+package client.autocli;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -26,10 +26,10 @@ public class AutoCLI<I> {
     }
 
 
-    /*
-    recebe comandos na forma: metodo arg1 arg2 ...
-    termina com input vazio
-    */
+    /**
+     * recebe comandos na forma: metodo arg1 arg2 ...
+     * termina com input vazio
+     */
     public void startInputLoop() throws Exception {
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -46,32 +46,55 @@ public class AutoCLI<I> {
         String command = args.get(0);
 
         if(command.equals("-help")) {
-            return "methods: " + listMethods();
+            return listMethods();
         }
 
         Method m = methods.get(command);
         if(m == null)
-            throw new NoSuchMethodException();
+            return "Error: unrecognized method";
 
 
         Type[] types = m.getGenericParameterTypes();
 
         int pSize = types.length;
         if(pSize > args.size()-1)
-            throw new Exception("args insuficientes, n args: " + pSize);
+            return "Error: insufficient args, required " + pSize;
 
-        Object[] params = parseParams(types, args.subList(1, args.size()));
+        Object[] params = null;
+        try {
+            if (pSize > 0) {
+                params = parseParams(types, args.subList(1, args.size()));
+            }
+            return invokeMethod(m, params);
 
-        System.out.println("CLI -> metodo devolve: " + m.getGenericReturnType());
-
-        return invokeMethod(m, params);
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
     }
-
-
 
     private String listMethods() {
         Collection<Method> ms = methods.values();
-        return Arrays.toString(ms.stream().map(Method::getName).toArray());
+        StringBuilder sb = new StringBuilder();
+        for(Method m : ms) {
+            sb.append(m.getName());
+
+            for (Type t : m.getGenericParameterTypes()) {
+                String name = t.getTypeName();
+                switch (name) {
+                    case "java.lang.String":
+                        name = "String";
+                        break;
+                    case "int":
+                        //case "java.lang.Integer":
+                        name = "int";
+                        break;
+                }
+                sb.append(" ").append(name);
+            }
+            sb.append(" -> ").append(m.getGenericReturnType());
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
 
@@ -103,10 +126,14 @@ public class AutoCLI<I> {
                     break;
                 case "int":
                     //case "java.lang.Integer":
-                    params[i] = Integer.parseInt(param);
+                    try {
+                        params[i] = Integer.parseInt(param);
+                    } catch (NumberFormatException e) {
+                        throw new Exception("int arg was not parsable");
+                    }
                     break;
                 default:
-                    throw new Exception("type must be string or int");
+                    throw new Exception("only methods with int or string arg types are supported");
             }
         }
         return params;

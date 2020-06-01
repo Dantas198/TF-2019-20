@@ -5,6 +5,8 @@ import middleware.message.WriteMessage;
 import org.junit.Test;
 
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class DBSMTest {
@@ -15,9 +17,15 @@ public class DBSMTest {
     private CompletableFuture<Void> run;
 
     public DBSMTest(){
-        this.client1 = new MessagingService(10001, Address.from("localhost", 7777));
-        this.client2 = new MessagingService(10002, Address.from("localhost", 8888));
-        this.client3 = new MessagingService(10003, Address.from("localhost", 8888));
+        List<Address> l1 = new LinkedList<>();
+        List<Address> l2 = new LinkedList<>();
+        List<Address> l3 = new LinkedList<>();
+        l1.add(Address.from("localhost", 7777));
+        l2.add(Address.from("localhost", 8888));
+        l3.add(Address.from("localhost", 8888));
+        this.client1 = new MessagingService(10001, l1);
+        this.client2 = new MessagingService(10002, l2);
+        this.client3 = new MessagingService(10003, l3);
         this.run = new CompletableFuture<>();
     }
 

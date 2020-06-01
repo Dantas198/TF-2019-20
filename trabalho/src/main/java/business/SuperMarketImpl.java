@@ -60,6 +60,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		Map<Product,Integer> products = order.getProducts();
 
 		// TODO trocar order por lista de Strings?
+
 		// verifica se existe stock e substitui keySet por produto completo do stock
 		for (Product p : products.keySet()) {
 			String name = p.getName();
