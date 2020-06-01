@@ -7,6 +7,7 @@ import business.data.DAOPS;
 import business.data.SQLDAO;
 import business.data.order.OrderDAO;
 import business.data.order.OrderSQLDAO;
+import business.order.Order;
 import business.order.OrderImpl;
 
 import java.sql.*;
@@ -24,10 +25,12 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
             public Customer fromResultSet(ResultSet resultSet) throws SQLException {
                 String id = resultSet.getString("id");
                 String currentOrder = resultSet.getString("current_order_id");
+                Order order = currentOrder != null ? new OrderImpl(currentOrder) : null;
                 return new CustomerSQLImpl(id,
-                        new OrderImpl(currentOrder),
+                        order,
                         new CustomerOldOrderDAO(c, id, currentOrder),
-                        orderDAO
+                        orderDAO,
+                        c
                 );
             }
 
@@ -62,9 +65,15 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
             @Override
             public PreparedStatement update(String key, Customer o) throws SQLException {
                 updatePS.setString(1, o.getId());
-                updatePS.setString(2, o.getCurrentOrder().getId());
+                String orderId;
+                if(o.hasCurrentOrder()) {
+                    orderId = o.getCurrentOrder().getId();
+                } else {
+                    orderId = null;
+                }
+                updatePS.setString(2, orderId);
                 updatePS.setString(3, key);
-                return null;
+                return updatePS;
             }
 
             @Override

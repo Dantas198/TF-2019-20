@@ -14,5 +14,7 @@ public interface Customer {
 
 	Order getCurrentOrder();
 
+	void deleteCurrentOrder();
+
 	Set<Order> getOldOrders();
 }

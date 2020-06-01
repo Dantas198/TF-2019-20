@@ -45,6 +45,11 @@ public class CustomerImpl implements Customer, Serializable {
 	}
 
 	@Override
+	public void deleteCurrentOrder() {
+		this.currentOrder = null;
+	}
+
+	@Override
 	public Set<Order> getOldOrders() {
 		return oldOrders;
 	}

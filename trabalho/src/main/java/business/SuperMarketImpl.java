@@ -2,6 +2,7 @@ package business;
 
 import business.customer.Customer;
 import business.customer.CustomerImpl;
+import business.data.DBInitialization;
 import business.data.customer.CustomerDAO;
 import business.data.DAO;
 import business.data.customer.CustomerSQLDAO;
@@ -11,11 +12,13 @@ import business.data.product.ProductDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.product.Product;
+import server.CurrentOrderCleaner;
 
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.*;
 
 public class SuperMarketImpl implements SuperMarket, Serializable {
@@ -23,13 +26,18 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	private DAO<String, Order> orderDAO;
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
+	private CurrentOrderCleaner cleaner;
 
 	public SuperMarketImpl(String privateName) throws SQLException {
-		Connection c = DriverManager.getConnection("jdbc:hsqldb:file:" + privateName + ";shutdown=true;hsqldb.sqllog=2", "", "");
+		Connection c = DriverManager.getConnection("jdbc:hsqldb:file:" + privateName + ";hsqldb.sqllog=2", "", "");
+		new DBInitialization(c).init();
 		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(c);
 		this.orderDAO = orderSQLDAO;
 		this.productDAO = new ProductSQLDAO(c);
-		this.customerDAO = new CustomerSQLDAO(c, orderSQLDAO);
+		CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(c, orderSQLDAO);
+		this.customerDAO = customerSQLDAO;
+		long tmax = 100;
+		cleaner = new CurrentOrderCleaner(customerSQLDAO, Duration.ofDays(tmax));
 	}
 
 	@Override
@@ -83,6 +91,11 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	@Override
 	public boolean addProduct(String customer, String product, int amount) {
 		Customer c = customerDAO.get(customer);
+		try {
+			cleaner.clean();
+		} catch (SQLException throwables) {
+			throwables.printStackTrace();
+		}
 		if (!c.hasCurrentOrder()) {
 			/* customerDAO retorna uma instância de CustomerSQLImpl
 			// CustomerSQLImpl subrepõe o método newCurrentOrder

@@ -10,12 +10,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Date;
 
 public class OrderSQLDAO extends SQLDAO<String, Order> {
     public OrderSQLDAO(Connection c) throws SQLException {
         super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"order\" WHERE \"id\" = ?");
-            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"order\" (\"id\") VALUES (?)");
+            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"order\" (\"id\", \"timestamp\") VALUES (?, ?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"order\" WHERE \"id\" = ?");
             PreparedStatement updatePS = c.prepareStatement("UPDATE \"order\" SET \"id\" = ? WHERE \"id\" = ?");
             PreparedStatement getAllPS = c.prepareStatement("SELECT * FROM \"order\"");
@@ -23,7 +24,8 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
             @Override
             public Order fromResultSet(ResultSet resultSet) throws SQLException {
                 String id = resultSet.getString("id");
-                return new OrderImpl(id, new OrderProductDAO(c, id));
+                Date timestamp = resultSet.getTimestamp("timestamp");
+                return new OrderImpl(id, new OrderProductDAO(c, id), timestamp);
             }
 
             @Override
@@ -40,6 +42,7 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
             @Override
             public PreparedStatement put(Order o) throws SQLException {
                 putPS.setString(1, o.getId());
+                putPS.setTimestamp(2, new java.sql.Timestamp(o.getTimestamp().getTime()));
                 return putPS;
             }
 

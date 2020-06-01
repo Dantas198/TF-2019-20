@@ -25,6 +25,7 @@ public class DBInitialization {
         c.prepareStatement("CREATE TABLE \"order\" (\n" +
                 "    \"id\" varchar(255),\n" +
                 "    \"customer_id\" varchar(255),\n" +
+                "    \"timestamp\" TIMESTAMP,\n" +
                 "    PRIMARY KEY(\"id\"),\n" +
                 "    FOREIGN KEY (\"customer_id\") REFERENCES \"customer\"(\"id\")" +
                 "); ").execute();
