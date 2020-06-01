@@ -14,12 +14,15 @@ import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 
+
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class GandaGotaServerImpl extends ServerImpl<SuperMarket> {
+public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     private SuperMarket superMarket;
 
@@ -105,19 +108,24 @@ public class GandaGotaServerImpl extends ServerImpl<SuperMarket> {
     }
 
     @Override
-    public SuperMarket getState() {
-        System.out.println("Retrieving state");
-        return superMarket;
+    public ArrayList<String> getState() {
+        return null;
     }
 
     @Override
-    public void setState(SuperMarket superMarket) {
-        System.out.println("Setting state");
-        this.superMarket = superMarket;
+    public void setState(ArrayList<String> queries) {
+        try {
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
+            for(String query : queries) {
+                c.prepareStatement(query).execute();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "1", 7777);
+        Server server = new GandaGotaServerImpl(4803, "5", 7775);
         server.start();
     }
 }

@@ -5,7 +5,6 @@ import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderDAO;
 import business.data.order.OrderSQLDAO;
 import business.order.Order;
-import business.order.OrderImpl;
 
 import java.sql.Connection;
 import java.sql.SQLException;

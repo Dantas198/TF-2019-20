@@ -29,8 +29,12 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	private CurrentOrderCleaner cleaner;
 
 	public SuperMarketImpl(String privateName) throws SQLException {
-		Connection c = DriverManager.getConnection("jdbc:hsqldb:file:" + privateName + ";hsqldb.sqllog=2", "", "");
-		new DBInitialization(c).init();
+		Connection c = DriverManager.getConnection("jdbc:hsqldb:file:" + privateName + ";shutdown=true;hsqldb.sqllog=2", "", "");
+		DBInitialization dbInit = new DBInitialization(c);
+		if(!dbInit.exists()){
+			dbInit.init();
+		}
+		dbInit.init();
 		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(c);
 		this.orderDAO = orderSQLDAO;
 		this.productDAO = new ProductSQLDAO(c);

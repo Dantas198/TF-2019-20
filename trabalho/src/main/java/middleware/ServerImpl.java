@@ -33,6 +33,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private Map<String, CompletableFuture<Boolean>> pendingWrites;
     private String privateName;
     private LogReader logReader;
+    private boolean isPaused;
 
     public ServerImpl(int spreadPort, String privateName, int atomixPort){
         this.privateName = privateName;
@@ -51,6 +52,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 myAddress,
                 new MessagingConfig());
         this.logReader = new LogReader("./testdb.sql.log");
+        this.isPaused = false;
     }
 
     /**
@@ -93,6 +95,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      */
     public abstract void rollback();
 
+
     /**
      * Get of the state of the current Server
      * @return the state of the current Server
@@ -108,6 +111,13 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     @Deprecated
     public abstract void setState(STATE state);
 
+    public void pause() {
+        isPaused = true;
+    }
+
+    public void unpause() {
+        isPaused = false;
+    }
 
     /**
      * Set of tables for certifier module
@@ -128,9 +138,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     public void updateQueries(Collection<String> queries){
         try {
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
+            System.out.println("Updating queries (size: " + queries.size() + ")");
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:"+ privateName +";shutdown=true;hsqldb.sqllog=2", "", "");
             for(String querie : queries) {
                 c.prepareStatement(querie).execute();
+                System.out.println("querie: " + querie);
             }
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -260,6 +272,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public void startClientListener(){
         this.mms.start();
         mms.registerHandler("request", (a,b) -> {
+            if(isPaused) return; // TODO verificar
             Message reqm = s.decode(b);
             try {
                 if(reqm instanceof WriteMessage) {

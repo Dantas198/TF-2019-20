@@ -1,12 +1,16 @@
 package middleware;
 
 import middleware.Certifier.Certifier;
+import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.replication.CertifyWriteMessage;
+import middleware.message.replication.GetLengthRequestMessage;
+import middleware.message.replication.StateLengthRequestMessage;
 import middleware.message.replication.StateTransferMessage;
 import spread.*;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -27,6 +31,7 @@ public class ClusterReplicationService {
 
     private ServerImpl server;
     private CompletableFuture<Void> started;
+    private LogReader logReader;
 
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers){
         this.totalServers = totalServers;
@@ -35,13 +40,15 @@ public class ClusterReplicationService {
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.initializer = new Initializer(server);
+        this.initializer = new Initializer(server, this);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
         this.certifier = new Certifier();
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
+        this.logReader = new LogReader("testdb.log");
     }
+
 
     public CompletableFuture<Void> start() throws Exception {
         this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
@@ -67,11 +74,16 @@ public class ClusterReplicationService {
         }
     };
 
+
+    private boolean isInMainPartition(SpreadGroup[] partition) {
+        return partition.length > totalServers/2;
+    }
+
+
     private void handleNetworkPartition(MembershipInfo info) {
         SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
 
-        // está no grupo maioritário
-        if(stayed.length > totalServers/2) {
+        if(isInMainPartition(stayed)) {
             System.out.println("Server : " + privateName + ", network partition, im in main group");
             if(!imLeader) {
                 imLeader = electionManager.amILeader(stayed);
@@ -80,8 +92,8 @@ public class ClusterReplicationService {
                 }
             }
         } else {
+            server.pause();
             System.out.println("Server : " + privateName + ", network partition, im not in main group, will stop working");
-            // TODO parar
         }
     }
 
@@ -91,11 +103,14 @@ public class ClusterReplicationService {
 
         //TODO ENVIAR ESTADO CORRETO. De momento não funciona
         System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
-        Message message = new StateTransferMessage<>(1);
+        Message message = new GetLengthRequestMessage();
         noAgreementFloodMessage(message, newMember);
     }
 
     private void handleSelfJoin(MembershipInfo info) {
+        if(isInMainPartition(info.getMembers()))
+            server.unpause();
+
         System.out.println("Server : " + privateName + ", I joined");
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);
@@ -103,6 +118,7 @@ public class ClusterReplicationService {
         if (members.length == 1) {
             System.out.println("Server : " + privateName + ", and I'm the first member");
             initializer.initialized();
+            imLeader = true;
             if (!started.isDone())
                 started.complete(null);
         }
@@ -143,13 +159,19 @@ public class ClusterReplicationService {
                             boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp());
                             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
                             server.handleCertifierAnswer(cwm, isWritable);
+                        } if(received instanceof StateLengthRequestMessage){
+                            System.out.println("Received request logs");
+                            int lowerBound = ((StateLengthRequestMessage) received).getBody();
+                            System.out.println("Logs lower bound = " + lowerBound );
+                            ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
+                            Message m = new StateTransferMessage(queries);
+                            noAgreementFloodMessage(m, spreadMessage.getSender());
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
                         List<Message> messagesReceived = cachedMessages.get(received.getId());
                         // se for escrita terá de vir o estado já calculado para ser genérico
                         Message myResponse = server.handleMessage(received).from(received);
-
                         messagesReceived.add(myResponse);
                         if (messagesReceived.size() >= nServers) {
                             pendingMessages.get(received.getId()).complete(myResponse);
@@ -166,7 +188,7 @@ public class ClusterReplicationService {
                     System.out.println("Server : " + privateName + ", MembershipMessageReceived -------------");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
 
-                    if(info.isCausedByJoin() && info.getJoined() == spreadGroup) {
+                    if(info.isCausedByJoin() && info.getJoined().equals(spreadConnection.getPrivateGroup())) {
                         handleSelfJoin(info);
                         return;
                     }
@@ -238,4 +260,8 @@ public class ClusterReplicationService {
         //System.out.println("Sending to group ("+ sg + "): " + message);
     }
 
+
+    public LogReader getLogReader() {
+        return logReader;
+    }
 }

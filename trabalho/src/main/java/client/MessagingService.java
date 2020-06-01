@@ -10,20 +10,22 @@ import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
 
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.*;
 
 public class MessagingService {
 
     private ManagedMessagingService mms;
-    private Address primaryServer;
+    private List<Address> servers;
     private Serializer s;
     private CompletableFuture<Message> res;
     private ScheduledExecutorService ses;
 
 
-    public MessagingService(int myPort, Address primaryServer){
+    public MessagingService(int myPort, List<Address> servers){
         this.res = new CompletableFuture<>();
-        this.primaryServer = primaryServer;
+        this.servers = servers;
         Address myAddress = io.atomix.utils.net.Address.from("localhost", myPort);
         this.ses = Executors.newScheduledThreadPool(1);
 
@@ -46,11 +48,17 @@ public class MessagingService {
         }, ses);
     }
 
+    // escalonamento
+    private Address chooseServer() {
+        Random rand = new Random();
+        return servers.get(rand.nextInt(servers.size()));
+    }
+
 
     private ScheduledFuture<?> scheduleTimeout(Message reqm){
         return ses.scheduleAtFixedRate(()->{
             System.out.println("timeout...sending new request");
-            mms.sendAsync(primaryServer, "request", s.encode(reqm));
+            mms.sendAsync(chooseServer(), "request", s.encode(reqm));
         }, 1, 4, TimeUnit.SECONDS);
     }
 
@@ -72,7 +80,7 @@ public class MessagingService {
                 sf.cancel(true);
             });
             */
-            mms.sendAsync(primaryServer, "request", s.encode(request));
+            mms.sendAsync(chooseServer(), "request", s.encode(request));
             return (R) res.thenApply(cm -> {
                 System.out.println("Received message: "+ cm);
                 if(cm instanceof ErrorMessage)

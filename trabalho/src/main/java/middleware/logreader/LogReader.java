@@ -36,8 +36,8 @@ public class LogReader {
 
     public Collection<String> getQueries(int lowerBound, int upperBound) throws Exception{
         List<String> res = new ArrayList<>(upperBound-lowerBound);
-        lowerBound = lowerBound < 0 ? 0 : lowerBound;
-        upperBound = upperBound > size()-1 ? size()-1 : upperBound;
+        lowerBound = Math.max(lowerBound, 0);
+        upperBound = Math.min(upperBound, size() - 1);
         for(int i = lowerBound; i < upperBound; i++){
             res.add(queries.get(i));
         }
@@ -45,19 +45,20 @@ public class LogReader {
     }
 
     public Collection<String> getQueries(int lowerBound) throws Exception {
-        return getQueries(lowerBound, size()-1);
+        return getQueries(lowerBound, size());
     }
 
     private void getQueriesFromString(String filestr){
         if(queries == null){
             queries = new ArrayList<>();
-            String splitRegex = "\n(?=\\d{4}-\\d+-\\d+)";
-            Pattern logLine = Pattern.compile("\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
+            String splitRegex = "\n(?=DROP|SET|INSERT|DELETE|CREATE|COMMIT)"; //"\n(?=\\d{4}-\\d+-\\d+)";
+            Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
             String[] split = filestr.split(splitRegex);
             for(String log : split){
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
-                    String query = matcher.group(1);
+                    String query = matcher.group(0);
+                    //System.out.println("Query--" + query);
                     queries.add(query);
                 } else {
                     System.out.println("Log " + log + " couldn't be parsed");
@@ -67,7 +68,7 @@ public class LogReader {
     }
 
     public static void main(String[] args)  throws  Exception{
-        LogReader logReader = new LogReader("./testdb.sql.log");
-        logReader.size();
+        LogReader logReader = new LogReader("./testdb.log");
+        logReader.getQueries(18).forEach(System.out::println);
     }
 }

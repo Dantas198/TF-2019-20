@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 public class CertifierTest {
 
+
     private void checkConflict(Certifier c, BitWriteSet ws, long ts) throws NoTableDefinedException {
         if (!c.hasConflict(ws, new ArrayList<>(), ts)) {
             c.commit(ws, new ArrayList<>());
@@ -42,4 +43,5 @@ public class CertifierTest {
         System.out.println("WS 2");
         checkConflict(c, ws2, t2);
     }
+
 }
