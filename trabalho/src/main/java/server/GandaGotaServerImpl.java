@@ -125,7 +125,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "2", 7778);
+        Server server = new GandaGotaServerImpl(4803, "5", 7775);
         server.start();
     }
 }

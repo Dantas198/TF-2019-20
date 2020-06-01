@@ -49,7 +49,8 @@ public class Initializer {
                     messageQueue = null;
                 } else if (received instanceof GetLengthRequestMessage){
                     System.out.println("Received logs length request");
-                    Message logsLength = new StateLengthRequestMessage(service.getLogReader().size());
+                    int logSize = Math.max(0, service.getLogReader().size()-1);
+                    Message logsLength = new StateLengthRequestMessage(logSize);
                     service.noAgreementFloodMessage(logsLength, spreadMessage.getSender());
                 }  else {
                     messageQueue.add(spreadMessage);

@@ -31,6 +31,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		if(!dbInit.exists()){
 			dbInit.init();
 		}
+		dbInit.init();
 		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(c);
 		this.orderDAO = orderSQLDAO;
 		this.productDAO = new ProductSQLDAO(c);

@@ -1,0 +1,14 @@
+/*C1*/SET SCHEMA SYSTEM_LOBS
+INSERT INTO BLOCKS VALUES(0,2147483647,0)
+COMMIT
+/*C2*/SET SCHEMA PUBLIC
+DROP SCHEMA PUBLIC CASCADE
+DROP TABLE IF EXISTS "customer"
+CREATE TABLE "customer" (\u000a    "id" varchar(255),\u000a    "current_order_id" varchar(255),\u000a    PRIMARY KEY("id")\u000a)
+DROP TABLE IF EXISTS "order"
+CREATE TABLE "order" (\u000a    "id" varchar(255),\u000a    "customer_id" varchar(255),\u000a    PRIMARY KEY("id"),\u000a    FOREIGN KEY ("customer_id") REFERENCES "customer"("id"))
+ALTER TABLE "customer"\u000a   ADD CONSTRAINT FK_customer_current_order_id_order_id\u000a   FOREIGN KEY ("current_order_id") REFERENCES "order"("id")
+DROP TABLE IF EXISTS "product"
+CREATE TABLE "product" (\u000a    "name" varchar(255),\u000a    "description" varchar(255),\u000a    "price" int,\u000a    "stock" int,\u000a    PRIMARY KEY("name")\u000a)
+DROP TABLE IF EXISTS "order_product"
+CREATE TABLE "order_product" (\u000a    "order_id" varchar(255),\u000a    "product_name" varchar(255),\u000a    "quantity" int,\u000a    PRIMARY KEY("order_id", "product_name"),\u000a    FOREIGN KEY ("order_id") REFERENCES "order"("id"),\u000a    FOREIGN KEY ("product_name") REFERENCES "product"("name"))
