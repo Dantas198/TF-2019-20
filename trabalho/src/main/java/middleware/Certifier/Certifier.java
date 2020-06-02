@@ -1,9 +1,6 @@
 package middleware.Certifier;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Class that deals with certification logic.
@@ -45,31 +42,35 @@ public class Certifier {
        return false;
     }
 
-    public synchronized void commitLocalStartedTransaction(BitWriteSet ws, List<String> tables, long ts, String id) throws NoTableDefinedException {
-        for(String table : tables){
+    public synchronized void commitLocalStartedTransaction(Map<String, BitWriteSet> ws, long ts, String id) throws NoTableDefinedException {
+        for(Map.Entry<String, BitWriteSet> entry : ws.entrySet()){
+            String table = entry.getKey();
             LinkedHashMap<Long, Round> writes = this.writesPerTable.get(table);
             if(writes == null)
                 throw new NoTableDefinedException("No tables defined with that name");
-            writes.get(this.timestamp).addCommit(ws);
+            BitWriteSet bws = entry.getValue();
+            writes.get(this.timestamp).addCommit(bws);
             writes.get(ts).removeStarted(id);
             this.timestamp++;
         }
     }
 
-    public synchronized void commit(BitWriteSet ws, List<String> tables) throws NoTableDefinedException {
+    public synchronized void commit(Map<String, BitWriteSet> ws) throws NoTableDefinedException {
         //Commit also increases current timestamp
-        for(String table : tables){
+        for(Map.Entry<String, BitWriteSet> entry : ws.entrySet()){
+            String table = entry.getKey();
             LinkedHashMap<Long, Round> writes = this.writesPerTable.get(table);
             if(writes == null)
                 throw new NoTableDefinedException("No tables defined with that name");
 
             Round r = writes.get(this.timestamp);
+            BitWriteSet bws = entry.getValue();
             if(r == null){
                 r = new Round();
-                r.addCommit(ws);
+                r.addCommit(bws);
                 writes.put(this.timestamp, r);
             }else{
-                r.addCommit(ws);
+                r.addCommit(bws);
             }
             this.timestamp++;
         }
@@ -79,7 +80,7 @@ public class Certifier {
         return this.timestamp;
     }
 
-    public synchronized void transactionStarted(List<String> tables, long ts, String id) throws NoTableDefinedException {
+    public synchronized void transactionStarted(Set<String> tables, long ts, String id) throws NoTableDefinedException {
         for (String table : tables) {
             LinkedHashMap<Long, Round> writes = this.writesPerTable.get(table);
             if (writes == null)

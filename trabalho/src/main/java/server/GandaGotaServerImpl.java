@@ -1,6 +1,5 @@
 package server;
 
-import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.product.Product;
 import client.bodies.AddProductBody;
@@ -20,15 +19,15 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Map;
 
 public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
-    private SuperMarket superMarket;
+    private SuperMarketImpl superMarket;
 
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) throws SQLException {
         super(spreadPort, privateName, atomixPort);
-        //TODO tmax não à sorte poderá aumentar/diminuir consoante a quantidade de aborts
+        //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.superMarket = new SuperMarketImpl(privateName);
     }
 
@@ -49,8 +48,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                 int amount = body.getAmount();
                 return new ContentMessage<>(superMarket.addProduct(customer, product, amount));
             } else if(message instanceof FinishOrderMessage) {
-                String customer = ((FinishOrderMessage) message).getBody();
-                return new ContentMessage<>(superMarket.finishOrder(customer));
+                return new ErrorMessage(new Error("Invalid non-write Message")).from(message);
             } else if(message instanceof ResetOrderMessage) {
                 String customer = ((ResetOrderMessage) message).getBody();
                 return new ContentMessage<>(superMarket.resetOrder(customer));
@@ -67,24 +65,12 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     @Override
     public CertifyWriteMessage<?> preprocessMessage(Message message){
-        //TODO PRE-PROCESSAMENTO
-        /*
-        FinishOrderBody body = ((FinishOrderMessage) message).getBody();
-        Map<Product, Integer> products = body.getOrder().getProducts();
-        for(Product prod : products.keySet()){
-            superMarket.addProduct(body.getCustomer(), prod.getName(), products.get(prod));
+        Map<String, BitWriteSet> writeSets = new HashMap<>();
+        if (message instanceof FinishOrderMessage) {
+            String customer = ((FinishOrderMessage) message).getBody();
+            superMarket.finishOrder(customer, writeSets);
         }
-        // return new ContentMessage<>(superMarket.finishOrder(body.getCustomer()));
-        return new FinishOrderPreProcessedMessage(null, null);
-         */
-
-        //Para testes
-        WriteMessage<HashSet<String>> wm = (WriteMessage<HashSet<String>>) message;
-        BitWriteSet bws = new BitWriteSet();
-        for(String s : wm.getBody()){
-            bws.add(s.getBytes());
-        }
-        return new CertifyWriteMessage<>(bws, 1, new ArrayList<>());
+        return new CertifyWriteMessage<>(writeSets, 1);
     }
 
     @Override

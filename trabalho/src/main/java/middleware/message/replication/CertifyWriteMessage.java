@@ -4,7 +4,10 @@ import middleware.Certifier.BitWriteSet;
 import middleware.message.Message;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Generic class to represent an operation that requires certification.
@@ -14,20 +17,19 @@ import java.util.List;
 public class CertifyWriteMessage<V extends Serializable> extends Message
         implements Certifiable, Replicable<V>, Serializable {
 
-    private final BitWriteSet bws;
-    private List<String> tables;
+    // Maps table name and BitWriteSet
+    private final Map<String, BitWriteSet> bws;
     private long timestamp;
     private final V state;
 
-    public CertifyWriteMessage(BitWriteSet bws, V state, List<String> tables){
+    public CertifyWriteMessage(Map<String, BitWriteSet> bws, V state){
         this.bws = bws;
         this.state = state;
-        this.tables = tables;
     }
 
     @Override
-    public BitWriteSet getWriteSet() {
-        return bws;
+    public Map<String, BitWriteSet> getWriteSets() {
+        return this.bws;
     }
 
     @Override
@@ -41,8 +43,8 @@ public class CertifyWriteMessage<V extends Serializable> extends Message
     }
 
     @Override
-    public List<String> getTables() {
-        return tables;
+    public Set<String> getTables() {
+        return this.bws.keySet();
     }
 
     public void setTimestamp(long timestamp){

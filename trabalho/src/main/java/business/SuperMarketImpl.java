@@ -3,15 +3,13 @@ package business;
 import business.customer.Customer;
 import business.customer.CustomerImpl;
 import business.data.DBInitialization;
-import business.data.customer.CustomerDAO;
 import business.data.DAO;
 import business.data.customer.CustomerSQLDAO;
-import business.data.order.OrderDAO;
 import business.data.order.OrderSQLDAO;
-import business.data.product.ProductDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.product.Product;
+import middleware.Certifier.BitWriteSet;
 import server.CurrentOrderCleaner;
 
 import java.io.Serializable;
@@ -21,37 +19,35 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.*;
 
-public class SuperMarketImpl implements SuperMarket, Serializable {
+public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 
 	private DAO<String, Order> orderDAO;
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
 	private CurrentOrderCleaner cleaner;
+	private Connection connection;
 
 	public SuperMarketImpl(String privateName) throws SQLException {
-		Connection c = DriverManager.getConnection("jdbc:hsqldb:file:" + privateName + ";shutdown=true;hsqldb.sqllog=2", "", "");
-		DBInitialization dbInit = new DBInitialization(c);
+		this.connection = DriverManager.getConnection("jdbc:hsqldb:file:db/" + privateName + ";shutdown=true;hsqldb.sqllog=2", "", "");
+		DBInitialization dbInit = new DBInitialization(this.connection);
 		if(!dbInit.exists()){
 			dbInit.init();
 		}
 		dbInit.init();
-		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(c);
+		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
 		this.orderDAO = orderSQLDAO;
-		this.productDAO = new ProductSQLDAO(c);
-		CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(c, orderSQLDAO);
+		this.productDAO = new ProductSQLDAO(this.connection);
+		CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(this.connection, orderSQLDAO);
 		this.customerDAO = customerSQLDAO;
 		long tmax = 100;
 		cleaner = new CurrentOrderCleaner(customerSQLDAO, Duration.ofDays(tmax));
 	}
 
-	@Override
 	public boolean addCustomer(String customer) {
 		Customer c = new CustomerImpl(customer);
 		return customerDAO.put(c);
 	}
 
-
-	@Override
 	public boolean resetOrder(String customer) {
 		Customer c = customerDAO.get(customer);
 		c.newCurrentOrder();
@@ -59,8 +55,13 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		return true;
 	}
 
-	@Override
-	public boolean finishOrder(String customer) {
+	public boolean finishOrder(String customer, Map<String, BitWriteSet> writeSets) {
+		// TODO: Resolver problemas de transação
+		try {
+			connection.setAutoCommit(false);
+		} catch (SQLException throwables) {
+			return false;
+		}
 		// TODO tmax
 		Customer c = customerDAO.get(customer);
 		Order order = c.getCurrentOrder();
@@ -78,21 +79,37 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		}
 
 		// atualiza stock
+		BitWriteSet productBws = new BitWriteSet();
 		for (Product p : products.keySet()) {
 			int quantity = products.get(p);
 			p.reduceStock(quantity);
 			productDAO.update(p.getName(), p);
+			productBws.add(p.getName().getBytes());
 		}
+		writeSets.put("product", productBws);
+		BitWriteSet customerBws = new BitWriteSet();
+		customerBws.add(c.getId().getBytes());
+		writeSets.put("customer", customerBws);
 
-		c.getOldOrders().add(order);
+		c.getOldOrders().add(order); // pode ser removido
 		c.newCurrentOrder();
 		customerDAO.update(customer, c);
+		/*
+		try {
+			this.connection.commit();
+		} catch (SQLException throwables) {
+			try {
+				this.connection.rollback();
+				this.connection.setAutoCommit(true);
+			} catch (SQLException throwables1) {
+				return false;
+			}
+			return false;
+		}
+		 */
 		return true;
 	}
 
-
-
-	@Override
 	public boolean addProduct(String customer, String product, int amount) {
 		Customer c = customerDAO.get(customer);
 		try {
@@ -115,18 +132,15 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		return true;
 	}
 
-	@Override
 	public Map<Product, Integer> getCurrentOrderProducts(String customer) {
 		return customerDAO.get(customer).getCurrentOrder().getProducts();
 	}
 
-	@Override
 	public Collection<Order> getHistory(String customer) {
 		Customer c = customerDAO.get(customer);
 		return c.getOldOrders();
 	}
 
-	@Override
 	public Collection<Product> getCatalogProducts() {
 		return productDAO.getAll().values();
 	}

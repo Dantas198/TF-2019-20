@@ -39,15 +39,11 @@ public class CustomerSQLImpl extends CustomerImpl {
         super.deleteCurrentOrder();
         customerDAO.update(this.getId(), this);
         this.removeCurrentOrder();
-        System.out.println("Tem order?? : " + this.hasCurrentOrder());
-        System.out.println("Order : " + this.getId() + " " + this.getCurrentOrder());
     }
 
     private void removeCurrentOrder() {
         if(this.hasCurrentOrder()) {
-            this.orderDAO.getAll().values().forEach(order -> System.out.println(order.getId()));
-            System.out.println(this.getCurrentOrder().getId() + " " + this.hasCurrentOrder());
-            System.out.println("Apagou linha? " + this.orderDAO.delete(this.getCurrentOrder().getId()));
+            this.orderDAO.delete(this.getCurrentOrder().getId());
         }
     }
 }

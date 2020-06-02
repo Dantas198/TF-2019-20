@@ -1,5 +1,7 @@
 package business.data;
 
+import middleware.Certifier.BitWriteSet;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -75,9 +77,15 @@ public class SQLDAO<K, T> implements DAO<K, T> {
 
     public void commit() throws SQLException {
         connection.commit();
+        connection.setAutoCommit(true);
     }
 
     public void rollback() throws SQLException {
         connection.rollback();
+        connection.setAutoCommit(true);
+    }
+
+    public void startTransaction() throws SQLException {
+        connection.setAutoCommit(false);
     }
 }

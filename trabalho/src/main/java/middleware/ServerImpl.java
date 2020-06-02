@@ -71,6 +71,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @param message The body Message received
      * @return the message body of the response
      */
+    //TODO: Converter para WriteMessage visto que só aceita write message
     public abstract CertifyWriteMessage<?> preprocessMessage(Message message);
 
     /**
@@ -185,7 +186,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
                 //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
                 System.out.println("Server " + privateName + " commiting to certifier");
-                spreadService.certifier.commit(message.getWriteSet(), message.getTables());
+                spreadService.certifier.commit(message.getWriteSets());
             }
         }
         else{
@@ -200,13 +201,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * Called from clientListener handler when a writeMessage arrived. Starts a transaction by getting the current starting
      * timestamp and pre-processing the request.
      * server
-     * @param reqm request being made
+     * @param cwm message
      * @return the information necessary to certify and replicate the transaction that is for now in a transient state
      */
-    private CertifyWriteMessage<?> startTransaction(Message reqm) throws NoTableDefinedException {
+    private CertifyWriteMessage<?> startTransaction(CertifyWriteMessage<?> cwm) throws NoTableDefinedException {
         long ts = spreadService.certifier.getTimestamp();
-        //pre-processamento: colocar transação com estado não commit e calcular o estado resultado
-        CertifyWriteMessage<?> cwm = preprocessMessage(reqm);
         spreadService.certifier.transactionStarted(cwm.getTables(), ts, cwm.getId());
         cwm.setTimestamp(ts);
         //TODO tirar o sleep após testes
@@ -230,7 +229,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         try {
             rl.lock();
             this.pendingWrites.put(cwm.getId(), res);
-        }finally {
+        } finally {
             rl.unlock();
         }
         res.thenAccept(isWritable -> {
@@ -241,7 +240,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 //Atualiza as transações que foram feitas
                 System.out.println("Server " + privateName + " commiting to certifier");
                 try {
-                    spreadService.certifier.commitLocalStartedTransaction(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp(), cwm.getId());
+                    spreadService.certifier.commitLocalStartedTransaction(cwm.getWriteSets(), cwm.getStartTimestamp(), cwm.getId());
                 } catch (NoTableDefinedException noTableDefinedException) {
                     noTableDefinedException.printStackTrace();
                 }
@@ -261,7 +260,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         });
         System.out.println("Server: " + privateName + " trying to commit " + cwm.getId());
         spreadService.floodCertifyMessage(cwm);
-
     }
 
 
@@ -277,8 +275,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             try {
                 if(reqm instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members");
-                    CertifyWriteMessage<?> cwm = startTransaction(reqm);
-                    tryCommit(a, cwm);
+                    tryCommit(a, startTransaction(preprocessMessage(reqm)));
                 }
                 else{
                     System.out.println("Server " + privateName + " handling the request locally");
@@ -291,7 +288,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     }
 
     @Override
-    public void stop() throws Exception {
+    public void stop() {
         this.runningCompletable.complete(null);
     }
 
