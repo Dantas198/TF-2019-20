@@ -40,20 +40,18 @@ public class DAOSet<T> implements Set<T> {
     public Iterator<T> iterator() {
         try {
             return new Iterator<T>() {
-                private ResultSet rs = ps.getAll().executeQuery();
+                private final ResultSet rs = ps.getAll().executeQuery();
                 private Boolean hasNext = null;
 
                 @Override
                 public boolean hasNext() {
-                    if(hasNext == null) {
-                        System.out.println("hello");
-                        try {
-                            hasNext = rs.next();
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        hasNext = rs.next();
+                        return hasNext;
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        return false;
                     }
-                    return hasNext;
                 }
 
                 @Override
@@ -68,8 +66,8 @@ public class DAOSet<T> implements Set<T> {
                     }
                     if(hasNext) {
                         try {
-                            System.out.println(ps.fromResultSet(rs));
-                            return ps.fromResultSet(rs);
+                            T obj = ps.fromResultSet(rs);
+                            return obj;
                         } catch (SQLException e) {
                             e.printStackTrace();
                             return null;

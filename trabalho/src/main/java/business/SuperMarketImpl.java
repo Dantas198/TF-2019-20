@@ -144,10 +144,6 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	}
 
 	public Map<Product, Integer> getCurrentOrderProducts(String customerName) {
-		System.out.println("Order:" + customerDAO.get(customerName).getCurrentOrder());
-		System.out.println("Products:" + customerDAO.get(customerName).getCurrentOrder().getProducts());
-		Map<Product, Integer> productIntegerMap = customerDAO.get(customerName).getCurrentOrder().getProducts();
-		System.out.println("quant:" + productIntegerMap.values() + ":" + productIntegerMap.size());
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null || !customer.hasCurrentOrder()) return null;
 		return customer.getCurrentOrder().getProducts();

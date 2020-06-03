@@ -31,9 +31,8 @@ public class CustomerSQLImpl extends CustomerImpl {
     // Implementa este método em modo eager para manter a base de dados consistente
     @Override
     public void newCurrentOrder() {
-        this.removeCurrentOrder();
-        super.newCurrentOrder();
         // Transaction ??
+        super.newCurrentOrder();
         this.getOldOrders().add(super.getCurrentOrder());
         customerDAO.update(this.getId(), this);
         System.out.println(this.getId());
@@ -44,12 +43,5 @@ public class CustomerSQLImpl extends CustomerImpl {
     public void deleteCurrentOrder() {
         super.deleteCurrentOrder();
         customerDAO.update(this.getId(), this);
-        this.removeCurrentOrder();
-    }
-
-    private void removeCurrentOrder() {
-        if(this.hasCurrentOrder()) {
-            this.orderDAO.delete(this.getCurrentOrder().getId());
-        }
     }
 }

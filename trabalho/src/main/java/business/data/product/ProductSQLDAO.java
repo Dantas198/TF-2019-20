@@ -45,7 +45,6 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
                 putPS.setFloat(2, o.getPrice());
                 putPS.setString(3, o.getDescription());
                 putPS.setInt(4, o.getStock());
-                System.out.println("DAO PUT");
                 return putPS;
             }
 

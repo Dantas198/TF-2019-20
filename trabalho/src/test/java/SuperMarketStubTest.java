@@ -65,6 +65,7 @@ public class SuperMarketStubTest {
         stub.addCustomer(customerName);
         boolean added = stub.addProduct(customerName, "Queijo", 1);
         if(added) {
+            stub.getCurrentOrderProducts(customerName);
             Iterator<Map.Entry<Product, Integer>> iter = stub.getCurrentOrderProducts(customerName).entrySet().iterator();
             assertTrue("Should have product", iter.hasNext());
             assertEquals("Product should be 'Queijo'", iter.next().getKey().getName(), "Queijo");

@@ -61,4 +61,14 @@ public class ProductImpl implements Product, Serializable {
 	public int getStock() {
 		return stock;
 	}
+
+	@Override
+	public String toString() {
+		return "Product {" +
+				"name='" + name + '\'' +
+				", price=" + price +
+				", description='" + description + '\'' +
+				", stock=" + stock +
+				'}';
+	}
 }
