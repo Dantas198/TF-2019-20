@@ -20,7 +20,7 @@ public class SuperMarketStub implements SuperMarket {
 
     @Override
     public boolean addCustomer(String customer) throws Exception {
-        Message msg = new AddCostumerMessage(customer);
+        Message msg = new AddCustomerMessage(customer);
         return ms.<ContentMessage<Boolean>>sendAndReceive(msg).getBody();
     }
 

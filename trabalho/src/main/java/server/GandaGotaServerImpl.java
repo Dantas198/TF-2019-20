@@ -10,7 +10,7 @@ import middleware.ServerImpl;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
-import middleware.message.WriteMessage;
+import middleware.message.TransactionMessage;
 import middleware.message.replication.CertifyWriteMessage;
 
 
@@ -35,37 +35,39 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     @Override
     public Message handleMessage(Message message) {
         try {
-            if(message instanceof AddCostumerMessage) {
-                String customer = ((AddCostumerMessage) message).getBody();
+            if(message instanceof AddCustomerMessage) {
+                String customer = ((AddCustomerMessage) message).getBody();
                 return new ContentMessage<>(superMarket.addCustomer(customer));
-            } else if(message instanceof GetOrderMessage) {
+            }
+            if(message instanceof GetOrderMessage) {
                 String customer = ((GetOrderMessage) message).getBody();
                 return new ContentMessage<>((HashMap<Product, Integer>) superMarket.getCurrentOrderProducts(customer));
-            } else if(message instanceof AddProductMessage) {
+            }
+            if(message instanceof AddProductMessage) {
                 AddProductBody body = ((AddProductMessage) message).getBody();
                 String customer = body.getCustomer();
                 String product = body.getProduct();
                 int amount = body.getAmount();
                 return new ContentMessage<>(superMarket.addProduct(customer, product, amount));
-            } else if(message instanceof FinishOrderMessage) {
-                // TODO debug
-                return new ErrorMessage(new Error("Invalid non-write Message")).from(message);
-            } else if(message instanceof ResetOrderMessage) {
+            }
+            if(message instanceof ResetOrderMessage) {
                 String customer = ((ResetOrderMessage) message).getBody();
                 return new ContentMessage<>(superMarket.resetOrder(customer));
-            } else if(message instanceof GetCatalogProductsMessage){
+            }
+            if(message instanceof GetCatalogProductsMessage){
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
-            } else if(message instanceof GetHistoryMessage) {
+            }
+            if(message instanceof GetHistoryMessage) {
                 return new ContentMessage<>(new ArrayList<>(superMarket.getHistory(((GetHistoryMessage) message).getBody())));
             }
         } catch (Exception e){
             return new ErrorMessage(e).from(message);
         }
-        return new ErrorMessage(new Exception("Not function for message " + message.getId() + ": " + message));
+        return new ErrorMessage(new Exception("Unrecognized message " + message.getId() + ": " + message));
     }
 
     @Override
-    public CertifyWriteMessage<?> handleTransactionMessage(Message message){
+    public CertifyWriteMessage<?> handleTransactionMessage(TransactionMessage<?> message){
         Map<String, BitWriteSet> writeSets = new HashMap<>();
         if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();

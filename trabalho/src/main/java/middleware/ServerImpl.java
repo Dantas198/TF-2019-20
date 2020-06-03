@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class ServerImpl<STATE extends Serializable> implements Server {
+
     private final ClusterReplicationService replicationService;
     private final ExecutorService e;
     private final Serializer s;
@@ -73,7 +74,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @return the message body of the response
      */
     //TODO: Converter para WriteMessage visto que só aceita write message
-    public abstract CertifyWriteMessage<?> handleTransactionMessage(Message message);
+    public abstract CertifyWriteMessage<?> handleTransactionMessage(TransactionMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
@@ -198,6 +199,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     }
 
+
+
+
+
+
     /**
      * Called from clientListener handler when a transactionMessage arrived. Starts a transaction by getting the current starting
      * timestamp and pre-processing the request.
@@ -280,7 +286,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             try {
                 if(request instanceof TransactionMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
-                    tryCommit(requester, startTransaction(handleTransactionMessage(request)));
+                    tryCommit(requester, startTransaction(handleTransactionMessage((TransactionMessage<?>) request)));
                 }
                 else if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members");
