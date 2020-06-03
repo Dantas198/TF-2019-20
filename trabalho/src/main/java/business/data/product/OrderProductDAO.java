@@ -14,13 +14,13 @@ import java.util.Map;
 public class OrderProductDAO extends DAOMap<Product, Integer> {
     public OrderProductDAO(Connection c, String orderId) throws SQLException {
         super(new DAOSet<>(new DAOSetPS<>() {
-            private ProductDAO productDAO = new ProductDAO();
+            private ProductSQLDAO productDAO = new ProductSQLDAO(c);
 
             @Override
             public Entry<Product, Integer> fromResultSet(ResultSet resultSet) throws SQLException {
-                String productId = resultSet.getString("product_id");
+                String productName = resultSet.getString("product_name");
                 int quantity = resultSet.getInt("quantity");
-                return Map.entry(productDAO.get(productId), quantity);
+                return Map.entry(productDAO.get(productName), quantity);
             }
 
             @Override
@@ -39,7 +39,7 @@ public class OrderProductDAO extends DAOMap<Product, Integer> {
 
             @Override
             public PreparedStatement add(Entry<Product, Integer> o) throws SQLException {
-                PreparedStatement ps = c.prepareStatement("INSERT INTO \"order_product\" (\"order_id\", \"product_name\", \"quantity\") VALUES (?, ?, ?)");
+                PreparedStatement ps = c.prepareStatement("REPLACE INTO \"order_product\" (\"order_id\", \"product_name\", \"quantity\") VALUES (?, ?, ?)");
                 ps.setString(1, orderId);
                 ps.setString(2, o.getKey().getName());
                 ps.setInt(3, o.getValue());

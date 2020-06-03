@@ -15,6 +15,7 @@ public class SuperMarketStub implements SuperMarket {
     private MessagingService ms;
 
     public SuperMarketStub(int myPort, List<Address> servers){
+        System.out.println(servers);
         this.ms = new MessagingService(myPort, servers);
     }
 

@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
 public class CurrentOrderCleanerTest {
     @Test
     public void test() throws SQLException {
-        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/currentOrderCleanerTest2;shutdown=true;hsqldb.sqllog=2;hsqldb.lock_file=false", "", "");
+        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/currentOrderCleanerTest2;shutdown=true;hsqldb.sqllog=2;hsqldb.lock_file=false;sql.syntax_mys=true", "", "");
         new DBInitialization(c).init();
         CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(c, new OrderSQLDAO(c));
         Calendar calendar = Calendar.getInstance();

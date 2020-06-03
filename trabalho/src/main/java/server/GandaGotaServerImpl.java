@@ -41,7 +41,14 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
             }
             if(message instanceof GetOrderMessage) {
                 String customer = ((GetOrderMessage) message).getBody();
-                return new ContentMessage<>((HashMap<Product, Integer>) superMarket.getCurrentOrderProducts(customer));
+                Map<Product, Integer> currentOrderProducts = superMarket.getCurrentOrderProducts(customer);
+                HashMap<Product, Integer> response;
+                if(currentOrderProducts != null) {
+                    response = new HashMap(currentOrderProducts);
+                } else {
+                    response = null;
+                }
+                return new ContentMessage<>(response);
             }
             if(message instanceof AddProductMessage) {
                 AddProductBody body = ((AddProductMessage) message).getBody();
@@ -61,6 +68,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                 return new ContentMessage<>(new ArrayList<>(superMarket.getHistory(((GetHistoryMessage) message).getBody())));
             }
         } catch (Exception e){
+            e.printStackTrace();
             return new ErrorMessage(e).from(message);
         }
         return new ErrorMessage(new Exception("Unrecognized message " + message.getId() + ": " + message));
@@ -105,7 +113,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     @Override
     public void setState(ArrayList<String> queries) {
         try {
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/testdb;shutdown=true;hsqldb.sqllog=2", "", "");
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/testdb;shutdown=true;hsqldb.sqllog=2;sql.syntax_mys=true", "", "");
             for(String query : queries) {
                 c.prepareStatement(query).execute();
             }
@@ -115,7 +123,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "5", 7775);
+        Server server = new GandaGotaServerImpl(4803, "1", 6666);
         server.start();
     }
 }

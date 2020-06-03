@@ -14,7 +14,7 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
     public ProductSQLDAO(Connection c) throws SQLException {
         super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"product\" WHERE \"name\" = ?");
-            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"product\" (\"name\", \"price\", \"description\", \"stock\") VALUES (?, ?, ?, ?)");
+            PreparedStatement putPS = c.prepareStatement("REPLACE INTO \"product\" (\"name\", \"price\", \"description\", \"stock\") VALUES (?, ?, ?, ?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"product\" WHERE \"name\" = ?");
             PreparedStatement updatePS = c.prepareStatement("UPDATE \"product\" SET \"name\" = ?,  \"price\" = ?, \"description\" = ? , \"stock\" = ? WHERE \"name\" = ?");
             PreparedStatement getAllPS = c.prepareStatement("SELECT * FROM \"product\"");
@@ -45,6 +45,7 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
                 putPS.setFloat(2, o.getPrice());
                 putPS.setString(3, o.getDescription());
                 putPS.setInt(4, o.getStock());
+                System.out.println("DAO PUT");
                 return putPS;
             }
 
@@ -61,7 +62,7 @@ public class ProductSQLDAO extends SQLDAO<String, Product> {
                 updatePS.setString(3, o.getDescription());
                 updatePS.setInt(4, o.getStock());
                 updatePS.setString(5, key);
-                return null;
+                return updatePS;
             }
 
             @Override

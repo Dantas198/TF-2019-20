@@ -1,8 +1,9 @@
 package business.data;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 
 public class DBInitialization {
     private Connection c;
@@ -25,7 +26,7 @@ public class DBInitialization {
         c.prepareStatement("CREATE TABLE \"order\" (\n" +
                 "    \"id\" varchar(255),\n" +
                 "    \"customer_id\" varchar(255),\n" +
-                "    \"timestamp\" TIMESTAMP,\n" +
+                "    \"timestamp\" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" +
                 "    PRIMARY KEY(\"id\"),\n" +
                 "    FOREIGN KEY (\"customer_id\") REFERENCES \"customer\"(\"id\")" +
                 "); ").execute();
@@ -53,7 +54,34 @@ public class DBInitialization {
                 "); ").execute();
     }
 
+    public void populateProduct() throws SQLException {
+        PreparedStatement ps = c.prepareStatement("INSERT INTO \"product\" (\n" +
+                "    \"name\",\n" +
+                "    \"description\",\n" +
+                "    \"price\",\n" +
+                "    \"stock\")\n" +
+                "    VALUES (?, ?, ?, ?);"
+        );
+        List<String> products = Arrays.asList("Queijo", "Fiambre", "Manteiga", "Presunto");
+        Random random = new Random();
+        for (String product:
+             products) {
+            ps.setString(1, product);
+            ps.setString(2, product);
+            ps.setInt(3, random.nextInt(10));
+            ps.setInt(4, random.nextInt(10));
+            ps.execute();
+        }
+    }
+
     public boolean exists() throws SQLException{
-        return c.getMetaData().getSchemas().next();
+        List<String> tables = Arrays.asList("customer", "order", "product", "order_product");
+        final DatabaseMetaData metaData = c.getMetaData();
+        for (String table:
+             tables) {
+            if(!metaData.getTables(null, null, table, null).next())
+                return false;
+        }
+        return true;
     }
 }

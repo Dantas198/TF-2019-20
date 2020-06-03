@@ -1,5 +1,6 @@
 import business.SuperMarket;
 import business.SuperMarketStub;
+import business.customer.Customer;
 import business.product.Product;
 import io.atomix.utils.net.Address;
 import org.junit.Test;
@@ -16,7 +17,7 @@ public class SuperMarketStubTest {
     private SuperMarket stub;
 
     public SuperMarketStubTest() throws Exception{
-        server = new GandaGotaServerImpl(4803, "5", 7777);
+        server = new GandaGotaServerImpl(4803, "1", 7777);
         new Thread(() ->{
             try {
                 server.start();
@@ -46,9 +47,28 @@ public class SuperMarketStubTest {
                 + collectionName + "\"", sameLength);
     }
 
+    //@Test
+    public void addCustomerTest() throws Exception {
+        addCustomerTest(UUID.randomUUID().toString());
+    }
+
+
+    private void addCustomerTest(String customerName) throws Exception {
+        boolean added = stub.addCustomer(customerName);
+        System.out.println(customerName);
+        assertTrue("Response of adding a costumer should not be null" , added);
+    }
+
     @Test
-    public void addCostumerTest() throws Exception {
-        boolean added = stub.addCustomer("123");
+    public void addProductTest() throws Exception {
+        String customerName = UUID.randomUUID().toString();
+        stub.addCustomer(customerName);
+        boolean added = stub.addProduct(customerName, "Queijo", 1);
+        if(added) {
+            Iterator<Map.Entry<Product, Integer>> iter = stub.getCurrentOrderProducts(customerName).entrySet().iterator();
+            assertTrue("Should have product", iter.hasNext());
+            assertEquals("Product should be 'Queijo'", iter.next().getKey().getName(), "Queijo");
+        }
         assertNotNull("Response of adding a costumer should not be null" , added);
     }
 }

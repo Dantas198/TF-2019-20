@@ -16,7 +16,7 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
     public CustomerSQLDAO(Connection c, OrderSQLDAO orderDAO) throws SQLException {
         super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"customer\" WHERE \"id\" = ?");
-            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"customer\" (\"id\", \"current_order_id\") VALUES (?, ?)");
+            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"customer\" (\"id\", \"current_order_id\") VALUES (?, ?) ON DUPLICATE KEY UPDATE \"current_order_id\" = ?");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"customer\" WHERE \"id\" = ?");
             PreparedStatement updatePS = c.prepareStatement("UPDATE \"customer\" SET \"id\" = ?, \"current_order_id\" = ? WHERE \"id\" = ?");
             PreparedStatement getAllPS = c.prepareStatement("SELECT * FROM \"customer\"");
@@ -48,11 +48,11 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
             @Override
             public PreparedStatement put(Customer o) throws SQLException {
                 putPS.setString(1, o.getId());
-                if(o.hasCurrentOrder()) {
-                    putPS.setString(2, o.getCurrentOrder().getId());
-                } else {
-                    putPS.setString(2, null);
-                }
+                String currentOrder = o.hasCurrentOrder() ?
+                    o.getCurrentOrder().getId() :
+                    null;
+                putPS.setString(2, currentOrder);
+                putPS.setString(3, currentOrder);
                 return putPS;
             }
 

@@ -44,7 +44,7 @@ public class DAOTest {
         CustomerDAOTest(new CustomerDAO());
         OrderDAOTest(new OrderDAO());
         ProductDAOTest(new ProductDAO());
-        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/test;shutdown=true;", "", "");
+        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/test;shutdown=true;sql.syntax_mys=true", "", "");
         new DBInitialization(c).init();
         CustomerDAOTest(new CustomerSQLDAO(c, new OrderSQLDAO(c)));
         OrderDAOTest(new OrderSQLDAO(c));

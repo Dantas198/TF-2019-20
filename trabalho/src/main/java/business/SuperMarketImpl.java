@@ -18,6 +18,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 
@@ -28,12 +29,18 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	private Connection connection;
 
 	public SuperMarketImpl(String privateName) throws SQLException {
-		this.connection = DriverManager.getConnection("jdbc:hsqldb:file:db/" + privateName + ";shutdown=true;hsqldb.sqllog=2", "", "");
+		this.connection = DriverManager.getConnection("jdbc:hsqldb:file:db/" + privateName + ";shutdown=true;hsqldb.sqllog=2;sql.syntax_mys=true", "", "");
 		DBInitialization dbInit = new DBInitialization(this.connection);
 		if(!dbInit.exists()){
 			dbInit.init();
+			System.out.println("Database initialized");
+			if(privateName.equals("1")) {
+				dbInit.populateProduct();
+				System.out.println("Populated database");
+			} else {
+				//TODO: Ask for database
+			}
 		}
-		dbInit.init();
 		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
 		this.orderDAO = orderSQLDAO;
 		this.productDAO = new ProductSQLDAO(this.connection);
@@ -64,6 +71,8 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		}
 		// TODO tmax
 		Customer c = customerDAO.get(customer);
+		if(!c.hasCurrentOrder())
+			return false;
 		Order order = c.getCurrentOrder();
 		Map<Product,Integer> products = order.getProducts();
 
@@ -111,6 +120,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	}
 
 	public boolean addProduct(String customer, String product, int amount) {
+		System.out.println("addProduct");
 		Customer c = customerDAO.get(customer);
 		try {
 			cleaner.clean();
@@ -126,14 +136,21 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 			c.newCurrentOrder();
 		}
 		Order order = c.getCurrentOrder();
+		System.out.println(order);
 		Product p = productDAO.get(product);
+		System.out.println(p.getName());
 		order.addProduct(p, amount);
-		orderDAO.update(order.getId(), order);
 		return true;
 	}
 
-	public Map<Product, Integer> getCurrentOrderProducts(String customer) {
-		return customerDAO.get(customer).getCurrentOrder().getProducts();
+	public Map<Product, Integer> getCurrentOrderProducts(String customerName) {
+		System.out.println("Order:" + customerDAO.get(customerName).getCurrentOrder());
+		System.out.println("Products:" + customerDAO.get(customerName).getCurrentOrder().getProducts());
+		Map<Product, Integer> productIntegerMap = customerDAO.get(customerName).getCurrentOrder().getProducts();
+		System.out.println("quant:" + productIntegerMap.values() + ":" + productIntegerMap.size());
+		Customer customer = customerDAO.get(customerName);
+		if(customer == null || !customer.hasCurrentOrder()) return null;
+		return customer.getCurrentOrder().getProducts();
 	}
 
 	public Collection<Order> getHistory(String customer) {

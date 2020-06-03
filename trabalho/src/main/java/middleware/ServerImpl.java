@@ -142,7 +142,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public void updateQueries(Collection<String> queries){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/"+ privateName +";shutdown=true;hsqldb.sqllog=2", "", "");
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/"+ privateName +";shutdown=true;hsqldb.sqllog=2;sql.syntax_mys=true", "", "");
             for(String querie : queries) {
                 c.prepareStatement(querie).execute();
                 System.out.println("querie: " + querie);
@@ -279,6 +279,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public void startClientListener(){
         this.mms.start();
         mms.registerHandler("request", (requester,b) -> {
+            System.out.println("\uD83D\uDE02");
             if(isPaused)
                 return;
 
@@ -296,6 +297,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 }
                 else {
                     System.out.println("Server " + privateName + " handling the request locally");
+                    System.out.println("??");
                     Message reply = handleMessage(request);
                     sendReply(reply, requester);
                 }

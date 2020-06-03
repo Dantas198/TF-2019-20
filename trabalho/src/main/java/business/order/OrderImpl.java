@@ -45,9 +45,7 @@ public class OrderImpl implements Order, Serializable{
 
 	@Override
 	public void addProduct(Product prod, int quantity) {
-		products.putIfAbsent(prod, 0);
-		int oldQuantity = products.get(prod);
-		products.replace(prod, oldQuantity + quantity);
+		products.merge(prod, quantity, Integer::sum);
 	}
 
 	@Override

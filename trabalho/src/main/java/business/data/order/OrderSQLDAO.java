@@ -16,9 +16,9 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
     public OrderSQLDAO(Connection c) throws SQLException {
         super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"order\" WHERE \"id\" = ?");
-            PreparedStatement putPS = c.prepareStatement("INSERT INTO \"order\" (\"id\", \"timestamp\") VALUES (?, ?)");
+            PreparedStatement putPS = c.prepareStatement("REPLACE INTO \"order\" (\"id\") VALUES (?)");
             PreparedStatement deletePS = c.prepareStatement("DELETE FROM \"order\" WHERE \"id\" = ?");
-            PreparedStatement updatePS = c.prepareStatement("UPDATE \"order\" SET \"id\" = ? WHERE \"id\" = ?");
+            PreparedStatement updatePS = c.prepareStatement("UPDATE \"order\" SET \"id\" = ?, \"customer_id\" = ? WHERE \"id\" = ?");
             PreparedStatement getAllPS = c.prepareStatement("SELECT * FROM \"order\"");
 
             @Override
@@ -42,7 +42,6 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
             @Override
             public PreparedStatement put(Order o) throws SQLException {
                 putPS.setString(1, o.getId());
-                putPS.setTimestamp(2, new java.sql.Timestamp(o.getTimestamp().getTime()));
                 return putPS;
             }
 
@@ -56,7 +55,7 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
             public PreparedStatement update(String key, Order o) throws SQLException {
                 updatePS.setString(1, o.getId());
                 updatePS.setString(2, key);
-                return null;
+                return updatePS;
             }
 
             @Override

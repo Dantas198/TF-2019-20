@@ -46,23 +46,21 @@ public class DAOSet<T> implements Set<T> {
                 @Override
                 public boolean hasNext() {
                     if(hasNext == null) {
+                        System.out.println("hello");
                         try {
                             hasNext = rs.next();
                         } catch (SQLException e) {
                             e.printStackTrace();
                         }
-                    } else {
-                        return hasNext;
                     }
-                    return false;
+                    return hasNext;
                 }
 
                 @Override
                 public T next() {
                     if(hasNext == null) {
                         try {
-                            rs.next();
-                            hasNext = true;
+                            hasNext = rs.next();
                         } catch (SQLException e) {
                             e.printStackTrace();
                             return null;
@@ -70,6 +68,7 @@ public class DAOSet<T> implements Set<T> {
                     }
                     if(hasNext) {
                         try {
+                            System.out.println(ps.fromResultSet(rs));
                             return ps.fromResultSet(rs);
                         } catch (SQLException e) {
                             e.printStackTrace();

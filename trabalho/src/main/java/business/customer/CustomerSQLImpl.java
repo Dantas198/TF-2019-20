@@ -22,13 +22,19 @@ public class CustomerSQLImpl extends CustomerImpl {
         this.customerDAO = new CustomerSQLDAO(c, orderDAO);
     }
 
+    @Override
+    public Order getCurrentOrder() {
+        if(!super.hasCurrentOrder()) return null;
+        return orderDAO.get(super.getCurrentOrder().getId());
+    }
+
     // Implementa este método em modo eager para manter a base de dados consistente
     @Override
     public void newCurrentOrder() {
         this.removeCurrentOrder();
         super.newCurrentOrder();
         // Transaction ??
-        this.orderDAO.put(this.getCurrentOrder());
+        this.getOldOrders().add(super.getCurrentOrder());
         customerDAO.update(this.getId(), this);
         System.out.println(this.getId());
         System.out.println(this);
