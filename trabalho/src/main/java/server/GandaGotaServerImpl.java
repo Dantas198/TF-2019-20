@@ -103,7 +103,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     @Override
     public void setState(ArrayList<String> queries) {
         try {
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:testdb;shutdown=true;hsqldb.sqllog=2", "", "");
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/testdb;shutdown=true;hsqldb.sqllog=2", "", "");
             for(String query : queries) {
                 c.prepareStatement(query).execute();
             }

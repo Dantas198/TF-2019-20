@@ -26,18 +26,20 @@ public class Certifier {
             this.writesPerTable.put(table, new LinkedHashMap<>());
     }
 
-    public boolean hasConflict(BitWriteSet ws, List<String> tables, long ts) throws NoTableDefinedException {
-        for(String table : tables){
+    public boolean hasConflict(Map<String, BitWriteSet> ws, long ts) throws NoTableDefinedException {
+        for(Map.Entry<String, BitWriteSet> entry : ws.entrySet()){
+            String table = entry.getKey();
             LinkedHashMap<Long, Round> writes = writesPerTable.get(table);
             if(writes == null)
                 throw new NoTableDefinedException("No tables defined with that name");
             for (long i = ts; i < timestamp; i++) {
                 BitWriteSet set = writes.get(i).getWriteSet();
                 System.out.println(i);
-                    if(set.intersects(ws)) {
-                        return true;
-                    }
+                BitWriteSet bws = entry.getValue();
+                if(set.intersects(bws)) {
+                    return true;
                 }
+            }
         }
        return false;
     }

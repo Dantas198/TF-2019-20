@@ -156,7 +156,7 @@ public class ClusterReplicationService {
 
     private void handleCertifyWriteMessage(CertifyWriteMessage<?> cwm) throws NoTableDefinedException {
         System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
-        boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp());
+        boolean isWritable = !certifier.hasConflict(cwm.getWriteSets(), cwm.getStartTimestamp());
         System.out.println("Server : " + privateName + " isWritable: " + isWritable);
         server.handleCertifierAnswer(cwm, isWritable);
     }
