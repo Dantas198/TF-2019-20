@@ -1,9 +1,7 @@
 package business;
 
 import business.order.Order;
-import business.order.OrderImpl;
 import business.product.Product;
-import business.product.ProductImpl;
 import client.MessagingService;
 import client.message.*;
 import io.atomix.utils.net.Address;
@@ -58,7 +56,7 @@ public class SuperMarketStub implements SuperMarket {
 
     @Override
     public ArrayList<Product> getCatalogProducts() throws Exception {
-        Message msg = new GetCatalogProducts();
+        Message msg = new GetCatalogProductsMessage();
         return ms.<ContentMessage<ArrayList<Product>>>sendAndReceive(msg).getBody();
     }
 }

@@ -31,7 +31,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         this.superMarket = new SuperMarketImpl(privateName);
     }
 
-    //TODO classe á parte?
+
     @Override
     public Message handleMessage(Message message) {
         try {
@@ -48,11 +48,12 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                 int amount = body.getAmount();
                 return new ContentMessage<>(superMarket.addProduct(customer, product, amount));
             } else if(message instanceof FinishOrderMessage) {
+                // TODO debug
                 return new ErrorMessage(new Error("Invalid non-write Message")).from(message);
             } else if(message instanceof ResetOrderMessage) {
                 String customer = ((ResetOrderMessage) message).getBody();
                 return new ContentMessage<>(superMarket.resetOrder(customer));
-            } else if(message instanceof GetCatalogProducts){
+            } else if(message instanceof GetCatalogProductsMessage){
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             } else if(message instanceof GetHistoryMessage) {
                 return new ContentMessage<>(new ArrayList<>(superMarket.getHistory(((GetHistoryMessage) message).getBody())));
@@ -64,11 +65,12 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public CertifyWriteMessage<?> preprocessMessage(Message message){
+    public CertifyWriteMessage<?> handleTransactionMessage(Message message){
         Map<String, BitWriteSet> writeSets = new HashMap<>();
         if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();
-            superMarket.finishOrder(customer, writeSets);
+            boolean success = superMarket.finishOrder(customer, writeSets);
+            if(success) System.out.println("correu bem");
         }
         return new CertifyWriteMessage<>(writeSets, 1);
     }

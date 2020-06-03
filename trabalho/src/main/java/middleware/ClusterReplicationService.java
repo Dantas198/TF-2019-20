@@ -1,8 +1,10 @@
 package middleware;
 
 import middleware.Certifier.Certifier;
+import middleware.Certifier.NoTableDefinedException;
 import middleware.logreader.LogReader;
 import middleware.message.Message;
+import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.GetLengthRequestMessage;
 import middleware.message.replication.StateLengthRequestMessage;
@@ -29,11 +31,11 @@ public class ClusterReplicationService {
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl server;
+    private ServerImpl<?> server;
     private CompletableFuture<Void> started;
     private LogReader logReader;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -73,6 +75,7 @@ public class ClusterReplicationService {
             e.printStackTrace();
         }
     };
+
 
 
     private boolean isInMainPartition(SpreadGroup[] partition) {
@@ -143,29 +146,50 @@ public class ClusterReplicationService {
     }
 
 
+
+
+
+    private void handleWriteMessage(WriteMessage<?> msg) {
+        server.handleMessage(msg); // TODO distinguir handlemessage para transaction write e read??
+    }
+
+
+    private void handleCertifyWriteMessage(CertifyWriteMessage<?> cwm) throws NoTableDefinedException {
+        System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
+        boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp());
+        System.out.println("Server : " + privateName + " isWritable: " + isWritable);
+        server.handleCertifierAnswer(cwm, isWritable);
+    }
+
+    private void handleStateLengthRequestMessage(StateLengthRequestMessage msg, SpreadGroup sender) throws Exception {
+        System.out.println("Received request logs");
+        int lowerBound = msg.getBody();
+        System.out.println("Logs lower bound = " + lowerBound );
+        ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
+        Message m = new StateTransferMessage(queries);
+        noAgreementFloodMessage(m, sender);
+    }
+
+
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    System.out.println("Server : " + privateName + ", RegularpMessageReceived");
+                    System.out.println("Server : " + privateName + ", Regular Message received");
                     if (!initializer.isInitializing(spreadMessage, respondMessage)) {
                         if(!started.isDone())
                             started.complete(null);
+
                         Message received = (Message) spreadMessage.getObject();
-                        if (received instanceof CertifyWriteMessage){
-                            CertifyWriteMessage<?> cwm = (CertifyWriteMessage<?>) received;
-                            System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
-                            boolean isWritable = !certifier.hasConflict(cwm.getWriteSet(),  cwm.getTables(), cwm.getStartTimestamp());
-                            System.out.println("Server : " + privateName + " isWritable: " + isWritable);
-                            server.handleCertifierAnswer(cwm, isWritable);
-                        } if(received instanceof StateLengthRequestMessage){
-                            System.out.println("Received request logs");
-                            int lowerBound = ((StateLengthRequestMessage) received).getBody();
-                            System.out.println("Logs lower bound = " + lowerBound );
-                            ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
-                            Message m = new StateTransferMessage(queries);
-                            noAgreementFloodMessage(m, spreadMessage.getSender());
+                        if(received instanceof WriteMessage) {
+                            handleWriteMessage((WriteMessage<?>) received);
+                        } else
+                        if(received instanceof CertifyWriteMessage){
+                            handleCertifyWriteMessage((CertifyWriteMessage<?>) received);
+                        } else
+                        if(received instanceof StateLengthRequestMessage){
+                            handleStateLengthRequestMessage((StateLengthRequestMessage) received, spreadMessage.getSender());
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
@@ -185,7 +209,7 @@ public class ClusterReplicationService {
             @Override
             public void membershipMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    System.out.println("Server : " + privateName + ", MembershipMessageReceived -------------");
+                    System.out.println("Server : " + privateName + ", Membership Message received -------------");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
 
                     if(info.isCausedByJoin() && info.getJoined().equals(spreadConnection.getPrivateGroup())) {
@@ -220,8 +244,8 @@ public class ClusterReplicationService {
     }
 
 
-    public void floodCertifyMessage(CertifyWriteMessage<?> cwm) throws Exception {
-        safeFloodMessage(cwm, this.spreadGroup);
+    public void floodMessage(Message msg) throws Exception {
+        safeFloodMessage(msg, this.spreadGroup);
     }
 
     //safe ou agreed?
