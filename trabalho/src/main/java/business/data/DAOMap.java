@@ -10,6 +10,7 @@ public abstract class DAOMap<K, V> implements Map<K, V> {
     private DAOSet<Map.Entry<K, V>> entrySet;
 
     public DAOMap(DAOSet<Entry<K, V>> entrySet) {
+        if(entrySet == null) throw new NullPointerException();
         this.entrySet = entrySet;
     }
 

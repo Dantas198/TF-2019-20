@@ -115,7 +115,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     @Override
     public void setState(ArrayList<String> queries) {
         try {
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/testdb;shutdown=true;hsqldb.sqllog=2;sql.syntax_mys=true", "", "");
+            Connection c = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/1", "user", "password");
             for(String query : queries) {
                 c.prepareStatement(query).execute();
             }
@@ -125,7 +125,11 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     }
 
     public static void main(String[] args) throws Exception {
-        Server server = new GandaGotaServerImpl(4803, "1", 6666);
+        String serverName = args.length < 1 ? "1" : args[0];
+        int spreadPort = args.length < 2 ? 4803 : Integer.parseInt(args[1]);
+        int atomixPort = args.length < 3 ? 6666 : Integer.parseInt(args[2]);
+        new HSQLServer(serverName).start();
+        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort);
         server.start();
     }
 }

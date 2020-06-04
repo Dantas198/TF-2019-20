@@ -8,6 +8,7 @@ import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderSQLDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
+import business.order.OrderImpl;
 import business.product.Product;
 import middleware.certifier.BitWriteSet;
 import server.CurrentOrderCleaner;
@@ -28,7 +29,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	private Connection connection;
 
 	public SuperMarketImpl(String privateName) throws SQLException {
-		this.connection = DriverManager.getConnection("jdbc:hsqldb:file:db/" + privateName + ";shutdown=true;hsqldb.sqllog=2;sql.syntax_mys=true", "", "");
+		this.connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/" + privateName, "user", "password");
 		DBInitialization dbInit = new DBInitialization(this.connection);
 		if(!dbInit.exists()){
 			dbInit.init();
@@ -92,11 +93,11 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 			int quantity = products.get(p);
 			p.reduceStock(quantity);
 			productDAO.update(p.getName(), p);
-			productBws.add(p.getName().getBytes());
+			productBws.add(p.getName());
 		}
 		writeSets.put("product", productBws);
 		BitWriteSet customerBws = new BitWriteSet();
-		customerBws.add(c.getId().getBytes());
+		customerBws.add(c.getId());
 		writeSets.put("customer", customerBws);
 
 		c.getOldOrders().add(order); // pode ser removido
@@ -118,23 +119,24 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return true;
 	}
 
-	public boolean addProduct(String customer, String product, int amount) {
+	public boolean addProduct(String customerName, String product, int amount) {
 		System.out.println("addProduct");
-		Customer c = customerDAO.get(customer);
+		Customer customer = customerDAO.get(customerName);
+		if(customer == null) return false;
 		try {
 			cleaner.clean();
 		} catch (SQLException throwables) {
 			throwables.printStackTrace();
 		}
-		if (!c.hasCurrentOrder()) {
+		if (!customer.hasCurrentOrder()) {
 			/* customerDAO retorna uma instância de CustomerSQLImpl
 			// CustomerSQLImpl subrepõe o método newCurrentOrder
 			// e ao fazer newCurrentOrder ele remove a current order antiga da tabela Order
 			// e adiciona a current order à tabela e no cliente
 			*/
-			c.newCurrentOrder();
+			customer.newCurrentOrder();
 		}
-		Order order = c.getCurrentOrder();
+		Order order = customer.getCurrentOrder();
 		System.out.println(order);
 		Product p = productDAO.get(product);
 		System.out.println(p.getName());
@@ -148,9 +150,11 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return customer.getCurrentOrder().getProducts();
 	}
 
-	public Collection<Order> getHistory(String customer) {
-		Customer c = customerDAO.get(customer);
-		return c.getOldOrders();
+	public Collection<Order> getHistory(String customerName) {
+		Customer customer = customerDAO.get(customerName);
+		if(customer == null) return new ArrayList<>(0);
+		// TODO: implementar método clone
+		return customer.getOldOrders();
 	}
 
 	public Collection<Product> getCatalogProducts() {

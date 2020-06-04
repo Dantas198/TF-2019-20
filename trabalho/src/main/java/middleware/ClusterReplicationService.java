@@ -87,6 +87,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
 
     private void handleNetworkPartition(MembershipInfo info) {
+        info.getStayed();
         SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
 
         if(isInMainPartition(stayed)) {
