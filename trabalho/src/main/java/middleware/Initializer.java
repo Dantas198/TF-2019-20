@@ -1,5 +1,6 @@
 package middleware;
 
+import middleware.certifier.Certifier;
 import middleware.message.Message;
 import middleware.message.replication.GetLengthRequestMessage;
 import middleware.message.replication.StateLengthRequestMessage;
@@ -40,7 +41,9 @@ public class Initializer {
                     //TODO URGENTE
                     //server.setState(((StateTransferMessage) received).getState());
                     System.out.println("Received state transfer");
-                    ArrayList<String> logs = (ArrayList<String>) ((StateTransferMessage) received).getState();
+                    StateTransferMessage stm = (StateTransferMessage) received;
+                    ArrayList<String> logs = stm.getState().getBusinessState();
+                    service.rebuildCertifier(stm.getState().getCertifierState());
                     server.updateQueries(logs);
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){

@@ -6,10 +6,7 @@ import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
-import middleware.message.replication.CertifyWriteMessage;
-import middleware.message.replication.GetLengthRequestMessage;
-import middleware.message.replication.StateLengthRequestMessage;
-import middleware.message.replication.StateTransferMessage;
+import middleware.message.replication.*;
 import spread.*;
 
 import java.net.InetAddress;
@@ -28,7 +25,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     //private Map<String, List<Message>> cachedMessages;
 
     private final Initializer initializer;
-    public final Certifier<K, W> certifier;
+    public  Certifier<K, W> certifier;
     private final ElectionManager electionManager;
     private boolean imLeader;
 
@@ -60,6 +57,11 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.spreadConnection.add(messageListener());
         this.started = new CompletableFuture<>();
         return started;
+    }
+
+
+    public void rebuildCertifier(Certifier c){
+        this.certifier = new Certifier<K, W>(c);
     }
 
     /**
@@ -167,7 +169,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         int lowerBound = msg.getBody();
         System.out.println("Logs lower bound = " + lowerBound );
         ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
-        Message m = new StateTransferMessage(queries);
+        Message m = new StateTransferMessage(new State(queries, certifier));
         noAgreementFloodMessage(m, sender);
     }
 
@@ -275,7 +277,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
      * @param sg
      * @throws Exception
      */
-    @Deprecated
     public void noAgreementFloodMessage(Message message, SpreadGroup sg) throws Exception{
         SpreadMessage m = new SpreadMessage();
         m.addGroup(sg);

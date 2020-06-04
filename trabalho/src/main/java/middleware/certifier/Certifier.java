@@ -25,6 +25,12 @@ public class Certifier<V, K extends WriteSet<V>> {
         this.writesPerTable = new LinkedHashMap<>();
     }
 
+    public Certifier(Certifier<V, K> c){
+        this.lowWaterMark = c.getLowWaterMark();
+        this.timestamp = c.getTimestamp();
+        this.writesPerTable = new LinkedHashMap<>(c.getWritesPerTable());
+    }
+
     public void addTables(List<String> tables){
         for(String table : tables)
             this.writesPerTable.put(table, new LinkedHashMap<>());
@@ -145,4 +151,11 @@ public class Certifier<V, K extends WriteSet<V>> {
         this.lowWaterMark = newLowWaterMark;
     }
 
+    public HashMap<String, LinkedHashMap<Long, Round<K>>> getWritesPerTable(){
+        return writesPerTable;
+    }
+
+    public long getLowWaterMark() {
+        return lowWaterMark;
+    }
 }
