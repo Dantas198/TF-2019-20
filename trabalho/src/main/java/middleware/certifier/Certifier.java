@@ -30,9 +30,7 @@ public class Certifier<V, K extends WriteSet<V>> {
             this.writesPerTable.put(table, new LinkedHashMap<>());
     }
 
-    public boolean hasConflict(Map<String, K> ws, long ts) throws NoTableDefinedException {
-        if (writesPerTable.isEmpty())
-            throw new NoTableDefinedException("No tables defined");
+    public boolean hasConflict(Map<String, K> ws, long ts) {
 
         if (ts < lowWaterMark) {
             System.out.println("Certifier: old timestamp arrived");
@@ -41,10 +39,7 @@ public class Certifier<V, K extends WriteSet<V>> {
 
         for(Map.Entry<String, K> entry : ws.entrySet()){
             String table = entry.getKey();
-            LinkedHashMap<Long, Round<K>> writes = writesPerTable.get(table);
-
-            if(writes == null)
-                throw new NoTableDefinedException("No table defined with that name");
+            LinkedHashMap<Long, Round<K>> writes = writesPerTable.getOrDefault(table, new LinkedHashMap<>());
 
             for (long i = ts; i < timestamp; i++) {
                 Round<K> set = writes.get(i);
@@ -57,16 +52,11 @@ public class Certifier<V, K extends WriteSet<V>> {
         return false;
     }
 
-    public synchronized void commitLocalStartedTransaction(Map<String, K> ws, long ts, String id) throws NoTableDefinedException {
-        if (writesPerTable.isEmpty())
-            throw new NoTableDefinedException("No tables defined");
+    public synchronized void commitLocalStartedTransaction(Map<String, K> ws, long ts, String id) {
 
         for(Map.Entry<String, K> entry : ws.entrySet()){
             String table = entry.getKey();
-            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.get(table);
-
-            if(writes == null)
-                throw new NoTableDefinedException("No tables defined with that name");
+            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.getOrDefault(table, new LinkedHashMap<>());
 
             writes.get(this.timestamp).addCommit(entry.getValue());
             writes.get(ts).removeStarted(id);
@@ -75,14 +65,11 @@ public class Certifier<V, K extends WriteSet<V>> {
     }
 
 
-    public synchronized void commit(Map<String, K> ws) throws NoTableDefinedException {
+    public synchronized void commit(Map<String, K> ws) {
         //Commit also increases current timestamp
         for(Map.Entry<String, K> entry : ws.entrySet()){
             String table = entry.getKey();
-            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.get(table);
-
-            if(writes == null)
-                throw new NoTableDefinedException("No tables defined with that name");
+            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.getOrDefault(table, new LinkedHashMap<>());
 
             Round<K> r = writes.get(this.timestamp);
             K bws = entry.getValue();
@@ -101,12 +88,9 @@ public class Certifier<V, K extends WriteSet<V>> {
         return this.timestamp;
     }
 
-    public synchronized void transactionStarted(Set<String> tables, long ts, String id) throws NoTableDefinedException {
+    public synchronized void transactionStarted(Set<String> tables, long ts, String id) {
         for (String table : tables) {
-            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.get(table);
-
-            if (writes == null)
-                throw new NoTableDefinedException("No tables defined with that name");
+            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.getOrDefault(table, new LinkedHashMap<>());
 
             Round<K> r = writes.get(ts);
             if (r == null) {

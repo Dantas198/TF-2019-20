@@ -29,15 +29,15 @@ public class CertifierTest {
         c.addTables(Arrays.asList("customer"));
 
         BitWriteSet bws1 = new BitWriteSet();
-        bws1.add("marco".getBytes());
+        bws1.add("marco");
 
         BitWriteSet bws2 = new BitWriteSet();
-        bws2.add("cesar".getBytes());
-        bws2.add("daniel".getBytes());
+        bws2.add("cesar");
+        bws2.add("daniel");
 
         BitWriteSet bws3 = new BitWriteSet();
-        bws3.add("cesar".getBytes());
-        bws3.add("carlos".getBytes());
+        bws3.add("cesar");
+        bws3.add("carlos");
 
         long t1 = c.getTimestamp();
         System.out.println("WS 1");

@@ -247,11 +247,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 commit();
                 //Atualiza as transações que foram feitas
                 System.out.println("Server " + privateName + " commiting to certifier");
-                try {
-                    replicationService.certifier.commitLocalStartedTransaction(cwm.getWriteSets(), cwm.getStartTimestamp(), cwm.getId());
-                } catch (NoTableDefinedException e) {
-                    e.printStackTrace();
-                }
+                replicationService.certifier.commitLocalStartedTransaction(cwm.getWriteSets(), cwm.getStartTimestamp(), cwm.getId());
             } else {
                 System.out.println("Server " + privateName + " rolling back write from db");
                 rollback();
