@@ -6,7 +6,8 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
-import middleware.Certifier.NoTableDefinedException;
+import middleware.certifier.NoTableDefinedException;
+import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
@@ -24,9 +25,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ServerImpl<STATE extends Serializable> implements Server {
+public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Serializable> implements Server {
 
-    private final ClusterReplicationService replicationService;
+    private final ClusterReplicationService<K, W, STATE> replicationService;
     private final ExecutorService e;
     private final Serializer s;
     private final ManagedMessagingService mms;
@@ -40,7 +41,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public ServerImpl(int spreadPort, String privateName, int atomixPort){
         this.privateName = privateName;
         // TODO numero de servidores max/total
-        this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, 3);
+        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, 3);
         this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -74,7 +75,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @return the message body of the response
      */
     //TODO: Converter para WriteMessage visto que só aceita write message
-    public abstract CertifyWriteMessage<?> handleTransactionMessage(TransactionMessage<?> message);
+    public abstract CertifyWriteMessage<W,?> handleTransactionMessage(TransactionMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
@@ -82,7 +83,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * server
      * @param message contains the state to persist
      */
-    public abstract void updateStateFromCommitedWrite(CertifyWriteMessage<?> message);
+    public abstract void updateStateFromCommitedWrite(CertifyWriteMessage<W,?> message);
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered valid.
@@ -173,7 +174,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * process and got answered.
      * server
      */
-    protected void handleCertifierAnswer(CertifyWriteMessage<?> message, boolean isWritable) throws NoTableDefinedException {
+    protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message, boolean isWritable) throws NoTableDefinedException {
         CompletableFuture<Boolean> res;
         try{
             rl.lock();
@@ -211,7 +212,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @param cwm message
      * @return the information necessary to certify and replicate the transaction that is for now in a transient state
      */
-    private CertifyWriteMessage<?> startTransaction(CertifyWriteMessage<?> cwm) throws NoTableDefinedException {
+    private CertifyWriteMessage<W,?> startTransaction(CertifyWriteMessage<W,?> cwm) throws NoTableDefinedException {
         long ts = replicationService.certifier.getTimestamp();
         replicationService.certifier.transactionStarted(cwm.getTables(), ts, cwm.getId());
         cwm.setTimestamp(ts);
@@ -231,7 +232,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @param cwm message necessary for the certification and replication of the transaction
      * @param requester address of the requester
      */
-    private void tryCommit(Address requester, CertifyWriteMessage<?> cwm) throws Exception {
+    private void tryCommit(Address requester, CertifyWriteMessage<W, ?> cwm) throws Exception {
         CompletableFuture<Boolean> res = new CompletableFuture<>();
         try {
             rl.lock();

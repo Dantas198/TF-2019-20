@@ -1,13 +1,13 @@
-package middleware.Certifier;
+package middleware.certifier;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.BitSet;
 
 /**
  * WriteSet used to certify writes.
  */
-public class BitWriteSet implements Serializable {
+
+public class BitWriteSet implements Serializable, WriteSet<BitSet>  {
     private BitSet set;
 
     public BitWriteSet() {
@@ -18,16 +18,17 @@ public class BitWriteSet implements Serializable {
         this.set = new BitSet(nbits);
     }
 
-    public void add(byte[] key) {
-        int index = (Arrays.hashCode(key) & 0x7fffffff) % set.size();
+    @Override
+    public void add(String key) {
+        int index = (key.hashCode() & 0x7fffffff) % set.size();
         set.set(index, true);
     }
 
-    public boolean intersects(BitWriteSet set) {
+    @Override
+    public boolean intersects(WriteSet<BitSet> set) {
         return this.set.intersects(set.getSet());
     }
 
-    public BitSet getSet() {
-        return set;
-    }
+    @Override
+    public BitSet getSet() { return set;}
 }

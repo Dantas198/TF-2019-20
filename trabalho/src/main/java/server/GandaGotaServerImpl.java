@@ -4,7 +4,7 @@ import business.SuperMarketImpl;
 import business.product.Product;
 import client.bodies.AddProductBody;
 import client.message.*;
-import middleware.Certifier.BitWriteSet;
+import middleware.certifier.BitWriteSet;
 import middleware.Server;
 import middleware.ServerImpl;
 import middleware.message.ContentMessage;
@@ -18,10 +18,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
+public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayList<String>> {
 
     private SuperMarketImpl superMarket;
 
@@ -75,7 +76,8 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public CertifyWriteMessage<?> handleTransactionMessage(TransactionMessage<?> message){
+    //TODO mudar o estado
+    public CertifyWriteMessage<BitWriteSet, ?> handleTransactionMessage(TransactionMessage<?> message){
         Map<String, BitWriteSet> writeSets = new HashMap<>();
         if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();
@@ -86,7 +88,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void updateStateFromCommitedWrite(CertifyWriteMessage<?> message) {
+    public void updateStateFromCommitedWrite(CertifyWriteMessage<BitWriteSet, ?> message) {
         //TODO
         //TESTE
         System.out.println("Server : " + this.getPrivateName() + " update state from commit");

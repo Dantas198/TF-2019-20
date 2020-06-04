@@ -1,4 +1,4 @@
-package middleware.Certifier;
+package middleware.certifier;
 
 public class NoTableDefinedException extends Exception{
     public NoTableDefinedException(String errorMsg){

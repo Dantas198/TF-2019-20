@@ -9,7 +9,7 @@ import business.data.order.OrderSQLDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.product.Product;
-import middleware.Certifier.BitWriteSet;
+import middleware.certifier.BitWriteSet;
 import server.CurrentOrderCleaner;
 
 import java.io.Serializable;
@@ -18,7 +18,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 

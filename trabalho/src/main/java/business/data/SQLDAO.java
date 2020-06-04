@@ -1,7 +1,5 @@
 package business.data;
 
-import middleware.Certifier.BitWriteSet;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;

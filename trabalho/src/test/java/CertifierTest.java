@@ -1,11 +1,8 @@
-import middleware.Certifier.BitWriteSet;
-import middleware.Certifier.Certifier;
-import middleware.Certifier.NoTableDefinedException;
-import org.hsqldb.lib.HsqlArrayHeap;
-import org.junit.Ignore;
+import middleware.certifier.BitWriteSet;
+import middleware.certifier.Certifier;
+import middleware.certifier.NoTableDefinedException;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;

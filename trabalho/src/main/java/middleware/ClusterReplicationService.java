@@ -1,7 +1,8 @@
 package middleware;
 
-import middleware.Certifier.Certifier;
-import middleware.Certifier.NoTableDefinedException;
+import middleware.certifier.Certifier;
+import middleware.certifier.NoTableDefinedException;
+import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
@@ -16,7 +17,7 @@ import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService {
+public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
@@ -27,15 +28,15 @@ public class ClusterReplicationService {
     //private Map<String, List<Message>> cachedMessages;
 
     private final Initializer initializer;
-    public final Certifier certifier;
+    public final Certifier<K, W> certifier;
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl<?> server;
+    private ServerImpl<K, W, ?> server;
     private CompletableFuture<Void> started;
     private LogReader logReader;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K, W, ?> server, int totalServers){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -45,7 +46,7 @@ public class ClusterReplicationService {
         this.initializer = new Initializer(server, this);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
-        this.certifier = new Certifier();
+        this.certifier = new Certifier<>();
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
         this.logReader = new LogReader("testdb.log");
@@ -154,7 +155,7 @@ public class ClusterReplicationService {
     }
 
 
-    private void handleCertifyWriteMessage(CertifyWriteMessage<?> cwm) throws NoTableDefinedException {
+    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) throws NoTableDefinedException {
         System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
         boolean isWritable = !certifier.hasConflict(cwm.getWriteSets(), cwm.getStartTimestamp());
         System.out.println("Server : " + privateName + " isWritable: " + isWritable);
@@ -186,7 +187,7 @@ public class ClusterReplicationService {
                             handleWriteMessage((WriteMessage<?>) received);
                         } else
                         if(received instanceof CertifyWriteMessage){
-                            handleCertifyWriteMessage((CertifyWriteMessage<?>) received);
+                            handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
                         } else
                         if(received instanceof StateLengthRequestMessage){
                             handleStateLengthRequestMessage((StateLengthRequestMessage) received, spreadMessage.getSender());

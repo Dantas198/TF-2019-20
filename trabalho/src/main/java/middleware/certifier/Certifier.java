@@ -1,0 +1,148 @@
+package middleware.certifier;
+
+import java.util.*;
+
+/**
+ * Class that deals with certification logic.
+ */
+
+//TODO garbage collection
+public class Certifier<V, K extends WriteSet<V>> {
+
+    private long lowWaterMark;
+    //Holds current global timestamp
+    private long timestamp;
+    //Stores the changes commited on a certain timestamp
+    private final HashMap<String, LinkedHashMap<Long, Round<K>>> writesPerTable;
+
+
+    //TODO arranjar controlo de concorrência
+    //TODO líder encarrega-se de mandar a eviction message
+
+    public Certifier(){
+        this.lowWaterMark = -1;
+        this.timestamp = 0;
+        this.writesPerTable = new LinkedHashMap<>();
+    }
+
+    public void addTables(List<String> tables){
+        for(String table : tables)
+            this.writesPerTable.put(table, new LinkedHashMap<>());
+    }
+
+    public boolean hasConflict(Map<String, K> ws, long ts) throws NoTableDefinedException {
+        if (writesPerTable.isEmpty())
+            throw new NoTableDefinedException("No tables defined");
+
+        if (ts < lowWaterMark) {
+            System.out.println("Certifier: old timestamp arrived");
+            return false;
+        }
+
+        for(Map.Entry<String, K> entry : ws.entrySet()){
+            String table = entry.getKey();
+            LinkedHashMap<Long, Round<K>> writes = writesPerTable.get(table);
+
+            if(writes == null)
+                throw new NoTableDefinedException("No table defined with that name");
+
+            for (long i = ts; i < timestamp; i++) {
+                Round<K> set = writes.get(i);
+                System.out.println(i);
+                if(set.getWriteSet().intersects(entry.getValue())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public synchronized void commitLocalStartedTransaction(Map<String, K> ws, long ts, String id) throws NoTableDefinedException {
+        if (writesPerTable.isEmpty())
+            throw new NoTableDefinedException("No tables defined");
+
+        for(Map.Entry<String, K> entry : ws.entrySet()){
+            String table = entry.getKey();
+            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.get(table);
+
+            if(writes == null)
+                throw new NoTableDefinedException("No tables defined with that name");
+
+            writes.get(this.timestamp).addCommit(entry.getValue());
+            writes.get(ts).removeStarted(id);
+        }
+        this.timestamp++;
+    }
+
+
+    public synchronized void commit(Map<String, K> ws) throws NoTableDefinedException {
+        //Commit also increases current timestamp
+        for(Map.Entry<String, K> entry : ws.entrySet()){
+            String table = entry.getKey();
+            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.get(table);
+
+            if(writes == null)
+                throw new NoTableDefinedException("No tables defined with that name");
+
+            Round<K> r = writes.get(this.timestamp);
+            K bws = entry.getValue();
+            if(r == null){
+                r = new Round<>();
+                r.addCommit(bws);
+                writes.put(this.timestamp, r);
+
+            }else
+                r.addCommit(bws);
+        }
+        this.timestamp++;
+    }
+
+    public synchronized long getTimestamp(){
+        return this.timestamp;
+    }
+
+    public synchronized void transactionStarted(Set<String> tables, long ts, String id) throws NoTableDefinedException {
+        for (String table : tables) {
+            LinkedHashMap<Long, Round<K>> writes = this.writesPerTable.get(table);
+
+            if (writes == null)
+                throw new NoTableDefinedException("No tables defined with that name");
+
+            Round<K> r = writes.get(ts);
+            if (r == null) {
+                r = new Round<K>();
+                r.addStarted(id);
+                writes.put(ts, r);
+            } else
+                r.addStarted(id);
+        }
+    }
+
+    //TODO não suporta clientes lentos. Para suportar -> Force GC -> Round com Set de transactionId
+    public synchronized long getSafeToDeleteTimestamp(){
+        long maxTimestampToDelete = -1;
+        for(LinkedHashMap<Long, Round<K>> writes : this.writesPerTable.values()){
+            long minimumTimestamp = Long.MAX_VALUE;
+            for(Map.Entry<Long, Round<K>> entry : writes.entrySet()){
+                int numTR = entry.getValue().getNumTransactionRunning();
+                // mal encontre um que não esteja a 0 não considera os restantes que possam estar a 0
+                if(numTR != 0)
+                    break;
+                minimumTimestamp = numTR;
+            }
+            if(minimumTimestamp > maxTimestampToDelete)
+                maxTimestampToDelete = minimumTimestamp;
+        }
+        return maxTimestampToDelete;
+    }
+
+    public void evictStoredWriteSets(long newLowWaterMark){
+        for(LinkedHashMap<Long, Round<K>> writes : this.writesPerTable.values()){
+            for(long i = this.lowWaterMark; i <= newLowWaterMark; i++){
+                writes.remove(i);
+            }
+        }
+        this.lowWaterMark = newLowWaterMark;
+    }
+
+}

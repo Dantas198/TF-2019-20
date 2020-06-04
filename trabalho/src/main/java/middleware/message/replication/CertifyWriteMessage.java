@@ -1,11 +1,9 @@
 package middleware.message.replication;
 
-import middleware.Certifier.BitWriteSet;
+import middleware.certifier.WriteSet;
 import middleware.message.Message;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,21 +12,21 @@ import java.util.Set;
  * A certifiable operation needs to hold its WriteSet and Start timestamp.
  * This class also holds state so that it can be applied if the operation is valid.
  */
-public class CertifyWriteMessage<V extends Serializable> extends Message
-        implements Certifiable, Replicable<V>, Serializable {
+public class CertifyWriteMessage<K extends WriteSet<?>, V extends Serializable> extends Message
+        implements Certifiable<K>, Replicable<V>, Serializable {
 
     // Maps table name and BitWriteSet
-    private final Map<String, BitWriteSet> bws;
+    private final Map<String, K> bws;
     private long timestamp;
     private final V state;
 
-    public CertifyWriteMessage(Map<String, BitWriteSet> bws, V state){
+    public CertifyWriteMessage(Map<String, K> bws, V state){
         this.bws = bws;
         this.state = state;
     }
 
     @Override
-    public Map<String, BitWriteSet> getWriteSets() {
+    public Map<String, K> getWriteSets() {
         return this.bws;
     }
 
