@@ -27,7 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Serializable> implements Server {
 
-    private final ClusterReplicationService<K, W, STATE> replicationService;
+    private final ClusterReplicationService<K, W> replicationService;
     private final ExecutorService e;
     private final Serializer s;
     private final ManagedMessagingService mms;
