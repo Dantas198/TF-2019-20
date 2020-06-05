@@ -8,6 +8,7 @@ import middleware.message.replication.StateTransferMessage;
 import spread.SpreadException;
 import spread.SpreadMessage;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -24,12 +25,14 @@ public class Initializer {
     private Boolean initializing;
     private ServerImpl server;
     private ClusterReplicationService service;
+    private Connection connection;
 
-    public Initializer(ServerImpl server, ClusterReplicationService service){
+    public Initializer(ServerImpl server, ClusterReplicationService service, Connection connection){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
         this.service = service;
+        this.connection = connection;
     }
 
     public boolean isInitializing(SpreadMessage spreadMessage, Consumer<SpreadMessage> respondMessage){
@@ -44,7 +47,7 @@ public class Initializer {
                     StateTransferMessage stm = (StateTransferMessage) received;
                     ArrayList<String> logs = stm.getState().getBusinessState();
                     service.rebuildCertifier(stm.getState().getCertifierState());
-                    server.updateQueries(logs);
+                    server.updateQueries(logs, this.connection);
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){
                         respondMessage.accept(sm);

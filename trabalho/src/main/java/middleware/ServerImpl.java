@@ -38,10 +38,11 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     private LogReader logReader;
     private boolean isPaused;
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection){
         this.privateName = privateName;
         // TODO numero de servidores max/total
-        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, 3);
+        this.logReader = new LogReader("db/" + privateName + ".sql.log");
+        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, 3, logReader, databaseConnection);
         this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -54,7 +55,6 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 "server",
                 myAddress,
                 new MessagingConfig());
-        this.logReader = new LogReader("./testdb.sql.log");
         this.isPaused = false;
     }
 
@@ -140,10 +140,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }
     }
 
-    public void updateQueries(Collection<String> queries){
+    public void updateQueries(Collection<String> queries, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/"+ privateName +";shutdown=true;hsqldb.sqllog=2;sql.syntax_mys=true", "", "");
             for(String querie : queries) {
                 c.prepareStatement(querie).execute();
                 System.out.println("querie: " + querie);

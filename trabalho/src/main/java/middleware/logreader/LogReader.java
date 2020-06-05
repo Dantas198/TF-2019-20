@@ -68,7 +68,7 @@ public class LogReader {
     }
 
     public static void main(String[] args)  throws  Exception{
-        LogReader logReader = new LogReader("./testdb.log");
+        LogReader logReader = new LogReader("db/Server1.log");
         logReader.getQueries(18).forEach(System.out::println);
     }
 }

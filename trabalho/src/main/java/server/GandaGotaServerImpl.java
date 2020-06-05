@@ -26,10 +26,14 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
     private SuperMarketImpl superMarket;
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) throws SQLException {
-        super(spreadPort, privateName, atomixPort);
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection) throws SQLException {
+        super(spreadPort, privateName, atomixPort, connection);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
-        this.superMarket = new SuperMarketImpl(privateName);
+        this.superMarket = new SuperMarketImpl(privateName, connection);
+    }
+
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) throws SQLException {
+        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/" + privateName, "user", "password"));
     }
 
 
@@ -125,7 +129,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     }
 
     public static void main(String[] args) throws Exception {
-        String serverName = args.length < 1 ? "1" : args[0];
+        String serverName = args.length < 1 ? "Server1" : args[0];
         int spreadPort = args.length < 2 ? 4803 : Integer.parseInt(args[1]);
         int atomixPort = args.length < 3 ? 6666 : Integer.parseInt(args[2]);
         new HSQLServer(serverName).start();

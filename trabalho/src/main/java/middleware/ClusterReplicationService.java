@@ -10,6 +10,7 @@ import middleware.message.replication.*;
 import spread.*;
 
 import java.net.InetAddress;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -33,20 +34,20 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private CompletableFuture<Void> started;
     private LogReader logReader;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K, W, ?> server, int totalServers){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K, W, ?> server, int totalServers, LogReader logReader, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.initializer = new Initializer(server, this);
+        this.initializer = new Initializer(server, this, connection);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
         this.certifier = new Certifier<>();
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
-        this.logReader = new LogReader("testdb.log");
+        this.logReader = logReader;
     }
 
 
@@ -193,6 +194,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                             handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
                         } else
                         if(received instanceof StateLengthRequestMessage){
+                            // TODO: Não é Serializable
                             handleStateLengthRequestMessage((StateLengthRequestMessage) received, spreadMessage.getSender());
                         }
                         /*

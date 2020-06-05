@@ -28,13 +28,13 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	private CurrentOrderCleaner cleaner;
 	private Connection connection;
 
-	public SuperMarketImpl(String privateName) throws SQLException {
-		this.connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/" + privateName, "user", "password");
+	public SuperMarketImpl(String privateName, Connection connection) throws SQLException {
+		this.connection = connection;
 		DBInitialization dbInit = new DBInitialization(this.connection);
 		if(!dbInit.exists()){
 			dbInit.init();
 			System.out.println("Database initialized");
-			if(privateName.equals("1")) {
+			if(privateName.equals("Server1")) {
 				dbInit.populateProduct();
 				System.out.println("Populated database");
 			} else {

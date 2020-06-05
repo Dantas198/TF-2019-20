@@ -3,10 +3,21 @@ package server;
 import org.hsqldb.server.Server;
 
 public class HSQLServer extends Server {
+    int idx = 0;
+
+    public HSQLServer() {
+        super();
+    }
+
     public HSQLServer(String databaseName) {
         super();
-        this.setDatabaseName(0, databaseName);
-        this.setDatabasePath(0, "file:db/" + databaseName + ";user=user;password=password;hsqldb.lock_file=false;hsqldb.sqllog=2;sql.syntax_mys=true");
+        addDatabase(databaseName);
+    }
+
+    public void addDatabase(String databaseName) {
+        this.setDatabaseName(this.idx, databaseName);
+        this.setDatabasePath(this.idx, "file:db/" + databaseName + ";user=user;password=password;hsqldb.lock_file=false;hsqldb.sqllog=2;sql.syntax_mys=true");
+        this.idx++;
         this.setSilent(false);
     }
 

@@ -1,5 +1,6 @@
 package middleware.certifier;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -7,7 +8,7 @@ import java.util.*;
  */
 
 //TODO garbage collection
-public class Certifier<V, K extends WriteSet<V>> {
+public class Certifier<V, K extends WriteSet<V>> implements Serializable {
 
     private long lowWaterMark;
     //Holds current global timestamp

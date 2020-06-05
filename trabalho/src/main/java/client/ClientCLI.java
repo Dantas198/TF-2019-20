@@ -12,7 +12,7 @@ public class ClientCLI {
 
     public static void main(String[] args) throws Exception {
 
-        Address primaryServer = Address.from(6666);
+        Address primaryServer = Address.from(6006);
         List<Address> addresses = new LinkedList<>();
         addresses.add(primaryServer);
         int myPort = 5555;
