@@ -35,6 +35,11 @@ public class LogReader {
     }
 
     public Collection<String> getQueries(int lowerBound, int upperBound) throws Exception{
+        System.out.println(lowerBound + " - " + upperBound);
+        if(upperBound < lowerBound) {
+            System.out.println("Está adiantado");
+            return new ArrayList<>(0);
+        }
         List<String> res = new ArrayList<>(upperBound-lowerBound);
         lowerBound = Math.max(lowerBound, 0);
         upperBound = Math.min(upperBound, size() - 1);
@@ -51,13 +56,14 @@ public class LogReader {
     private void getQueriesFromString(String filestr){
         if(queries == null){
             queries = new ArrayList<>();
-            String splitRegex = "\n(?=DROP|SET|INSERT|DELETE|CREATE|COMMIT)"; //"\n(?=\\d{4}-\\d+-\\d+)";
+            //String splitRegex = "\\d+-\\d+-\\d+ \\d+:\\d+:\\d+\\.\\d+ \\d+";
+            String splitRegex = "\n"; //(?=DROP|SET|INSERT|DELETE|CREATE|REPLACE|COMMIT|ROLLBACK)"; //"\n(?=\\d{4}-\\d+-\\d+)";
             Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
             String[] split = filestr.split(splitRegex);
             for(String log : split){
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
-                    String query = matcher.group(0);
+                    String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
                     //System.out.println("Query--" + query);
                     queries.add(query);
                 } else {

@@ -55,9 +55,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.spread</groupId>
-            <artifactId>spread</artifactId>
-            <version>5.0.1</version>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>sqltool</artifactId>
+            <version>2.4.1</version>
         </dependency>
     </dependencies>
 </project>

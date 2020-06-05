@@ -13,7 +13,10 @@ import business.product.Product;
 import middleware.certifier.BitWriteSet;
 import server.CurrentOrderCleaner;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -34,12 +37,20 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		if(!dbInit.exists()){
 			dbInit.init();
 			System.out.println("Database initialized");
-			if(privateName.equals("Server1")) {
+			if(privateName.equals("Server0")) {
 				dbInit.populateProduct();
 				System.out.println("Populated database");
 			} else {
-				//TODO: Ask for database
+				// TODO: pedir os dados
+				/*
+				try {
+					Files.copy(new File("db/Server0.sql").toPath(), new File("db/" + privateName + ".script").toPath());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				 */
 			}
+			//this.connection.prepareCall("SCRIPT 'db/" + privateName  + ".sql'").execute();
 		}
 		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
 		this.orderDAO = orderSQLDAO;

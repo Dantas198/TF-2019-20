@@ -41,7 +41,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection){
         this.privateName = privateName;
         // TODO numero de servidores max/total
-        this.logReader = new LogReader("db/" + privateName + ".sql.log");
+        this.logReader = new LogReader("db/" + privateName + ".log");
         this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, 3, logReader, databaseConnection);
         this.e = Executors.newFixedThreadPool(1);
         this.runningCompletable = new CompletableFuture<>();
