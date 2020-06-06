@@ -1,4 +1,4 @@
-package client.bodies;
+package client.message.bodies;
 
 import business.order.Order;
 

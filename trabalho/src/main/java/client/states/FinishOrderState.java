@@ -1,6 +1,6 @@
 package client.states;
 
-import client.bodies.FinishOrderBody;
+import client.message.bodies.FinishOrderBody;
 
 import java.io.Serializable;
 import java.util.HashMap;

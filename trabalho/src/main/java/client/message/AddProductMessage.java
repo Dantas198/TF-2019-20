@@ -1,7 +1,6 @@
 package client.message;
 
-import client.bodies.AddProductBody;
-import middleware.message.Message;
+import client.message.bodies.AddProductBody;
 import middleware.message.WriteMessage;
 
 public class AddProductMessage extends WriteMessage<AddProductBody> {

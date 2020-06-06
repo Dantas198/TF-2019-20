@@ -288,8 +288,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 else if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members");
                     Message reply = handleMessage(request);
-                    sendReply(reply, requester);
                     replicationService.floodMessage(request);
+                    // TODO espera por acks?
+                    sendReply(reply, requester);
                 }
                 else {
                     System.out.println("Server " + privateName + " handling the request locally");

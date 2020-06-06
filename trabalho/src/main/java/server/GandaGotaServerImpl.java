@@ -2,7 +2,7 @@ package server;
 
 import business.SuperMarketImpl;
 import business.product.Product;
-import client.bodies.AddProductBody;
+import client.message.bodies.AddProductBody;
 import client.message.*;
 import middleware.certifier.BitWriteSet;
 import middleware.Server;
@@ -47,11 +47,9 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
             if(message instanceof GetOrderMessage) {
                 String customer = ((GetOrderMessage) message).getBody();
                 Map<Product, Integer> currentOrderProducts = superMarket.getCurrentOrderProducts(customer);
-                HashMap<Product, Integer> response;
+                HashMap<Product, Integer> response = null;
                 if(currentOrderProducts != null) {
-                    response = new HashMap(currentOrderProducts);
-                } else {
-                    response = null;
+                    response = new HashMap<>(currentOrderProducts);
                 }
                 return new ContentMessage<>(response);
             }

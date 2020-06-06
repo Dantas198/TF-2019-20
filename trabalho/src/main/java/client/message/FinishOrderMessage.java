@@ -1,9 +1,6 @@
 package client.message;
 
-import business.order.Order;
-import client.bodies.FinishOrderBody;
 import middleware.message.TransactionMessage;
-import middleware.message.WriteMessage;
 
 
 /**
