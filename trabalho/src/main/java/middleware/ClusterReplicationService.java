@@ -12,7 +12,11 @@ import spread.*;
 import java.net.InetAddress;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class ClusterReplicationService<K, W extends WriteSet<K>> {
@@ -33,6 +37,13 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private ServerImpl<K, W, ?> server;
     private CompletableFuture<Void> started;
     private LogReader logReader;
+
+    // safe delete
+    private ScheduledThreadPoolExecutor executor;
+
+    private SpreadGroup[] members;
+    private SpreadGroup[] sdRequested; // SafeDeleteRequest sent to these members
+    private List<Long> timestamps;
 
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K, W, ?> server, int totalServers, LogReader logReader, Connection connection){
         this.totalServers = totalServers;
@@ -81,6 +92,23 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     };
 
 
+    private class SafeDeleteEvent implements Runnable {
+        @Override
+        public void run() {
+            if (!imLeader) return;
+            SafeDeleteRequestMessage msg = new SafeDeleteRequestMessage();
+            try {
+                floodMessage(msg);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void scheduleSafeDeleteEvent() {
+        long minutesUntilSafeDelete = 1000;
+        executor.schedule(new SafeDeleteEvent(), minutesUntilSafeDelete, TimeUnit.MINUTES);
+    }
 
     private boolean isInMainPartition(SpreadGroup[] partition) {
         return partition.length > totalServers/2;
@@ -95,7 +123,9 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             System.out.println("Server : " + privateName + ", network partition, im in main group");
             if(!imLeader) {
                 imLeader = electionManager.amILeader(stayed);
+
                 if (imLeader){
+                    scheduleSafeDeleteEvent();
                     System.out.println("Assuming leader role");
                 }
             }
@@ -127,6 +157,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             System.out.println("Server : " + privateName + ", and I'm the first member");
             initializer.initialized();
             imLeader = true;
+            scheduleSafeDeleteEvent();
             if (!started.isDone())
                 started.complete(null);
         }
@@ -137,6 +168,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         System.out.println("Server : " + privateName + ", a member disconnected");
         imLeader = electionManager.amILeader(member);
         if (imLeader){
+            scheduleSafeDeleteEvent();
             System.out.println("Assuming leader role");
         }
     }
@@ -146,6 +178,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         System.out.println("Server : " + privateName + ", a member left");
         imLeader = electionManager.amILeader(member);
         if (imLeader){
+            scheduleSafeDeleteEvent();
             System.out.println("Assuming leader role");
         }
     }
@@ -176,6 +209,31 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     }
 
 
+
+    private void handleSafeDeleteRequestMessage(SpreadGroup sender) throws Exception {
+        long ts = certifier.getSafeToDeleteTimestamp();
+        SafeDeleteReplyMessage reply = new SafeDeleteReplyMessage(ts);
+        sdRequested = members;
+        noAgreementFloodMessage(reply, sender);
+    }
+
+    private void handleSafeDeleteReplyMessage(SafeDeleteReplyMessage msg) throws Exception {
+        long ts = msg.getTs();
+        timestamps.add(ts);
+        int arrived = timestamps.size();
+        if (arrived == sdRequested.length || arrived >= members.length) { // TODO ver se chegaram todos, mas direito
+            long minTs = Collections.min(timestamps);
+            SafeDeleteMessage sdmsg = new SafeDeleteMessage(minTs);
+            floodMessage(sdmsg);
+        }
+    }
+
+    private void handleSafeDeleteMessage(SafeDeleteMessage msg) {
+        long ts = msg.getTs();
+        certifier.evictStoredWriteSets(ts);
+    }
+
+
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
@@ -186,16 +244,30 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                         if(!started.isDone())
                             started.complete(null);
 
+
                         Message received = (Message) spreadMessage.getObject();
                         if(received instanceof WriteMessage) {
                             handleWriteMessage((WriteMessage<?>) received);
-                        } else
-                        if(received instanceof CertifyWriteMessage){
+
+                        } else if(received instanceof CertifyWriteMessage){
                             handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
-                        } else
-                        if(received instanceof StateLengthRequestMessage){
+
+                        } else if(received instanceof StateLengthRequestMessage){
+                            // enviado pelo líder a um membro novo
                             // TODO: Não é Serializable
                             handleStateLengthRequestMessage((StateLengthRequestMessage) received, spreadMessage.getSender());
+
+                        } else if(received instanceof SafeDeleteRequestMessage){
+                            // enviado pelo líder a todos os membros no evento de GarbageCollection do certifier
+                            handleSafeDeleteRequestMessage(spreadMessage.getSender());
+
+                        } else if(received instanceof SafeDeleteReplyMessage && imLeader) {
+                            // resposta á SafeDeleteRequestMessage
+                            handleSafeDeleteReplyMessage((SafeDeleteReplyMessage) received);
+
+                        } else if (received instanceof SafeDeleteMessage) {
+                            // enviada pelo líder depois de obter as respostas ao SafeDeleteRequest
+                            handleSafeDeleteMessage((SafeDeleteMessage) received);
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
@@ -217,6 +289,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                 try {
                     System.out.println("Server : " + privateName + ", Membership Message received -------------");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
+
+                    if(info.isRegularMembership()) {
+                        members = info.getMembers();
+                    } else return;
 
                     if(info.isCausedByJoin() && info.getJoined().equals(spreadConnection.getPrivateGroup())) {
                         handleSelfJoin(info);
