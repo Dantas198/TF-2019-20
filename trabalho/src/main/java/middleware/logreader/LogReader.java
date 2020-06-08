@@ -35,14 +35,12 @@ public class LogReader {
     }
 
     public Collection<String> getQueries(int lowerBound, int upperBound) throws Exception{
-        System.out.println(lowerBound + " - " + upperBound);
-        if(upperBound < lowerBound) {
-            System.out.println("Está adiantado");
+        System.out.println(lowerBound + " -> " + upperBound + " " + logPath);
+        String fileString = getFileString();
+        if(lowerBound > upperBound) {
             return new ArrayList<>(0);
         }
         List<String> res = new ArrayList<>(upperBound-lowerBound);
-        lowerBound = Math.max(lowerBound, 0);
-        upperBound = Math.min(upperBound, size() - 1);
         for(int i = lowerBound; i < upperBound; i++){
             res.add(queries.get(i));
         }

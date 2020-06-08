@@ -17,7 +17,6 @@ import middleware.message.replication.CertifyWriteMessage;
 
 import java.io.Serializable;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -89,8 +88,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * Called from handleCertifierAnswer when a write request was made and is considered valid.
      * Needs to make changes effective
      * server
+     * @param state State that should be committed to database
      */
-    public abstract void commit();
+    public abstract void commit(Object state) throws Exception;
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered invalid.
@@ -144,7 +144,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
             for(String querie : queries) {
-                c.prepareStatement(querie).execute();
+                c.prepareCall(querie).execute();
                 System.out.println("querie: " + querie);
             }
         } catch (SQLException ex) {
@@ -243,7 +243,13 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             if (isWritable) {
                 //Primeiro persiste o estado
                 System.out.println("Server " + privateName + " flushing write to db");
-                commit();
+                try {
+                    commit(cwm.getState());
+                } catch (Exception e) {
+                    // TODO: verificar se parar o programa é a melhor opção
+                    // If exception should stop program
+                    System.exit(1);
+                }
                 //Atualiza as transações que foram feitas
                 System.out.println("Server " + privateName + " commiting to certifier");
                 replicationService.certifier.commitLocalStartedTransaction(cwm.getWriteSets(), cwm.getStartTimestamp(), cwm.getId());

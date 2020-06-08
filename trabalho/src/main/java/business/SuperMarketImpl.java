@@ -2,23 +2,17 @@ package business;
 
 import business.customer.Customer;
 import business.customer.CustomerImpl;
-import business.data.DBInitialization;
 import business.data.DAO;
 import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderSQLDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
-import business.order.OrderImpl;
 import business.product.Product;
-import middleware.certifier.BitWriteSet;
+import middleware.certifier.StateUpdater;
 import server.CurrentOrderCleaner;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.*;
@@ -33,25 +27,6 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 
 	public SuperMarketImpl(String privateName, Connection connection) throws SQLException {
 		this.connection = connection;
-		DBInitialization dbInit = new DBInitialization(this.connection);
-		if(!dbInit.exists()){
-			dbInit.init();
-			System.out.println("Database initialized");
-			if(privateName.equals("Server0")) {
-				dbInit.populateProduct();
-				System.out.println("Populated database");
-			} else {
-				// TODO: pedir os dados
-				/*
-				try {
-					Files.copy(new File("db/Server0.sql").toPath(), new File("db/" + privateName + ".script").toPath());
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				 */
-			}
-			//this.connection.prepareCall("SCRIPT 'db/" + privateName  + ".sql'").execute();
-		}
 		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
 		this.orderDAO = orderSQLDAO;
 		this.productDAO = new ProductSQLDAO(this.connection);
@@ -73,7 +48,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return true;
 	}
 
-	public boolean finishOrder(String customer, Map<String, BitWriteSet> writeSets) {
+	public boolean finishOrder(String customer, StateUpdater<String, Serializable> updater) {
 		// TODO: Resolver problemas de transação
 		try {
 			connection.setAutoCommit(false);
@@ -99,34 +74,16 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		}
 
 		// atualiza stock
-		BitWriteSet productBws = new BitWriteSet();
 		for (Product p : products.keySet()) {
 			int quantity = products.get(p);
 			p.reduceStock(quantity);
-			productDAO.update(p.getName(), p);
-			productBws.add(p.getName());
+			//productDAO.update(p.getName(), p);
+			updater.put("product", p.getName(), p);
 		}
-		writeSets.put("product", productBws);
-		BitWriteSet customerBws = new BitWriteSet();
-		customerBws.add(c.getId());
-		writeSets.put("customer", customerBws);
-
 		c.getOldOrders().add(order); // pode ser removido
 		c.newCurrentOrder();
-		customerDAO.update(customer, c);
-		/*
-		try {
-			this.connection.commit();
-		} catch (SQLException throwables) {
-			try {
-				this.connection.rollback();
-				this.connection.setAutoCommit(true);
-			} catch (SQLException throwables1) {
-				return false;
-			}
-			return false;
-		}
-		 */
+		updater.put("customer", c.getId(), c);
+		//customerDAO.update(customer, c);
 		return true;
 	}
 
