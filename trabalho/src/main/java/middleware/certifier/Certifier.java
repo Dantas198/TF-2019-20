@@ -49,7 +49,7 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
     }
 
     public boolean hasConflict(Map<String, K> ws, long ts) {
-        if (ts < lowWaterMark) {
+        if (ts <= lowWaterMark) {
             System.out.println("Certifier: old timestamp arrived");
             return false;
         }
@@ -67,7 +67,7 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
         return false;
     }
 
-    public void transactionStarted(Set<String> tables, long ts, String id) {
+    public void transactionStarted(Set<String> tables, long ts) {
         for (String table : tables) {
             this.runningTransactionsPerTable.putIfAbsent(table, new ConcurrentHashMap<>());
             this.runningTransactionsPerTable.get(table)
@@ -80,31 +80,33 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
     }
 
     public void shutDownLocalStartedTransaction(Set<String> tables, long ts) {
-        tables.forEach(table -> this.runningTransactionsPerTable.get(table).computeIfPresent(ts, (k, v) -> ++v));
+        tables.forEach(table -> this.runningTransactionsPerTable.get(table).computeIfPresent(ts, (k, v) -> --v));
     }
 
     //Commit also increases current timestamp
     public void commit(Map<String, K> ws) {
-        ws.forEach((table, writeSet) -> this.writesPerTable.get(table).put(this.timestamp, writeSet));
+        ws.forEach((table, writeSet) -> {
+            this.writesPerTable.putIfAbsent(table, new HashMap<>());
+            this.writesPerTable.get(table).put(this.timestamp, writeSet);
+        });
         this.timestamp++;
     }
 
     public long getSafeToDeleteTimestamp(){
-        long maxTimestampToDelete = -1;
+        long minimumTimestampToDelete = Long.MAX_VALUE;
         for(ConcurrentHashMap<Long, Integer> running : this.runningTransactionsPerTable.values()){
-            long minimumTimestamp = Long.MAX_VALUE;
-
+            long mt = lowWaterMark;
             for(Map.Entry<Long, Integer> entry : running.entrySet()){
                 int numTR = entry.getValue();
                 // mal encontre um que não esteja a 0 não considera os restantes que possam estar a 0
                 if(numTR != 0)
                     break;
-                minimumTimestamp = numTR;
+                mt = numTR;
             }
-            if(minimumTimestamp > maxTimestampToDelete)
-                maxTimestampToDelete = minimumTimestamp;
+            if(mt < minimumTimestampToDelete)
+                minimumTimestampToDelete = mt;
         }
-        return maxTimestampToDelete;
+        return minimumTimestampToDelete;
     }
 
 
@@ -130,4 +132,7 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
         return this.writesPerTable;
     }
 
+    public HashMap<String, ConcurrentHashMap<Long, Integer>> getRunningTransactionsPerTable() {
+        return runningTransactionsPerTable;
+    }
 }

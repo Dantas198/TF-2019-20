@@ -10,23 +10,23 @@ public abstract class ConnectionManager<K> {
 
     //TODO o lock vai depender de como usamos a classe. Ver melhor depois
     private ReentrantLock rl;
-    private final int maxConnectionNumber;
+    private final int maxWriteConnectionNumber;
     private int currentConnections;
 
     private List<K> readersPool;
 
-    public ConnectionManager(int maxConnectionNumber){
+    public ConnectionManager(int maxWriteConnectionNumber){
         this.freeConnections = new LinkedList<>();
         this.writesOnWait = new LinkedList<>();
         this.rl = new ReentrantLock();
-        this.maxConnectionNumber = maxConnectionNumber;
+        this.maxWriteConnectionNumber = maxWriteConnectionNumber;
         this.currentConnections = 0;
         this.readersPool = new ArrayList<>(1);
         this.readersPool.add(produceConnection());
     }
 
-    public ConnectionManager(int maxConnectionNumber, int readersPoolSize){
-        this(maxConnectionNumber);
+    public ConnectionManager(int maxWriteConnectionNumber, int readersPoolSize){
+        this(maxWriteConnectionNumber);
         readersPool = new ArrayList<>();
         for(int i = 0; i < readersPoolSize; i++)
             readersPool.add(produceConnection());
@@ -41,7 +41,7 @@ public abstract class ConnectionManager<K> {
     public CompletableFuture<K> assignWriteRequest(){
         try {
             rl.lock();
-            if (freeConnections.isEmpty() && currentConnections == maxConnectionNumber) {
+            if (freeConnections.isEmpty() && currentConnections == maxWriteConnectionNumber) {
                 CompletableFuture<K> cf = new CompletableFuture<>();
                 writesOnWait.add(cf);
                 return cf;

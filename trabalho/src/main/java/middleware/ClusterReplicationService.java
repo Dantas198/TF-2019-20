@@ -1,7 +1,6 @@
 package middleware;
 
 import middleware.certifier.Certifier;
-import middleware.certifier.NoTableDefinedException;
 import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
 import middleware.message.Message;
@@ -12,6 +11,7 @@ import spread.*;
 import java.net.InetAddress;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -19,7 +19,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService {
+public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
@@ -33,7 +33,7 @@ public class ClusterReplicationService {
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl server;
+    private ServerImpl<K,W,?> server;
     private CompletableFuture<Void> started;
     private LogReader logReader;
 
@@ -41,10 +41,14 @@ public class ClusterReplicationService {
     private ScheduledThreadPoolExecutor executor;
 
     private SpreadGroup[] members;
-    private SpreadGroup[] sdRequested; // SafeDeleteRequest sent to these members
-    private List<Long> timestamps;
+    private List<SpreadGroup> sdRequested; // SafeDeleteRequest sent to these members
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers, LogReader logReader, Connection connection){
+    //Leader vars
+    private boolean evicting;
+    private List<Long> timestamps;
+    private List<CompletableFuture<Void>> stateRequests;
+
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K,W,?> server, int totalServers, LogReader logReader, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -58,6 +62,10 @@ public class ClusterReplicationService {
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
         this.logReader = logReader;
+
+        this.evicting = false;
+        this.timestamps = new ArrayList<>();
+        this.stateRequests = new ArrayList<>();
     }
 
 
@@ -97,7 +105,8 @@ public class ClusterReplicationService {
             if (!imLeader) return;
             SafeDeleteRequestMessage msg = new SafeDeleteRequestMessage();
             try {
-                floodMessage(msg);
+                evicting = true;
+                noAgreementFloodMessage(msg);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -139,9 +148,21 @@ public class ClusterReplicationService {
         SpreadGroup newMember = info.getJoined();
 
         //TODO ENVIAR ESTADO CORRETO. De momento não funciona
-        System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
-        Message message = new GetLengthRequestMessage();
-        noAgreementFloodMessage(message, newMember);
+        CompletableFuture<Void> stateTransfer = new CompletableFuture<>();
+        stateTransfer.thenAccept((x) -> {
+            System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
+            //TODO enviar apenas o que interessa do certifier
+            Message message = new GetLengthRequestMessage();
+            try {
+                noAgreementFloodMessage(message, newMember);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        if(evicting)
+            this.stateRequests.add(stateTransfer);
+        else
+            stateTransfer.complete(null);
     }
 
     private void handleSelfJoin(MembershipInfo info) {
@@ -162,6 +183,7 @@ public class ClusterReplicationService {
         }
     }
 
+
     private void handleDisconnect(MembershipInfo info) {
         SpreadGroup member = info.getDisconnected();
         System.out.println("Server : " + privateName + ", a member disconnected");
@@ -171,6 +193,7 @@ public class ClusterReplicationService {
             System.out.println("Assuming leader role");
         }
     }
+
 
     private void handleLeave(MembershipInfo info) {
         SpreadGroup member = info.getLeft();
@@ -183,13 +206,24 @@ public class ClusterReplicationService {
     }
 
 
+    private void reduceWaits(MembershipInfo info){
+        if(evicting){
+            SpreadGroup member;
+            if(info.isCausedByDisconnect())
+                member = info.getDisconnected();
+            else
+                member = info.getLeft();
+            sdRequested.remove(member);
+        }
+    }
+
 
     private void handleWriteMessage(WriteMessage<?> msg) {
         server.handleMessage(msg); // TODO distinguir handlemessage para transaction write e read??
     }
 
 
-    private void handleCertifyWriteMessage(CertifyWriteMessage<?, ?> cwm) throws NoTableDefinedException {
+    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) {
         System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
         server.handleCertifierAnswer(cwm);
     }
@@ -204,19 +238,24 @@ public class ClusterReplicationService {
     }
 
 
-
-    private void handleSafeDeleteRequestMessage(SpreadGroup sender) throws Exception {
-        long ts = server.certifier.getSafeToDeleteTimestamp();
-        SafeDeleteReplyMessage reply = new SafeDeleteReplyMessage(ts);
-        sdRequested = members;
-        noAgreementFloodMessage(reply, sender);
+    private void handleSafeDeleteRequestMessage(SpreadGroup sender) {
+        server.getSafeToDeleteTimestamp()
+            .thenAccept((ts) -> {
+                SafeDeleteReplyMessage reply = new SafeDeleteReplyMessage(ts);
+                sdRequested = Arrays.asList(members);
+                try {
+                    noAgreementFloodMessage(reply, sender);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
     }
 
     private void handleSafeDeleteReplyMessage(SafeDeleteReplyMessage msg) throws Exception {
         long ts = msg.getTs();
         timestamps.add(ts);
         int arrived = timestamps.size();
-        if (arrived == sdRequested.length || arrived >= members.length) { // TODO ver se chegaram todos, mas direito
+        if (arrived == sdRequested.size()) { // TODO ver se chegaram todos, mas direito
             long minTs = Collections.min(timestamps);
             SafeDeleteMessage sdmsg = new SafeDeleteMessage(minTs);
             floodMessage(sdmsg);
@@ -225,7 +264,11 @@ public class ClusterReplicationService {
 
     private void handleSafeDeleteMessage(SafeDeleteMessage msg) {
         long ts = msg.getTs();
-        server.certifier.evictStoredWriteSets(ts);
+        server.evictStoredWriteSets(ts).thenAccept((x) -> {
+            evicting = false;
+            this.stateRequests.forEach(req -> req.complete(null));
+            this.stateRequests.clear();
+        });
     }
 
 
@@ -245,7 +288,7 @@ public class ClusterReplicationService {
                             handleWriteMessage((WriteMessage<?>) received);
 
                         } else if(received instanceof CertifyWriteMessage){
-                            handleCertifyWriteMessage((CertifyWriteMessage<?, ?>) received);
+                            handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
 
                         } else if(received instanceof StateLengthRequestMessage){
                             // enviado pelo líder a um membro novo
@@ -303,6 +346,8 @@ public class ClusterReplicationService {
                         if(info.isCausedByJoin()) {
                             handleJoin(info);
                         }
+                        else
+                            reduceWaits(info);
                     }
                     else {
                         if(info.isCausedByDisconnect()) {

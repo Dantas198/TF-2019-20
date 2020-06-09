@@ -27,7 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Serializable> implements Server {
 
-    private final ClusterReplicationService replicationService;
+    private final ClusterReplicationService<K,W> replicationService;
     private final Serializer s;
     private final ManagedMessagingService mms;
     private final CompletableFuture<Void> runningCompletable;
@@ -40,7 +40,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     private final LogReader logReader;
     private boolean isPaused;
 
-    private final ExecutorService commitExecutor;
+    private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
     public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection){
@@ -62,7 +62,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 new MessagingConfig());
         this.isPaused = false;
 
-        this.commitExecutor = Executors.newFixedThreadPool(1);
+        this.certifierExecutor = Executors.newFixedThreadPool(1);
         this.taskExecutor = Executors.newFixedThreadPool(8);
     }
 
@@ -184,7 +184,40 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      */
 
     //TODO não mexer sem perguntar !!
-    protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message) throws NoTableDefinedException {
+    protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message){
+        CompletableFuture.runAsync(() -> {
+            boolean isWritable = !certifier.hasConflict(message.getWriteSets(), message.getStartTimestamp());
+            System.out.println("Server : " + privateName + " isWritable: " + isWritable);
+
+            Address cli;
+            try{
+                rl.lock();
+                cli = this.writesRequests.get(message.getId());
+            }finally {
+                rl.unlock();
+            }
+            try {
+                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
+                    message.getStartTimestamp()), taskExecutor);
+                if (isWritable) {
+                    System.out.println("Server " + privateName + " commiting to db");
+                    commit(message.getState());
+                } else {
+                    System.out.println("Server " + privateName + " rolling back write from db");
+                    rollback();
+                }
+            } catch (Exception e) {
+                // TODO: verificar se parar o programa é a melhor opção
+                // If exception should stop program
+                System.exit(1);
+            }
+            if(isWritable)
+                certifier.commit(message.getWriteSets());
+            sendReply(new ContentMessage<>(isWritable), cli);
+        }, certifierExecutor);
+    }
+
+    protected void handleCertifierAnswerCommitAsync(CertifyWriteMessage<W,?> message){
         CompletableFuture.runAsync(() -> {
             boolean isWritable = !certifier.hasConflict(message.getWriteSets(), message.getStartTimestamp());
             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
@@ -198,20 +231,14 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             }
             CompletableFuture.runAsync(() -> {
                 try {
-                    if (cli == null) {
-                        System.out.println("Remote commit " + message.getId());
-                        commit(message.getState());
-                        //updateStateFromCommitedWrite(message);
-                    } else {
-                        CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
+                    CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
                             message.getStartTimestamp()), taskExecutor);
-                        if (isWritable) {
-                            System.out.println("Server " + privateName + " commiting to db");
-                            commit(message.getState());
-                        } else {
-                            System.out.println("Server " + privateName + " rolling back write from db");
-                            rollback();
-                        }
+                    if (isWritable) {
+                        System.out.println("Server " + privateName + " commiting to db");
+                        commit(message.getState());
+                    } else {
+                        System.out.println("Server " + privateName + " rolling back write from db");
+                        rollback();
                     }
                 } catch (Exception e) {
                     // TODO: verificar se parar o programa é a melhor opção
@@ -221,8 +248,17 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             }, taskExecutor).thenAccept((x) -> sendReply(new ContentMessage<>(isWritable), cli));
             if(isWritable)
                 certifier.commit(message.getWriteSets());
-        }, commitExecutor);
+            sendReply(new ContentMessage<>(isWritable), cli);
+        }, certifierExecutor);
+    }
 
+
+    protected CompletableFuture<Long> getSafeToDeleteTimestamp(){
+        return CompletableFuture.supplyAsync(() -> certifier.getSafeToDeleteTimestamp(), certifierExecutor);
+    }
+
+    protected CompletableFuture<Void> evictStoredWriteSets(long ts){
+        return CompletableFuture.runAsync(() -> certifier.evictStoredWriteSets(ts), certifierExecutor);
     }
 
 
@@ -244,7 +280,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      */
     private void startTransaction(Address requester, CertifyWriteMessage<W,?> cwm) throws Exception {
         long ts = certifier.getTimestamp();
-        certifier.transactionStarted(cwm.getTables(), ts, cwm.getId());
+        certifier.transactionStarted(cwm.getTables(), ts);
         cwm.setTimestamp(ts);
         try {
             rl.lock();
