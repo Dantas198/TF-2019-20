@@ -4,7 +4,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
 
-
 public abstract class ConnectionManager<K> {
     private Map<String, K> writeRequestsConnections;
     private Queue<K> freeConnections;
