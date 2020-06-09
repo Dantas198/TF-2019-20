@@ -120,7 +120,8 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
     @Override
     public void commit(Object state) throws SQLException {
-        //TODO
+        // this.connection.setAutoCommit(false);
+        //TODO verificar se é necessário transação
         Map<String, Set<Serializable>> changes = (Map<String, Set<Serializable>>) state;
         for (Map.Entry<String, Set<Serializable>> entry : changes.entrySet()) {
             String tag = entry.getKey();
@@ -146,6 +147,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
                 }
             }
         }
+        //this.connection.commit();
         System.out.println("Server : " + this.getPrivateName() + " commit");
     }
 

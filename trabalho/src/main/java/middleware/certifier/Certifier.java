@@ -1,5 +1,6 @@
 package middleware.certifier;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 //TODO atrasar decremento na rounda para não atrasar escritas
 
 
-public class Certifier<V, K extends WriteSet<V>> {
+public class Certifier<V, K extends WriteSet<V>> implements Serializable {
 
     //Last garbage collected timestamp limit
     private long lowWaterMark;
@@ -68,6 +69,7 @@ public class Certifier<V, K extends WriteSet<V>> {
 
     public void transactionStarted(Set<String> tables, long ts, String id) {
         for (String table : tables) {
+            this.runningTransactionsPerTable.putIfAbsent(table, new ConcurrentHashMap<>());
             this.runningTransactionsPerTable.get(table)
                 .compute(ts, (k,v) -> {
                     if (v == null)

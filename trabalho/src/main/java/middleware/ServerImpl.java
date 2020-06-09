@@ -218,7 +218,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                     // If exception should stop program
                     System.exit(1);
                 }
-            }, taskExecutor).thenAccept((x) -> sendReply(message, cli));
+            }, taskExecutor).thenAccept((x) -> sendReply(new ContentMessage<>(isWritable), cli));
             if(isWritable)
                 certifier.commit(message.getWriteSets());
         }, commitExecutor);
@@ -263,7 +263,6 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public void startClientListener(){
         this.mms.start();
         mms.registerHandler("request", (requester,b) -> {
-            System.out.println("\uD83D\uDE02");
             if(isPaused)
                 return;
 
@@ -273,15 +272,8 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
                     startTransaction(requester, handleTransactionMessage((TransactionMessage<?>) request));
                 }
-                else if(request instanceof WriteMessage) {
-                    System.out.println("Server " + privateName + " handling the request with group members");
-                    Message reply = handleMessage(request);
-                    replicationService.floodMessage(request);
-                    sendReply(reply, requester);
-                }
                 else {
                     System.out.println("Server " + privateName + " handling the request locally");
-                    System.out.println("??");
                     Message reply = handleMessage(request);
                     sendReply(reply, requester);
                 }
