@@ -12,7 +12,6 @@ import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
-import middleware.message.TransactionMessage;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 
@@ -83,7 +82,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * @return the message body of the response
      */
     //TODO: Converter para WriteMessage visto que só aceita write message
-    public abstract CertifyWriteMessage<W,?> handleTransactionMessage(TransactionMessage<?> message);
+    public abstract CertifyWriteMessage<W,?> handleWriteMessage(WriteMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
@@ -268,11 +267,10 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
             Message request = s.decode(b);
             try {
-                if(request instanceof TransactionMessage) {
+                if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
-                    startTransaction(requester, handleTransactionMessage((TransactionMessage<?>) request));
-                }
-                else {
+                    startTransaction(requester, handleWriteMessage((WriteMessage<?>) request)); // TODO onde está o reply?
+                } else {
                     System.out.println("Server " + privateName + " handling the request locally");
                     Message reply = handleMessage(request);
                     sendReply(reply, requester);
@@ -283,8 +281,8 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }, taskExecutor);
     }
 
-    public void rebuildCertifier(Certifier c){
-        this.certifier = new Certifier<K, W>(c);
+    public void rebuildCertifier(Certifier<K,W> c){
+        this.certifier = new Certifier<>(c);
     }
 
 
