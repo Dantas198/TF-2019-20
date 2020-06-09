@@ -2,7 +2,6 @@ package server;
 
 import business.SuperMarketImpl;
 import business.customer.Customer;
-import business.customer.CustomerSQLImpl;
 import business.data.DAO;
 import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderSQLDAO;
@@ -19,9 +18,8 @@ import middleware.certifier.StateUpdatesBitSet;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
-import middleware.message.TransactionMessage;
+import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
-import org.apache.commons.math3.geometry.partitioning.BSPTreeVisitor;
 
 
 import java.io.Serializable;
@@ -91,7 +89,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
     @Override
     //TODO mudar o estado
-    public CertifyWriteMessage<BitWriteSet, ?> handleTransactionMessage(TransactionMessage<?> message){
+    public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
         boolean success = false;
         if(message instanceof AddCustomerMessage) {
