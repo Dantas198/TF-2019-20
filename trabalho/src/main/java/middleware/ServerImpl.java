@@ -198,24 +198,17 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             }
             CompletableFuture.runAsync(() -> {
                 try {
-                    if (cli == null)
-                        //TODO deprecated?
+                    if (cli == null) {
                         System.out.println("Remote commit " + message.getId());
-                try {
-                    commit(message.getState());
-                } catch (Exception e) {
-                    // Para o servidor para não ficar inconsitente com os outros servidores
-                    System.exit(1);
-                }
-                //updateStateFromCommitedWrite(message);
-                    else {
+                        commit(message.getState());
+                        //updateStateFromCommitedWrite(message);
+                    } else {
                         CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
-                                message.getStartTimestamp()), taskExecutor);
+                            message.getStartTimestamp()), taskExecutor);
                         if (isWritable) {
                             System.out.println("Server " + privateName + " commiting to db");
                             commit(message.getState());
-                        }
-                        else{
+                        } else {
                             System.out.println("Server " + privateName + " rolling back write from db");
                             rollback();
                         }
