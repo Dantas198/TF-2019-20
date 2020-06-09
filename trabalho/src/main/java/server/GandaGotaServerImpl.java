@@ -3,6 +3,7 @@ package server;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.customer.CustomerSQLImpl;
+import business.data.DAO;
 import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderSQLDAO;
 import business.data.product.ProductSQLDAO;
@@ -33,12 +34,18 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
     private SuperMarketImpl superMarket;
     private Connection connection;
+    private DAO<String, Order> orderDAO;
+    private DAO<String, Product> productDAO;
+    private DAO<String, Customer> customerDAO;
 
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection) throws SQLException {
         super(spreadPort, privateName, atomixPort, connection);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
-        this.superMarket = new SuperMarketImpl(privateName, connection);
         this.connection = connection;
+        this.orderDAO = new OrderSQLDAO(this.connection);
+        this.productDAO = new ProductSQLDAO(this.connection);
+        this.customerDAO = new CustomerSQLDAO(this.connection);
+        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO);
     }
 
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) throws SQLException {
@@ -49,10 +56,6 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     @Override
     public Message handleMessage(Message message) {
         try {
-            if(message instanceof AddCustomerMessage) {
-                String customer = ((AddCustomerMessage) message).getBody();
-                return new ContentMessage<>(superMarket.addCustomer(customer));
-            }
             if(message instanceof GetOrderMessage) {
                 String customer = ((GetOrderMessage) message).getBody();
                 Map<Product, Integer> currentOrderProducts = superMarket.getCurrentOrderProducts(customer);
@@ -90,11 +93,15 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     //TODO mudar o estado
     public CertifyWriteMessage<BitWriteSet, ?> handleTransactionMessage(TransactionMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
-        if (message instanceof FinishOrderMessage) {
+        boolean success = false;
+        if(message instanceof AddCustomerMessage) {
+            String customer = ((AddCustomerMessage) message).getBody();
+            success = superMarket.addCustomer(customer, updates);
+        } else if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();
-            boolean success = superMarket.finishOrder(customer, updates);
-            if(success) System.out.println("correu bem");
+            success = superMarket.finishOrder(customer, updates);
         }
+        if(success) System.out.println("correu bem");
         return new CertifyWriteMessage<>(updates.getWriteSets(), (HashMap<String, Set<Serializable>>) updates.getAllUpdates());
     }
 
@@ -103,36 +110,37 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         //TODO
         //TESTE
         System.out.println("Server : " + this.getPrivateName() + " update state from commit");
-        int state = (Integer) message.getState();
+        try {
+            commit(message.getState());
+        } catch (Exception e) {
+            //TODO: Se algo corre mal, o servidor tem de parar para ficar consistente??
+            System.exit(1);
+        }
     }
 
     @Override
     public void commit(Object state) throws SQLException {
-            //TODO
-            Map<String, Set<Serializable>> changes = (Map<String, Set<Serializable>>) state;
-            for (Map.Entry<String, Set<Serializable>> entry : changes.entrySet()) {
-                String tag = entry.getKey();
-                Set<?> objects = entry.getValue();
-                switch (tag) {
-                    case "customer": {
-                        OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
-                        CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(this.connection, orderSQLDAO);
-                        for (Customer customer : (Set<Customer>) objects) {
-                            customerSQLDAO.put(customer);
-                        }
+        //TODO
+        Map<String, Set<Serializable>> changes = (Map<String, Set<Serializable>>) state;
+        for (Map.Entry<String, Set<Serializable>> entry : changes.entrySet()) {
+            String tag = entry.getKey();
+            Set<?> objects = entry.getValue();
+            switch (tag) {
+                case "customer": {
+                    for (Customer customer : (Set<Customer>) objects) {
+                        customerDAO.put(customer);
                     }
-                    break;
-                    case "order": {
-                        OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
-                        for (Order order : (Set<Order>) objects) {
-                            orderSQLDAO.put(order);
-                        }
+                }
+                break;
+                case "order": {
+                    for (Order order : (Set<Order>) objects) {
+                        orderDAO.put(order);
                     }
-                    break;
-                    case "product": {
-                        ProductSQLDAO productSQLDAO = new ProductSQLDAO(this.connection);
-                        for(Product product : (Set<Product>) objects) {
-                            productSQLDAO.put(product);
+                }
+                break;
+                case "product": {
+                    for (Product product : (Set<Product>) objects) {
+                        productDAO.put(product);
                     }
                     break;
                 }

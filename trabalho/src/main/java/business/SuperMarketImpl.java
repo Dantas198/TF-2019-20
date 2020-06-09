@@ -23,22 +23,20 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
 	private CurrentOrderCleaner cleaner;
-	private Connection connection;
 
-	public SuperMarketImpl(String privateName, Connection connection) throws SQLException {
-		this.connection = connection;
-		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
-		this.orderDAO = orderSQLDAO;
-		this.productDAO = new ProductSQLDAO(this.connection);
-		CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(this.connection, orderSQLDAO);
-		this.customerDAO = customerSQLDAO;
-		long tmax = 100;
-		cleaner = new CurrentOrderCleaner(customerSQLDAO, Duration.ofDays(tmax));
+	public SuperMarketImpl(DAO<String, Order> orderDAO,
+						   DAO<String, Product> productDAO,
+						   DAO<String, Customer> customerDAO)
+			throws SQLException {
+		this.orderDAO = orderDAO;
+		this.productDAO = productDAO;
+		this.customerDAO = customerDAO;
 	}
 
-	public boolean addCustomer(String customer) {
+	public boolean addCustomer(String customer, StateUpdater<String, Serializable> updater) {
 		Customer c = new CustomerImpl(customer);
-		return customerDAO.put(c);
+		updater.put("customer", customer, c);
+		return true;
 	}
 
 	public boolean resetOrder(String customer) {
@@ -49,12 +47,6 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	}
 
 	public boolean finishOrder(String customer, StateUpdater<String, Serializable> updater) {
-		// TODO: Resolver problemas de transação
-		try {
-			connection.setAutoCommit(false);
-		} catch (SQLException throwables) {
-			return false;
-		}
 		// TODO tmax
 		Customer c = customerDAO.get(customer);
 		if(!c.hasCurrentOrder())
@@ -91,11 +83,6 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		System.out.println("addProduct");
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;
-		try {
-			cleaner.clean();
-		} catch (SQLException throwables) {
-			throwables.printStackTrace();
-		}
 		if (!customer.hasCurrentOrder()) {
 			/* customerDAO retorna uma instância de CustomerSQLImpl
 			// CustomerSQLImpl subrepõe o método newCurrentOrder

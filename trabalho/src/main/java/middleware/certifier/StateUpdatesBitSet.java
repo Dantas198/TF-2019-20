@@ -34,7 +34,9 @@ public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
     @Override
     public void put(String table, String key, V value) {
-        this.wss.getOrDefault(table, new BitWriteSet()).add(key);
-        this.objects.getOrDefault(table, new HashSet<>()).add(value);
+        this.wss.putIfAbsent(table, new BitWriteSet());
+        this.wss.get(table).add(key);
+        this.objects.putIfAbsent(table, new HashSet<>());
+        this.objects.get(table).add(value);
     }
 }

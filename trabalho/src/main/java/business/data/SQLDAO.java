@@ -13,7 +13,6 @@ public class SQLDAO<K, T> implements DAO<K, T> {
     public SQLDAO(Connection connection, DAOPS<K, T> ps) throws SQLException {
         this.ps = ps;
         this.connection = connection;
-        connection.setAutoCommit(false);
     }
 
     @Override
@@ -71,19 +70,5 @@ public class SQLDAO<K, T> implements DAO<K, T> {
             e.printStackTrace();
             return null;
         }
-    }
-
-    public void commit() throws SQLException {
-        connection.commit();
-        connection.setAutoCommit(true);
-    }
-
-    public void rollback() throws SQLException {
-        connection.rollback();
-        connection.setAutoCommit(true);
-    }
-
-    public void startTransaction() throws SQLException {
-        connection.setAutoCommit(false);
     }
 }

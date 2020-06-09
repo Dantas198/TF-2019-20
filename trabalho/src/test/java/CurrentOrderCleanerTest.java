@@ -21,7 +21,7 @@ public class CurrentOrderCleanerTest {
     public void test() throws SQLException {
         Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/currentOrderCleanerTest2;shutdown=true;hsqldb.sqllog=2;hsqldb.lock_file=false;sql.syntax_mys=true", "", "");
         new DBInitialization(c).init();
-        CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(c, new OrderSQLDAO(c));
+        CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(c);
         Calendar calendar = Calendar.getInstance();
         CurrentOrderCleaner cleaner = new CurrentOrderCleaner(customerSQLDAO, Duration.ofDays(10), calendar);
         customerSQLDAO.put(new CustomerImpl("Customer 1"));

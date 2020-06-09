@@ -88,7 +88,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * Called from handleCertifierAnswer when a write request was made and is considered valid.
      * Needs to make changes effective
      * server
-     * @param state State that should be committed to database
+     * @param state State to persist
      */
     public abstract void commit(Object state) throws Exception;
 
@@ -184,7 +184,14 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         // se for null então não foi iniciada a escrita neste servidor
         if(res == null){
             if(isWritable) {
-                updateStateFromCommitedWrite(message);
+                System.out.println("Remote commit " + message.getId());
+                try {
+                    commit(message.getState());
+                } catch (Exception e) {
+                    // Para o servidor para não ficar inconsitente com os outros servidores
+                    System.exit(1);
+                }
+                //updateStateFromCommitedWrite(message);
                 //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
                 //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
                 System.out.println("Server " + privateName + " commiting to certifier");

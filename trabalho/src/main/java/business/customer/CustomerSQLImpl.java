@@ -19,7 +19,7 @@ public class CustomerSQLImpl extends CustomerImpl {
     public CustomerSQLImpl(String id, Order currentOrder, Set<Order> oldOrder, OrderSQLDAO orderDAO, Connection c) throws SQLException {
         super(id, currentOrder, oldOrder);
         this.orderDAO = orderDAO;
-        this.customerDAO = new CustomerSQLDAO(c, orderDAO);
+        this.customerDAO = new CustomerSQLDAO(c);
     }
 
     @Override

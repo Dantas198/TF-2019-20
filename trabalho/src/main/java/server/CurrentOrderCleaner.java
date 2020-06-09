@@ -59,7 +59,6 @@ public class CurrentOrderCleaner {
                 }
             }
         }
-        customerSQLDAO.commit();
         return true;
     }
 
