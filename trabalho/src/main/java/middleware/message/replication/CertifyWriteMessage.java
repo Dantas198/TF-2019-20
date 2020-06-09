@@ -48,4 +48,5 @@ public class CertifyWriteMessage<K extends WriteSet<?>, V extends Serializable> 
     public void setTimestamp(long timestamp){
         this.timestamp = timestamp;
     }
+
 }

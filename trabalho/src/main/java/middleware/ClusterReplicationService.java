@@ -19,7 +19,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService<K, W extends WriteSet<K>> {
+public class ClusterReplicationService {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
@@ -30,11 +30,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     //private Map<String, List<Message>> cachedMessages;
 
     private final Initializer initializer;
-    public  Certifier<K, W> certifier;
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl<K, W, ?> server;
+    private ServerImpl server;
     private CompletableFuture<Void> started;
     private LogReader logReader;
 
@@ -45,7 +44,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private SpreadGroup[] sdRequested; // SafeDeleteRequest sent to these members
     private List<Long> timestamps;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K, W, ?> server, int totalServers, LogReader logReader, Connection connection){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers, LogReader logReader, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -55,7 +54,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.initializer = new Initializer(server, this, connection);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
-        this.certifier = new Certifier<>();
+
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
         this.logReader = logReader;
@@ -73,7 +72,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
 
     public void rebuildCertifier(Certifier c){
-        this.certifier = new Certifier<K, W>(c);
+        this.server.rebuildCertifier(c);
     }
 
     /**
@@ -185,18 +184,14 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
 
 
-
-
     private void handleWriteMessage(WriteMessage<?> msg) {
         server.handleMessage(msg); // TODO distinguir handlemessage para transaction write e read??
     }
 
 
-    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) throws NoTableDefinedException {
+    private void handleCertifyWriteMessage(CertifyWriteMessage<?, ?> cwm) throws NoTableDefinedException {
         System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
-        boolean isWritable = !certifier.hasConflict(cwm.getWriteSets(), cwm.getStartTimestamp());
-        System.out.println("Server : " + privateName + " isWritable: " + isWritable);
-        server.handleCertifierAnswer(cwm, isWritable);
+        server.handleCertifierAnswer(cwm);
     }
 
     private void handleStateLengthRequestMessage(StateLengthRequestMessage msg, SpreadGroup sender) throws Exception {
@@ -204,14 +199,14 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         int lowerBound = msg.getBody();
         System.out.println("Logs lower bound = " + lowerBound );
         ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
-        Message m = new StateTransferMessage(new State(queries, certifier));
+        Message m = new StateTransferMessage(new State(queries, server.certifier));
         noAgreementFloodMessage(m, sender);
     }
 
 
 
     private void handleSafeDeleteRequestMessage(SpreadGroup sender) throws Exception {
-        long ts = certifier.getSafeToDeleteTimestamp();
+        long ts = server.certifier.getSafeToDeleteTimestamp();
         SafeDeleteReplyMessage reply = new SafeDeleteReplyMessage(ts);
         sdRequested = members;
         noAgreementFloodMessage(reply, sender);
@@ -230,7 +225,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
     private void handleSafeDeleteMessage(SafeDeleteMessage msg) {
         long ts = msg.getTs();
-        certifier.evictStoredWriteSets(ts);
+        server.certifier.evictStoredWriteSets(ts);
     }
 
 
@@ -250,7 +245,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                             handleWriteMessage((WriteMessage<?>) received);
 
                         } else if(received instanceof CertifyWriteMessage){
-                            handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
+                            handleCertifyWriteMessage((CertifyWriteMessage<?, ?>) received);
 
                         } else if(received instanceof StateLengthRequestMessage){
                             // enviado pelo líder a um membro novo
