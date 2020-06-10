@@ -199,8 +199,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 rl.unlock();
             }
             try {
-                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
-                    message.getStartTimestamp()), taskExecutor);
+                if (cli != null)
+                    CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
+                        message.getStartTimestamp()), taskExecutor);
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
