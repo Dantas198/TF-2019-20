@@ -44,13 +44,11 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 	public boolean resetOrder(String customer, StateUpdater<String, Serializable> updater) {
 		Customer c = customerDAO.get(customer);
 		if(c == null) return false;
+		if(!c.hasCurrentOrder()) return false;
 		String oldCurrentOrder = c.getCurrentOrder().getId();
 		c.deleteCurrentOrder();
-		updater.put("customer", customer, c); // Atualiza o cliente por causa da Foreign Key
+		updater.put("customer", customer, new CustomerPlaceholder(c)); // Atualiza o cliente primeiro por causa da Foreign Key
 		updater.put("order", oldCurrentOrder, null); // Apaga ordem atual
-		c.newCurrentOrder();
-		updater.put("order", c.getCurrentOrder().getId(), c.getCurrentOrder()); // Cria a order
-		updater.put("customer", c.getId(), c); // Atualiza o customer com a nova order
 		return true;
 	}
 
@@ -110,7 +108,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null || !customer.hasCurrentOrder()) return null;
 		Order currentOrder = orderDAO.get(customer.getCurrentOrder().getId());
-		if(currentOrder == null) return null;
+		if(currentOrder == null) return new HashMap<>(0);
 		return currentOrder.getProducts();
 	}
 
