@@ -219,43 +219,6 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }, certifierExecutor);
     }
 
-    protected void handleCertifierAnswerCommitAsync(CertifyWriteMessage<W,?> message){
-        CompletableFuture.runAsync(() -> {
-            boolean isWritable = !certifier.hasConflict(message.getWriteSets(), message.getStartTimestamp());
-            System.out.println("Server : " + privateName + " isWritable: " + isWritable);
-
-            Address cli;
-            try{
-                rl.lock();
-                cli = this.writesRequests.get(message.getId());
-            } finally {
-                rl.unlock();
-            }
-            CompletableFuture.runAsync(() -> {
-                try {
-                    CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
-                            message.getStartTimestamp()), taskExecutor);
-                    if (isWritable) {
-                        System.out.println("Server " + privateName + " commiting to db");
-                        commit((Set<TaggedObject<String, Serializable>>) message.getState());
-                    } else {
-                        System.out.println("Server " + privateName + " rolling back write from db");
-                        rollback();
-                    }
-                } catch (Exception e) {
-                    // TODO: verificar se parar o programa é a melhor opção
-                    sendReply(new ContentMessage<>(false), cli);
-                    // If exception should stop program
-                    System.exit(1);
-                }
-            }, taskExecutor).thenAccept((x) -> sendReply(new ContentMessage<>(isWritable), cli));
-            if(isWritable)
-                certifier.commit(message.getWriteSets());
-            sendReply(new ContentMessage<>(isWritable), cli);
-        }, certifierExecutor);
-    }
-
-
     protected CompletableFuture<Long> getSafeToDeleteTimestamp(){
         return CompletableFuture.supplyAsync(() -> certifier.getSafeToDeleteTimestamp(), certifierExecutor);
     }
