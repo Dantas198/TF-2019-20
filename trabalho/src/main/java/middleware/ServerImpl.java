@@ -6,9 +6,7 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
-import middleware.certifier.BitWriteSet;
 import middleware.certifier.Certifier;
-import middleware.certifier.NoTableDefinedException;
 import middleware.certifier.TaggedObject;
 import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
@@ -279,7 +277,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     }
 
     public void rebuildCertifier(HashMap<String, HashMap<Long, WriteSet<K>>> c){
-        this.certifier.addState();
+        this.certifier.addState(c);
     }
 
     private void sendReply(Message message, Address address) {
