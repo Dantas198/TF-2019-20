@@ -68,4 +68,8 @@ public class Initializer {
     public void initialized(){
         this.initializing = false;
     }
+
+    public void reset() {
+        this.initializing = false;
+    }
 }

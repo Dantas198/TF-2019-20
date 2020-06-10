@@ -35,7 +35,6 @@ import java.util.*;
 public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayList<String>> {
 
     private SuperMarketImpl superMarket;
-    private Connection connection;
     private DAO<String, Order> orderDAO;
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
@@ -43,10 +42,9 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount) throws SQLException {
         super(spreadPort, privateName, atomixPort, connection, totalServerCount);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
-        this.connection = connection;
-        this.orderDAO = new OrderSQLDAO(this.connection);
-        this.productDAO = new ProductSQLDAO(this.connection);
-        this.customerDAO = new CustomerSQLDAO(this.connection);
+        this.orderDAO = new OrderSQLDAO(connection);
+        this.productDAO = new ProductSQLDAO(connection);
+        this.customerDAO = new CustomerSQLDAO(connection);
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO);
     }
 
@@ -86,7 +84,9 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     }
 
 
-    // returns null if execution fails
+    /**
+     * returns null if execution fails
+    */
     @Override
     public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
