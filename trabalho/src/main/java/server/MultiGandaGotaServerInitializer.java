@@ -72,7 +72,7 @@ public class MultiGandaGotaServerInitializer {
     public static Thread initServer(String serverName, int atomixPort, Connection connection) {
         Thread thread = new Thread(() -> {
             try {
-                new GandaGotaServerImpl(4803, serverName, atomixPort, connection).start();
+                new GandaGotaServerImpl(4803, serverName, atomixPort, connection, 3).start();
             } catch (Exception e) {
                 e.printStackTrace();
             }

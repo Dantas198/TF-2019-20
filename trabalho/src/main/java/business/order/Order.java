@@ -20,4 +20,8 @@ public interface Order extends Serializable {
 	Date getTimestamp();
 
 	boolean reset();
+
+	String getCustomerId();
+
+	void setCustomerId(String id);
 }
