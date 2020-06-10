@@ -6,6 +6,7 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
+import middleware.certifier.BitWriteSet;
 import middleware.certifier.Certifier;
 import middleware.certifier.NoTableDefinedException;
 import middleware.certifier.WriteSet;
@@ -42,11 +43,10 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount){
         this.privateName = privateName;
-        // TODO numero de servidores max/total
         this.logReader = new LogReader("db/" + privateName + ".log");
-        this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, 3, logReader, databaseConnection);
+        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, logReader, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
         this.certifier = new Certifier<>();
@@ -81,7 +81,6 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * @param message The body Message received
      * @return the message body of the response
      */
-    //TODO: Converter para WriteMessage visto que só aceita write message
     public abstract CertifyWriteMessage<W,?> handleWriteMessage(WriteMessage<?> message);
 
     /**
@@ -192,7 +191,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             try{
                 rl.lock();
                 cli = this.writesRequests.get(message.getId());
-            }finally {
+            } finally {
                 rl.unlock();
             }
             try {
@@ -207,6 +206,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 }
             } catch (Exception e) {
                 // TODO: verificar se parar o programa é a melhor opção
+                sendReply(new ContentMessage<>(false), cli);
                 // If exception should stop program
                 System.exit(1);
             }
@@ -225,7 +225,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             try{
                 rl.lock();
                 cli = this.writesRequests.get(message.getId());
-            }finally {
+            } finally {
                 rl.unlock();
             }
             CompletableFuture.runAsync(() -> {
@@ -241,6 +241,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                     }
                 } catch (Exception e) {
                     // TODO: verificar se parar o programa é a melhor opção
+                    sendReply(new ContentMessage<>(false), cli);
                     // If exception should stop program
                     System.exit(1);
                 }
@@ -305,7 +306,14 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             try {
                 if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
-                    startTransaction(requester, handleWriteMessage((WriteMessage<?>) request)); // TODO onde está o reply?
+                    CertifyWriteMessage<W, ?> cwm = handleWriteMessage((WriteMessage<?>) request);
+                    if(cwm != null) {
+                        startTransaction(requester, cwm);
+                    } else {
+                        // error
+                        ContentMessage<Boolean> reply = new ContentMessage<>(false);
+                        sendReply(reply, requester);
+                    }
                 } else {
                     System.out.println("Server " + privateName + " handling the request locally");
                     Message reply = handleMessage(request);
