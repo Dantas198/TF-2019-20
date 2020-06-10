@@ -397,4 +397,9 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         spreadConnection.multicast(m);
         //System.out.println("Sending to group ("+ sg + "): " + message);
     }
+
+    public void stop() throws SpreadException {
+        this.spreadConnection.disconnect();
+    }
+
 }
