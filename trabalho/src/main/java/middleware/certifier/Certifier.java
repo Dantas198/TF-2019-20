@@ -3,6 +3,7 @@ package middleware.certifier;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * Class that deals with certification logic.
@@ -10,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 //TODO atrasar decremento na rounda para não atrasar escritas
-
 
 public class Certifier<V, K extends WriteSet<V>> implements Serializable {
 
@@ -20,6 +20,8 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
     //Holds current global timestamp
     private long timestamp;
 
+    private ReadWriteLock rwl;
+
     //Stores running transaction for each table and each timestamp
     private final HashMap<String, ConcurrentHashMap<Long, Integer>> runningTransactionsPerTable;
 
@@ -27,7 +29,6 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
     //TODO concurrent tbm?
     private final HashMap<String, HashMap<Long, WriteSet<V>>> writesPerTable;
 
-    //TODO add tables no construtor ou dinâmicas?
     public Certifier(){
         this.lowWaterMark = -1;
         this.timestamp = 0;
@@ -41,6 +42,15 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
         this.timestamp = c.getTimestamp();
         this.runningTransactionsPerTable = new HashMap<>();
         this.writesPerTable = new HashMap<>(c.getWritesPerTable());
+    }
+
+    public void addState(HashMap<String, HashMap<Long, WriteSet<V>>> c){
+        c.forEach((k,v) -> v.forEach((ts, ws) -> {
+            this.writesPerTable.putIfAbsent(k, new HashMap<>());
+            this.writesPerTable.get(k).put(ts, ws);
+            this.runningTransactionsPerTable.putIfAbsent(k, new ConcurrentHashMap<>());
+            this.runningTransactionsPerTable.get(k).put(ts, 0);
+        }));
     }
 
     public void addTables(List<String> tables){
@@ -89,7 +99,12 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
             this.writesPerTable.putIfAbsent(table, new HashMap<>());
             this.writesPerTable.get(table).put(this.timestamp, writeSet);
         });
-        this.timestamp++;
+        try {
+            rwl.writeLock().lock();
+            this.timestamp++;
+        }finally {
+            rwl.writeLock().unlock();
+        }
     }
 
     public long getSafeToDeleteTimestamp(){
@@ -120,8 +135,26 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
         this.lowWaterMark = newLowWaterMark;
     }
 
+    public HashMap<String, HashMap<Long, WriteSet<V>>> getWriteSetsByTimestamp(long lowerBound){
+        HashMap<String, HashMap<Long, WriteSet<V>>> response = new HashMap<>();
+        for(String table : this.writesPerTable.keySet()){
+            response.put(table, new HashMap<>());
+            for(Map.Entry<Long, WriteSet<V>> e : this.writesPerTable.get(table).entrySet()){
+                if (e.getKey() > lowerBound)
+                    response.get(table).put(e.getKey(), e.getValue());
+            }
+        }
+        return response;
+    }
+
+
     public long getTimestamp(){
-        return this.timestamp;
+        try {
+            rwl.readLock().lock();
+            return this.timestamp;
+        }finally {
+            rwl.readLock().unlock();
+        }
     }
 
     public long getLowWaterMark() {

@@ -16,6 +16,7 @@ import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
+import middleware.message.replication.FullState;
 
 import java.io.Serializable;
 import java.sql.Connection;
@@ -47,7 +48,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount){
         this.privateName = privateName;
         this.logReader = new LogReader("db/" + privateName + ".log"); //TODO: passar como argumento
-        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, logReader, databaseConnection);
+        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
         this.certifier = new Certifier<>();
@@ -64,6 +65,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
         this.certifierExecutor = Executors.newFixedThreadPool(1);
         this.taskExecutor = Executors.newFixedThreadPool(8);
+
     }
 
     /**
@@ -263,6 +265,21 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         return CompletableFuture.runAsync(() -> certifier.evictStoredWriteSets(ts), certifierExecutor);
     }
 
+    protected CompletableFuture<FullState<K>> getState(int lowerBound, long latestTimestamp){
+        return CompletableFuture.supplyAsync(() -> {
+            HashMap<String, HashMap<Long, WriteSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
+            try {
+                return new FullState<K>(logReader.getQueries(lowerBound), writes);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }, certifierExecutor);
+    }
+
+    public void rebuildCertifier(HashMap<String, HashMap<Long, WriteSet<K>>> c){
+        this.certifier.addState();
+    }
 
     private void sendReply(Message message, Address address) {
         mms.sendAsync(address, "reply", s.encode(message)).whenComplete((m, t) -> {
@@ -327,10 +344,6 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }, taskExecutor);
     }
 
-    public void rebuildCertifier(Certifier<K,W> c){
-        this.certifier = new Certifier<>(c);
-    }
-
 
     @Override
     public void stop() {
@@ -339,5 +352,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
     public String getPrivateName() {
         return privateName;
+    }
+
+    public LogReader getLogReader() {
+        return logReader;
     }
 }

@@ -4,23 +4,16 @@ import middleware.message.Message;
 
 import java.io.Serializable;
 
-//TODO poderá servir para fazer a passagem de estado, quando uma replica fica para trás
-/**
- * Class to pass state changes
- */
-public class StateTransferMessage extends Message implements Serializable, Replicable<State> {
-    private State state;
+public class StateTransferMessage<V> extends Message implements Serializable, Replicable<FullState<V>> {
+    private FullState<V> state;
 
-    public StateTransferMessage(State state) {
+    public StateTransferMessage(FullState<V> state){
         this.state = state;
     }
 
-
-    public void setState(State state) {
-        this.state = state;
+    @Override
+    public FullState<V> getState() {
+        return null;
     }
 
-    public State getState() {
-        return state;
-    }
 }

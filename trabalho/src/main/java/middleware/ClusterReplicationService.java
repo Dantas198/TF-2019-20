@@ -10,10 +10,7 @@ import spread.*;
 
 import java.net.InetAddress;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -35,7 +32,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
     private ServerImpl<K,W,?> server;
     private CompletableFuture<Void> started;
-    private LogReader logReader;
 
     // safe delete
     private ScheduledThreadPoolExecutor executor;
@@ -48,7 +44,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private List<Long> timestamps;
     private List<CompletableFuture<Void>> stateRequests;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K,W,?> server, int totalServers, LogReader logReader, Connection connection){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K,W,?> server, int totalServers, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -61,7 +57,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
         this.electionManager = new ElectionManager(this.spreadConnection);
         this.imLeader = false;
-        this.logReader = logReader;
 
         this.evicting = false;
         this.timestamps = new ArrayList<>();
@@ -148,21 +143,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         SpreadGroup newMember = info.getJoined();
 
         //TODO ENVIAR ESTADO CORRETO. De momento não funciona
-        CompletableFuture<Void> stateTransfer = new CompletableFuture<>();
-        stateTransfer.thenAccept((x) -> {
-            System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
-            //TODO enviar apenas o que interessa do certifier
-            Message message = new GetLengthRequestMessage();
-            try {
-                noAgreementFloodMessage(message, newMember);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        if(evicting)
-            this.stateRequests.add(stateTransfer);
-        else
-            stateTransfer.complete(null);
+        System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
+        //TODO enviar apenas o que interessa do certifier
+        Message message = new GetLengthRequestMessage();
+        noAgreementFloodMessage(message, newMember);
     }
 
     private void handleSelfJoin(MembershipInfo info) {
@@ -229,14 +213,39 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     }
 
     private void handleStateLengthRequestMessage(StateLengthRequestMessage msg, SpreadGroup sender) throws Exception {
-        System.out.println("Received request logs");
-        int lowerBound = msg.getBody();
-        System.out.println("Logs lower bound = " + lowerBound );
-        ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
-        Message m = new StateTransferMessage(new State(queries, server.certifier));
-        noAgreementFloodMessage(m, sender);
+        System.out.println("Received request for logs size");
+        //TODO ver quantas linhas tenho !!!!!!
+        int latestLogLine = 0;
+        long latestTimestamp = server.certifier.getTimestamp();
+        ReplicaLatestState rls = new ReplicaLatestState(latestTimestamp, latestLogLine);
+        //noAgreementFloodMessage(m, sender);
     }
 
+    private void handleStateLengthReplyMessage(StateLengthReplyMessage msg, SpreadGroup sender) throws Exception {
+        System.out.println("Received request logs");
+        ReplicaLatestState rls = msg.getBody();
+        System.out.println("Logs lower bound = " + rls.getLowerBound());
+        CompletableFuture<Void> response = new CompletableFuture<>();
+        response.thenAccept((x) -> {
+            try {
+                server.getState(rls.getLowerBound(), rls.getLatestTimestamp())
+                        .thenAccept((fullState) -> {
+                            Message m = new StateTransferMessage<>(fullState);
+                            try {
+                                noAgreementFloodMessage(m, sender);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        if (this.evicting)
+            this.stateRequests.add(response);
+        else
+            response.complete(null);
+    }
 
     private void handleSafeDeleteRequestMessage(SpreadGroup sender) {
         server.getSafeToDeleteTimestamp()
@@ -403,10 +412,5 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         m.setReliable();
         spreadConnection.multicast(m);
         //System.out.println("Sending to group ("+ sg + "): " + message);
-    }
-
-
-    public LogReader getLogReader() {
-        return logReader;
     }
 }

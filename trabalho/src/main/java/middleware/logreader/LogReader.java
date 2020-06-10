@@ -34,20 +34,20 @@ public class LogReader {
         return new String(inputStream.readAllBytes());
     }
 
-    public Collection<String> getQueries(int lowerBound, int upperBound) throws Exception{
+    public ArrayList<String> getQueries(int lowerBound, int upperBound) throws Exception{
         System.out.println(lowerBound + " -> " + upperBound + " " + logPath);
         String fileString = getFileString();
         if(lowerBound > upperBound) {
             return new ArrayList<>(0);
         }
-        List<String> res = new ArrayList<>(upperBound-lowerBound);
+        ArrayList<String> res = new ArrayList<>(upperBound-lowerBound);
         for(int i = lowerBound; i < upperBound; i++){
             res.add(queries.get(i));
         }
         return res;
     }
 
-    public Collection<String> getQueries(int lowerBound) throws Exception {
+    public ArrayList<String> getQueries(int lowerBound) throws Exception {
         return getQueries(lowerBound, size());
     }
 
