@@ -15,8 +15,8 @@ public class HSQLServer extends Server {
     }
 
     public void addDatabase(String databaseName) {
-        this.setDatabaseName(this.idx, databaseName);
-        this.setDatabasePath(this.idx, "file:db/" + databaseName + ";user=user;password=password;hsqldb.lock_file=false;hsqldb.sqllog=2;sql.syntax_mys=true");
+        this.setDatabaseName(this.idx, "");
+        this.setDatabasePath(this.idx, "file:db/" + databaseName + ";user=user;password=password;hsqldb.lock_file=false;hsqldb.sqllog=2;hsqldb.write_delay=false;sql.syntax_mys=true");
         this.idx++;
         this.setSilent(false);
     }

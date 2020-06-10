@@ -15,6 +15,7 @@ import middleware.Server;
 import middleware.ServerImpl;
 import middleware.certifier.StateUpdates;
 import middleware.certifier.StateUpdatesBitSet;
+import middleware.certifier.TaggedObject;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
@@ -46,8 +47,8 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO);
     }
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort) throws SQLException {
-        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/" + privateName, "user", "password"));
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, int databasePort) throws SQLException {
+        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"));
     }
 
 
@@ -100,7 +101,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
             success = superMarket.finishOrder(customer, updates);
         }
         if(success) System.out.println("correu bem");
-        return new CertifyWriteMessage<>(updates.getWriteSets(), (HashMap<String, Set<Serializable>>) updates.getAllUpdates());
+        return new CertifyWriteMessage<>(updates.getWriteSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
     }
 
     @Override
@@ -109,7 +110,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         //TESTE
         System.out.println("Server : " + this.getPrivateName() + " update state from commit");
         try {
-            commit(message.getState());
+            commit((Set<TaggedObject<String, Serializable>>) message.getState());
         } catch (Exception e) {
             //TODO: Se algo corre mal, o servidor tem de parar para ficar consistente??
             System.exit(1);
@@ -117,32 +118,38 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     }
 
     @Override
-    public void commit(Object state) throws SQLException {
+    public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
         // this.connection.setAutoCommit(false);
         //TODO verificar se é necessário transação
-        Map<String, Set<Serializable>> changes = (Map<String, Set<Serializable>>) state;
-        for (Map.Entry<String, Set<Serializable>> entry : changes.entrySet()) {
-            String tag = entry.getKey();
-            Set<?> objects = entry.getValue();
+        for (TaggedObject<String, Serializable> change : changes) {
+            String tag = change.getTag();
+            String key = change.getKey();
+            Serializable object = change.getObject();
             switch (tag) {
                 case "customer": {
-                    for (Customer customer : (Set<Customer>) objects) {
-                        customerDAO.put(customer);
+                    if(object != null) {
+                        customerDAO.put((Customer) object);
+                    } else {
+                        customerDAO.delete(key);
                     }
                 }
                 break;
                 case "order": {
-                    for (Order order : (Set<Order>) objects) {
-                        orderDAO.put(order);
+                    if(object != null) {
+                        orderDAO.put((Order) object);
+                    } else {
+                        orderDAO.delete(key);
                     }
                 }
                 break;
                 case "product": {
-                    for (Product product : (Set<Product>) objects) {
-                        productDAO.put(product);
+                    if(object != null) {
+                        productDAO.put((Product) object);
+                    } else {
+                        orderDAO.delete(key);
                     }
-                    break;
                 }
+                break;
             }
         }
         //this.connection.commit();
@@ -173,11 +180,12 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     }
 
     public static void main(String[] args) throws Exception {
-        String serverName = args.length < 1 ? "Server1" : args[0];
+        String serverName = args.length < 1 ? "Server0" : args[0];
         int spreadPort = args.length < 2 ? 4803 : Integer.parseInt(args[1]);
         int atomixPort = args.length < 3 ? 6666 : Integer.parseInt(args[2]);
         new HSQLServer(serverName).start();
-        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort);
+        Thread.sleep(1000);
+        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort, 9000);
         server.start();
     }
 }

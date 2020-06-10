@@ -8,6 +8,7 @@ import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
 import middleware.certifier.NoTableDefinedException;
+import middleware.certifier.TaggedObject;
 import middleware.certifier.WriteSet;
 import middleware.logreader.LogReader;
 import middleware.message.ContentMessage;
@@ -45,7 +46,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection){
         this.privateName = privateName;
         // TODO numero de servidores max/total
-        this.logReader = new LogReader("db/" + privateName + ".log");
+        this.logReader = new LogReader("db/" + privateName + ".log"); //TODO: passar como argumento
         this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, 3, logReader, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -96,9 +97,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * Called from handleCertifierAnswer when a write request was made and is considered valid.
      * Needs to make changes effective
      * server
-     * @param state State to persist
+     * @param changes Objects changed and have to persist
      */
-    public abstract void commit(Object state) throws Exception;
+    public abstract void commit(Set<TaggedObject<String, Serializable>> changes) throws Exception;
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered invalid.
@@ -151,12 +152,13 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public void updateQueries(Collection<String> queries, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
-            for(String querie : queries) {
-                c.prepareCall(querie).execute();
-                System.out.println("querie: " + querie);
+            for(String query : queries) {
+                c.prepareCall(query).execute();
+                System.out.println("query: " + query);
             }
         } catch (SQLException ex) {
             ex.printStackTrace();
+            System.exit(1);
         }
     }
 
@@ -200,7 +202,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                     message.getStartTimestamp()), taskExecutor);
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
-                    commit(message.getState());
+                    commit((Set<TaggedObject<String, Serializable>>) message.getState());
                 } else {
                     System.out.println("Server " + privateName + " rolling back write from db");
                     rollback();
@@ -234,7 +236,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                             message.getStartTimestamp()), taskExecutor);
                     if (isWritable) {
                         System.out.println("Server " + privateName + " commiting to db");
-                        commit(message.getState());
+                        commit((Set<TaggedObject<String, Serializable>>) message.getState());
                     } else {
                         System.out.println("Server " + privateName + " rolling back write from db");
                         rollback();

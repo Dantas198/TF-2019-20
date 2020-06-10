@@ -5,11 +5,11 @@ import java.util.*;
 public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
     private Map<String, BitWriteSet> wss;
-    private Map<String, Set<V>> objects;
+    private Set<TaggedObject<String, V>> objects;
 
     public StateUpdatesBitSet() {
         this.wss = new HashMap<>();
-        this.objects = new HashMap<>();
+        this.objects = new LinkedHashSet<>();
     }
 
     @Override
@@ -18,25 +18,13 @@ public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
     }
 
     @Override
-    public Set<String> getTags() {
-        return this.objects.keySet();
-    }
-
-    @Override
-    public Map<String, Set<V>> getAllUpdates() {
+    public Set<TaggedObject<String, V>> getAllUpdates() {
         return this.objects;
     }
 
     @Override
-    public Set<V> getObjects(String tag) {
-        return this.objects.get(tag);
-    }
-
-    @Override
     public void put(String table, String key, V value) {
-        this.wss.putIfAbsent(table, new BitWriteSet());
-        this.wss.get(table).add(key);
-        this.objects.putIfAbsent(table, new HashSet<>());
-        this.objects.get(table).add(value);
+        this.wss.computeIfAbsent(table, k -> new BitWriteSet()).add(key);
+        objects.add(new TaggedObject<>(table, key, value));
     }
 }
