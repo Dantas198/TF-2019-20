@@ -32,6 +32,7 @@ public class CustomerImpl implements Customer, Serializable {
 	@Override
 	public void newCurrentOrder() {
 		this.currentOrder = new OrderImpl();
+		this.currentOrder.setCustomerId(id);
 	}
 
 	@Override

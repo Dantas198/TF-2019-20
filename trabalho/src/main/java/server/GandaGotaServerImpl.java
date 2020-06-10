@@ -7,7 +7,9 @@ import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderSQLDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
+import business.product.OrderProductQuantity;
 import business.product.Product;
+import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
 import middleware.certifier.BitWriteSet;
@@ -57,11 +59,8 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         try {
             if(message instanceof GetOrderMessage) {
                 String customer = ((GetOrderMessage) message).getBody();
-                Map<Product, Integer> currentOrderProducts = superMarket.getCurrentOrderProducts(customer);
-                HashMap<Product, Integer> response = null;
-                if(currentOrderProducts != null) {
-                    response = new HashMap<>(currentOrderProducts);
-                }
+                Map<Product, Integer> result = superMarket.getCurrentOrderProducts(customer);
+                HashMap<Product, Integer> response = result != null ? new HashMap<>(result) : null;
                 return new ContentMessage<>(response);
             }
             if(message instanceof GetCatalogProductsMessage){
@@ -152,6 +151,14 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
                     } else {
                         orderDAO.delete(key);
                     }
+                }
+                break;
+                case "order_product": {
+                    OrderProductQuantity opq = (OrderProductQuantity) object;
+                    Product product = new ProductPlaceholder(opq.getProductId());
+                    orderDAO.get(opq.getOrderId())
+                            .getProducts()
+                            .merge(product, opq.getQuantity(), Integer::sum);
                 }
                 break;
             }

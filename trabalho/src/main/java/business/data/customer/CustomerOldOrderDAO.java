@@ -23,7 +23,7 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
             @Override
             public PreparedStatement getAll() throws SQLException {
                 String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
-                PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ?" + current_order_restrinction);
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ? " + current_order_restrinction);
                 ps.setString(1, current_id);
                 if(current_order_id != null)
                     ps.setString(2, current_order_id);
