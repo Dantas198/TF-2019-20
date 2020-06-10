@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Class that deals with certification logic.
@@ -34,6 +35,7 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
         this.timestamp = 0;
         this.runningTransactionsPerTable = new HashMap<>();
         this.writesPerTable = new HashMap<>();
+        this.rwl = new ReentrantReadWriteLock();
     }
 
 

@@ -53,17 +53,19 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
 
-        this.electionManager = new ElectionManager(this.spreadConnection);
+        this.electionManager = new ElectionManager(this.spreadGroup);
         this.imLeader = false;
 
         this.evicting = false;
         this.timestamps = new ArrayList<>();
         this.stateRequests = new ArrayList<>();
+
+        this.executor = new ScheduledThreadPoolExecutor(1);
     }
 
 
     public CompletableFuture<Void> start() throws Exception {
-        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
+        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName + " " + UUID.randomUUID().toString(),
                 false, true);
         this.spreadGroup.join(this.spreadConnection, "grupo");
         this.spreadConnection.add(messageListener());

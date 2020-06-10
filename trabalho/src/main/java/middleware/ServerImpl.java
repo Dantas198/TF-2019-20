@@ -279,7 +279,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     }
 
     public void rebuildCertifier(HashMap<String, HashMap<Long, WriteSet<K>>> c){
-        this.certifier.addState();
+        this.certifier.addState(c);
     }
 
     private void sendReply(Message message, Address address) {
