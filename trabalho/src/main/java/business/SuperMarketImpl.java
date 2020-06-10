@@ -26,8 +26,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 
 	public SuperMarketImpl(DAO<String, Order> orderDAO,
 						   DAO<String, Product> productDAO,
-						   DAO<String, Customer> customerDAO)
-			throws SQLException {
+						   DAO<String, Customer> customerDAO) {
 		this.orderDAO = orderDAO;
 		this.productDAO = productDAO;
 		this.customerDAO = customerDAO;
@@ -39,7 +38,8 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return true;
 	}
 
-	public boolean resetOrder(String customer) {
+	public boolean resetOrder(String customer, StateUpdater<String, Serializable> updater) {
+		// TODO usar updater
 		Customer c = customerDAO.get(customer);
 		c.newCurrentOrder();
 		customerDAO.update(customer, c);
@@ -79,7 +79,8 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return true;
 	}
 
-	public boolean addProduct(String customerName, String product, int amount) {
+	public boolean addProduct(String customerName, String product, int amount, StateUpdater<String, Serializable> updater) {
+		// TODO usar updater
 		System.out.println("addProduct");
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;

@@ -37,8 +37,8 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection) throws SQLException {
-        super(spreadPort, privateName, atomixPort, connection);
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount) throws SQLException {
+        super(spreadPort, privateName, atomixPort, connection, totalServerCount);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
         this.orderDAO = new OrderSQLDAO(this.connection);
@@ -47,8 +47,8 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO);
     }
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, int databasePort) throws SQLException {
-        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"));
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, int databasePort, int totalServerCount) throws SQLException {
+        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"), totalServerCount);
     }
 
 
@@ -64,17 +64,6 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
                 }
                 return new ContentMessage<>(response);
             }
-            if(message instanceof AddProductMessage) {
-                AddProductBody body = ((AddProductMessage) message).getBody();
-                String customer = body.getCustomer();
-                String product = body.getProduct();
-                int amount = body.getAmount();
-                return new ContentMessage<>(superMarket.addProduct(customer, product, amount));
-            }
-            if(message instanceof ResetOrderMessage) {
-                String customer = ((ResetOrderMessage) message).getBody();
-                return new ContentMessage<>(superMarket.resetOrder(customer));
-            }
             if(message instanceof GetCatalogProductsMessage){
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             }
@@ -88,21 +77,36 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         return new ErrorMessage(new Exception("Unrecognized message " + message.getId() + ": " + message));
     }
 
+
+    // returns null if execution fails
     @Override
-    //TODO mudar o estado
     public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
         boolean success = false;
         if(message instanceof AddCustomerMessage) {
             String customer = ((AddCustomerMessage) message).getBody();
             success = superMarket.addCustomer(customer, updates);
+
         } else if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();
             success = superMarket.finishOrder(customer, updates);
+
+        } else if (message instanceof ResetOrderMessage) {
+            String customer = ((ResetOrderMessage) message).getBody();
+            success = superMarket.resetOrder(customer, updates);
+
+        } else if (message instanceof AddProductMessage) {
+            AddProductBody body = ((AddProductMessage) message).getBody();
+            success = superMarket.addProduct(body.getCustomer(), body.getProduct(), body.getAmount(), updates);
         }
-        if(success) System.out.println("correu bem");
-        return new CertifyWriteMessage<>(updates.getWriteSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
+
+        if(success)
+            return new CertifyWriteMessage<>(updates.getWriteSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
+
+        return null;
     }
+
+
 
     @Override
     public void updateStateFromCommitedWrite(CertifyWriteMessage<BitWriteSet, ?> message) {
@@ -184,8 +188,8 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         int spreadPort = args.length < 2 ? 4803 : Integer.parseInt(args[1]);
         int atomixPort = args.length < 3 ? 6666 : Integer.parseInt(args[2]);
         new HSQLServer(serverName).start();
-        Thread.sleep(1000);
-        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort, 9000);
+        int totalServers = 3;
+        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort, 9000, totalServers);
         server.start();
     }
 }
