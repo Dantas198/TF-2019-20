@@ -1,8 +1,6 @@
 package middleware;
 
-import middleware.certifier.Certifier;
 import middleware.certifier.WriteSet;
-import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.*;
@@ -73,10 +71,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         return started;
     }
 
-
-    public void rebuildCertifier(Certifier c){
-        this.server.rebuildCertifier(c);
-    }
 
     /**
      * Method used to respond to the Sender the message defined in the handleMessage abstract method
@@ -150,6 +144,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     }
 
     private void handleSelfJoin(MembershipInfo info) {
+        //TODO URGENTE!!! NÃO PODE DAR UNPAUSE. TEM DE RECUPERAR O QUE PERDEU
         if(isInMainPartition(info.getMembers()))
             server.unpause();
 
