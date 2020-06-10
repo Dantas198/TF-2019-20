@@ -101,7 +101,6 @@ public class AutoCLI<I> {
     private String invokeMethod(Method method, Object[] params) throws Exception {
         try {
             Object o = method.invoke(obj, params);
-            System.out.println(o);
             return o.toString();
         } catch (InvocationTargetException x) {
             Throwable cause = x.getCause();

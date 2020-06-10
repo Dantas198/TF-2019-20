@@ -17,7 +17,10 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
             @Override
             public Order fromResultSet(ResultSet resultSet) throws SQLException {
                 String id = resultSet.getString("id");
-                return new OrderImpl(id, new OrderProductDAO(c, id));
+                String customerId = resultSet.getString("customer_id");
+                Order order = new OrderImpl(id, new OrderProductDAO(c, id));
+                order.setCustomerId(customerId);
+                return order;
             }
 
             @Override

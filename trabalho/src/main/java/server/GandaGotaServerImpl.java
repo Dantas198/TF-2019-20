@@ -7,6 +7,7 @@ import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderSQLDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
+import business.order.OrderImpl;
 import business.product.OrderProductQuantity;
 import business.product.Product;
 import business.product.ProductPlaceholder;
@@ -67,7 +68,15 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
                 return new ContentMessage<>(new ArrayList<>(superMarket.getCatalogProducts()));
             }
             if(message instanceof GetHistoryMessage) {
-                return new ContentMessage<>(new ArrayList<>(superMarket.getHistory(((GetHistoryMessage) message).getBody())));
+                ArrayList<Order> response = new ArrayList<>(0);
+                for (Order order:
+                     superMarket.getHistory(((GetHistoryMessage) message).getBody())) {
+                    response.add(new OrderImpl(order.getId(),
+                            new HashMap<>(order.getProducts()),
+                            order.getTimestamp(),
+                            order.getCustomerId()));
+                }
+                return new ContentMessage<>(response);
             }
         } catch (Exception e){
             e.printStackTrace();

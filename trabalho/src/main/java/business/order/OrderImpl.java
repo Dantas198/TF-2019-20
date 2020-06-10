@@ -38,6 +38,7 @@ public class OrderImpl implements Order, Serializable{
 		this.id = id;
 		this.products = products;
 		this.timestamp = timestamp;
+		this.customerId = customerId;
 	}
 
 	@Override
@@ -99,5 +100,15 @@ public class OrderImpl implements Order, Serializable{
 	@Override
 	public void setCustomerId(String customerId) {
 		this.customerId = customerId;
+	}
+
+	@Override
+	public String toString() {
+		return "OrderImpl{" +
+				"id='" + id + '\'' +
+				", products=" + products +
+				", timestamp=" + timestamp +
+				", customerId='" + customerId + '\'' +
+				'}';
 	}
 }
