@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Map;
@@ -38,19 +39,17 @@ public class DAOTest {
         daoTest(dao, order1.getId(), order1);
     }
 
-
     @Test
     public void SQLDAOTest() throws SQLException, ExecutionException, InterruptedException {
         CustomerDAOTest(new CustomerDAO());
         OrderDAOTest(new OrderDAO());
         ProductDAOTest(new ProductDAO());
-        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/test;shutdown=true;sql.syntax_mys=true", "", "");
+        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/test;shutdown=true;sql.syntax_mys=true;inc_backup=false", "", "");
         new DBInitialization(c).init();
         //CustomerDAOTest(new CustomerSQLDAO(c, new OrderSQLDAO(c)));
         OrderDAOTest(new OrderSQLDAO(c));
         System.out.println("OI");
         ProductDAOTest(new ProductSQLDAO(c));
-        new CompletableFuture().get();
     }
 
 
@@ -114,4 +113,12 @@ public class DAOTest {
         obj2 = dao.get(key);
         assertNull("Retrieving an object after its deletion should be null", obj2);
     }
+
+    @Test
+    public void testBackUp() throws Exception{
+        Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/test;shutdown=true;sql.syntax_mys=true;inc_backup=false", "", "");
+        PreparedStatement statement = c.prepareStatement("BACKUP DATABASE TO './db/' BLOCKING");
+        statement.execute();
+    }
+
 }
