@@ -2,7 +2,7 @@ package business.data.customer;
 
 import business.data.DAOSet;
 import business.data.DAOSetPS;
-import business.data.product.OrderProductDAO;
+import business.data.order.OrderProductDAO;
 import business.order.Order;
 import business.order.OrderImpl;
 

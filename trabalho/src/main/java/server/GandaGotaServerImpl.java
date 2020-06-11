@@ -4,8 +4,13 @@ import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.data.DAO;
+import business.data.DAOMap;
+import business.data.customer.CustomerCertifierDAO;
 import business.data.customer.CustomerSQLDAO;
+import business.data.order.OrderCertifierDAO;
+import business.data.order.OrderProductDAO;
 import business.data.order.OrderSQLDAO;
+import business.data.product.ProductCertifierDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.order.OrderImpl;
@@ -41,12 +46,28 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     private DAO<String, Order> orderDAO;
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
+    private DAO<String, Order> orderCertifierDAO;
 
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount, String logPath) throws SQLException {
         super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
-        this.orderDAO = new OrderSQLDAO(this.connection);
+        this.orderDAO = new OrderSQLDAO(this.connection, id -> {
+            try {
+                return new OrderProductDAO(connection, id);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return null;
+        });
+        this.orderCertifierDAO = new OrderSQLDAO(connection, id -> {
+            try {
+                return new OrderProductDAO(connection, id);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return null;
+        });
         this.productDAO = new ProductSQLDAO(this.connection);
         this.customerDAO = new CustomerSQLDAO(this.connection);
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null);
@@ -92,7 +113,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     @Override
     public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
-        SuperMarket superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, updates);
+        SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates);
         boolean success = false;
 
         if(message instanceof AddCustomerMessage) {
@@ -149,25 +170,25 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
             switch (tag) {
                 case "customer": {
                     if(object != null) {
-                        customerDAO.put((Customer) object);
+                        if(!customerDAO.put((Customer) object)) throw new SQLException();
                     } else {
-                        customerDAO.delete(key);
+                        if(!customerDAO.delete(key)) throw new SQLException();
                     }
                 }
                 break;
                 case "order": {
                     if(object != null) {
-                        orderDAO.put((Order) object);
+                        if(!orderDAO.put((Order) object)) throw new SQLException();
                     } else {
-                        orderDAO.delete(key);
+                        if(!orderDAO.delete(key)) throw new SQLException();
                     }
                 }
                 break;
                 case "product": {
                     if(object != null) {
-                        productDAO.put((Product) object);
+                        if(!productDAO.put((Product) object)) throw new SQLException();
                     } else {
-                        orderDAO.delete(key);
+                        if(!orderDAO.delete(key)) throw new SQLException();
                     }
                 }
                 break;

@@ -52,7 +52,6 @@ public class CertifierDAO<T extends Serializable> implements DAO<String, T> {
 
     @Override
     public boolean update(String key, T obj) {
-        delete(key);
         put(obj);
         return true;
     }

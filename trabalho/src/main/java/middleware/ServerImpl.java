@@ -222,7 +222,11 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 // TODO: verificar se parar o programa é a melhor opção
                 sendReply(new ContentMessage<>(false), cli);
                 // If exception should stop program
-                System.exit(1);
+                try {
+                    this.stop();
+                } catch (SpreadException spreadException) {
+                    spreadException.printStackTrace();
+                }
             }
             if(isWritable)
                 certifier.commit(message.getWriteSets());

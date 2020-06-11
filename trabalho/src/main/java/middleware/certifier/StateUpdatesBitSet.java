@@ -4,12 +4,13 @@ import java.util.*;
 
 public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
-    private Map<String, BitWriteSet> writeSets;
-    private Map<String, BitWriteSet> readSets;
-    private Set<TaggedObject<String, V>> objects;
+    private final Map<String, BitWriteSet> writeSets;
+    private final Map<String, BitWriteSet> readSets;
+    private final Set<TaggedObject<String, V>> objects;
 
     public StateUpdatesBitSet() {
         this.writeSets = new HashMap<>();
+        this.readSets = new HashMap<>();
         this.objects = new LinkedHashSet<>();
     }
 
@@ -36,6 +37,7 @@ public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
     @Override
     public void read(String tag, String key) {
+        // Allows duplicates in read and write Set
         this.readSets.computeIfAbsent(tag, k -> new BitWriteSet()).add(key);
     }
 }

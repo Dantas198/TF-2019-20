@@ -1,19 +1,21 @@
 package business.data.order;
 
+import business.data.DAOMap;
 import business.data.DAOPS;
 import business.data.SQLDAO;
-import business.data.product.OrderProductDAO;
 import business.order.Order;
 import business.order.OrderImpl;
+import business.product.Product;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
+import java.util.function.Function;
 
 public class OrderSQLDAO extends SQLDAO<String, Order> {
-    public OrderSQLDAO(Connection c) throws SQLException {
+    public OrderSQLDAO(Connection c, Function<String, DAOMap<Product, Integer>> orderProductDAOfunc) throws SQLException {
         super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"order\" WHERE \"id\" = ?");
             PreparedStatement putPS = c.prepareStatement("REPLACE INTO \"order\" (\"id\", \"customer_id\") VALUES (?, ?)");
@@ -26,7 +28,7 @@ public class OrderSQLDAO extends SQLDAO<String, Order> {
                 String id = resultSet.getString("id");
                 Date timestamp = resultSet.getTimestamp("timestamp");
                 String customerId = resultSet.getString("customer_id");
-                return new OrderImpl(id, new OrderProductDAO(c, id), timestamp, customerId);
+                return new OrderImpl(id, orderProductDAOfunc.apply(id), timestamp, customerId);
             }
 
             @Override

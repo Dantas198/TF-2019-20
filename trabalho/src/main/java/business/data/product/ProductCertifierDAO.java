@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.sql.SQLException;
 
 public class ProductCertifierDAO extends CertifierDAO<Product> {
-    public ProductCertifierDAO(DAO<String, Product> dao, StateUpdater<String, Serializable> updater) throws SQLException {
-        super(dao, "customer", updater, Product::getName);
+    public ProductCertifierDAO(DAO<String, Product> dao, StateUpdater<String, Serializable> updater) {
+        super(dao, "product", updater, Product::getName);
     }
 }

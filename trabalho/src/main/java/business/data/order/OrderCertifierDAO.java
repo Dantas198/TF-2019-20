@@ -12,7 +12,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 public class OrderCertifierDAO extends CertifierDAO<Order> {
-    public OrderCertifierDAO(DAO<String, Order> dao, StateUpdater<String, Serializable> updater) throws SQLException {
-        super(dao, "customer", updater, Order::getId);
+    public OrderCertifierDAO(DAO<String, Order> dao, StateUpdater<String, Serializable> updater) {
+        super(dao, "order", updater, Order::getId);
     }
 }
