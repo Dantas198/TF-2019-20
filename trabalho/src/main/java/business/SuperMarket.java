@@ -11,7 +11,7 @@ public interface SuperMarket extends Serializable {
 	boolean addCustomer(String customer);
 	boolean resetOrder(String customer);
 	boolean finishOrder(String customer);
-	boolean addProduct(String customer, String product, int amount);
+	boolean addProductToOrder(String customer, String product, int amount);
 	Map<Product,Integer> getCurrentOrderProducts(String customer);
 	Collection<Order> getHistory(String customer);
 	Collection<Product> getCatalogProducts();

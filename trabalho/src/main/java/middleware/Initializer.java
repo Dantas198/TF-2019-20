@@ -1,29 +1,31 @@
 package middleware;
 
+import middleware.certifier.WriteSet;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import spread.SpreadMessage;
 
+import java.io.Serializable;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.function.Consumer;
 
-//TODO Servidores à escuta veem que entrou um servidor ou novo ou que tinha ido abaixo.
-// Enviam o número de linhas que teem (Refletir sobre a melhor maneiro)
-// Initializor espera por isso e compara com os seus logs
-// Envia pedido do que falta e recebe o estado que falta
-
-public class Initializer {
+/**
+ * Used to manage the state update and transfer for joining servers on the ClusterReplicationService
+ * @param <K>
+ * @param <W>
+ */
+public class Initializer<K, W extends WriteSet<K>> {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
-    private ServerImpl server;
-    private ClusterReplicationService service;
+    private ServerImpl<K,W,?> server;
+    private ClusterReplicationService<K,W> service;
     private Connection connection;
 
-    public Initializer(ServerImpl server, ClusterReplicationService service, Connection connection){
+    public Initializer(ServerImpl<K,W,?> server, ClusterReplicationService<K,W> service, Connection connection){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
@@ -40,7 +42,7 @@ public class Initializer {
                     //TODO URGENTE
                     //server.setState(((StateTransferMessage) received).getState());
                     System.out.println("Received state transfer");
-                    StateTransferMessage stm = (StateTransferMessage) received;
+                    StateTransferMessage<K> stm = (StateTransferMessage<K>) received;
                     ArrayList<String> logs = stm.getState().getBusinessState();
                     server.rebuildCertifier(stm.getState().getCertifierState());
                     server.updateQueries(logs, server.getLogReader().getPath(), this.connection);

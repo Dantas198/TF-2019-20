@@ -2,7 +2,6 @@ package middleware;
 
 import middleware.certifier.WriteSet;
 import middleware.message.Message;
-import middleware.message.WriteMessage;
 import middleware.message.replication.*;
 import spread.*;
 
@@ -48,7 +47,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.initializer = new Initializer(server, this, connection);
+        this.initializer = new Initializer<>(server, this, connection);
 
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
@@ -59,7 +58,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.evicting = false;
         this.timestamps = new ArrayList<>();
         this.stateRequests = new ArrayList<>();
-        this.executor =Executors.newScheduledThreadPool(1);
+        this.executor = Executors.newScheduledThreadPool(1);
     }
 
 
@@ -77,7 +76,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
      * Method used to respond to the Sender the message defined in the handleMessage abstract method
      * @param spreadMessage
      */
-    //TODO corrigir.
+    //TODO corrigir.  por no initializer?
     private final Consumer<SpreadMessage> respondMessage = (spreadMessage) -> {
         try {
             Message received = (Message) spreadMessage.getObject();
@@ -137,7 +136,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         System.out.println("Server : " + privateName + ", a member joined");
         SpreadGroup newMember = info.getJoined();
 
-        //TODO ENVIAR ESTADO CORRETO. De momento não funciona
+        //TODO URGENTISSIMO -> ENVIAR ESTADO CORRETO. De momento não funciona
         System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
         //TODO enviar apenas o que interessa do certifier
         Message message = new GetLengthRequestMessage();
@@ -145,7 +144,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     }
 
     private void handleSelfJoin(MembershipInfo info) {
-        //TODO esperar pelo initializer?
         if(isInMainPartition(info.getMembers()))
             server.unpause();
 
@@ -234,10 +232,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         long ts = msg.getTs();
         timestamps.add(ts);
         int arrived = timestamps.size();
-        if (arrived == sdRequested.size()) { // TODO ver se chegaram todos, mas direito
+        if (arrived >= sdRequested.size()) {
             long minTs = Collections.min(timestamps);
             SafeDeleteMessage sdmsg = new SafeDeleteMessage(minTs);
-            floodMessage(sdmsg);
+            floodMessage(sdmsg); // TODO enviar apenas aos sdRequested
         }
     }
 
