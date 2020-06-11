@@ -3,7 +3,6 @@ import middleware.certifier.Certifier;
 import middleware.certifier.NoTableDefinedException;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -15,7 +14,7 @@ public class CertifierTest {
     Certifier c;
 
     private boolean checkConflict(Map<String, BitWriteSet> ws, long ts){
-        if (!c.hasConflict(ws, ts)) {
+        if (c.isWritable(ws, ts)) {
             c.commit(ws);
             c.shutDownLocalStartedTransaction(ws.keySet(), ts);
             System.out.println("Commited");
