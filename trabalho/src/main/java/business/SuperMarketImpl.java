@@ -77,6 +77,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	public boolean addProduct(String customerName, String product, int amount) {
+		if(amount < 0) return false;
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;
 		Product p = productDAO.get(product);

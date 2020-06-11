@@ -12,14 +12,15 @@ import java.util.Scanner;
 
 public class MultiGandaGotaServerInitializer {
     public static void main(String[] args) throws Exception {
-        Map<Integer, Connection> databases = new HashMap<>();
+        Map<Integer, HSQLServer> databases = new HashMap<>();
         Map<Integer, Server> servers = new HashMap<>();
         int i = 0;
         int numServers = Integer.parseInt(args[0]);
         for (; i < (args.length < 1 ? 1 : Integer.parseInt(args[0])); i++) {
             String serverName = "Server" + i;
-            Connection connection = initDatabase(serverName, 9000 + i);
-            databases.put(i, connection);
+            HSQLServer dbServer = initDatabase(serverName, 9000 + i);
+            databases.put(i, dbServer);
+            Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + (9000 + i), "user", "password");
             servers.put(i, initServer(serverName, 6000 + i, connection, numServers, "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
         }
         Scanner scanner = new Scanner(System.in);
@@ -27,23 +28,23 @@ public class MultiGandaGotaServerInitializer {
             try {
                 String[] strs = scanner.nextLine().split(" ");
                 switch (strs[0]) {
-                    case "add": {
-                        String serverName = "Server" + i;
-                        Connection connection = initDatabase(serverName, 9000 + i);
-                        databases.put(i, connection);
-                        servers.put(i, initServer(serverName, 6000 + i, connection,  numServers, "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
-                        i++;
-                    }
-                    break;
                     case "shutdown": {
                         int idx = Integer.parseInt(strs[1]);
-                        servers.remove(idx).stop();
+                        databases.get(idx).shutdown();
+                    }
+                    break;
+                    case "stop": {
+                        int idx = Integer.parseInt(strs[1]);
+                        databases.get(idx).stop();
                     }
                     break;
                     case "reboot": {
                         int idx = Integer.parseInt(strs[1]);
-                        String serverName = "Server" + i++;
-                        servers.put(i, initServer(serverName, 6000 + idx, databases.get(idx), numServers, "db/Server" + idx + ".log", "timestamp/" + serverName));
+                        String serverName = "Server" + idx;
+                        String newServerName = "Server" + i++;
+                        databases.get(idx).start();
+                        Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + (9000 + idx), "user", "password");
+                        servers.put(i, initServer(newServerName, 6000 + idx, connection, numServers, "db/Server" + idx + ".log", "timestamp/" + serverName));
                     }
                     break;
                     case "active": {
@@ -57,7 +58,7 @@ public class MultiGandaGotaServerInitializer {
         }
     }
 
-    public static Connection initDatabase(String serverName, int port) throws SQLException {
+    public static HSQLServer initDatabase(String serverName, int port) throws SQLException {
         HSQLServer server = new HSQLServer();
         server.setPort(port);
         server.addDatabase(serverName);
@@ -67,7 +68,7 @@ public class MultiGandaGotaServerInitializer {
         if(!dbInit.exists()) {
             dbInit.init();
         }
-        return connection;
+        return server;
     }
 
     public static Server initServer(String serverName, int atomixPort, Connection connection, int totalServerCount, String logPath, String timestampPath) {
