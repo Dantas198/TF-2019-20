@@ -1,8 +1,9 @@
-package business.data.product;
+package business.data.order;
 
 import business.data.DAOMap;
 import business.data.DAOSet;
 import business.data.DAOSetPS;
+import business.data.product.ProductSQLDAO;
 import business.product.Product;
 
 import java.sql.Connection;

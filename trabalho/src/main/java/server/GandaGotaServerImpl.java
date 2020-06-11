@@ -1,10 +1,15 @@
 package server;
 
+import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.data.DAO;
+import business.data.customer.CustomerCertifierDAO;
 import business.data.customer.CustomerSQLDAO;
+import business.data.order.OrderCertifierDAO;
+import business.data.order.OrderProductDAO;
 import business.data.order.OrderSQLDAO;
+import business.data.product.ProductCertifierDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.order.OrderImpl;
@@ -13,6 +18,7 @@ import business.product.Product;
 import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
+import client.message.bodies.UpdateProductBody;
 import middleware.certifier.BitWriteSet;
 import middleware.Server;
 import middleware.ServerImpl;
@@ -35,23 +41,42 @@ import java.util.*;
 public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayList<String>> {
 
     private SuperMarketImpl superMarket;
+    private Connection connection;
     private DAO<String, Order> orderDAO;
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
+    private DAO<String, Order> orderCertifierDAO;
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount) throws SQLException {
-        super(spreadPort, privateName, atomixPort, connection, totalServerCount);
+    public GandaGotaServerImpl(int spreadPort,
+                               String privateName,
+                               int atomixPort,
+                               Connection connection,
+                               int totalServerCount,
+                               String logPath,
+                               String timestampPath) throws SQLException {
+        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath, timestampPath);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
-        this.orderDAO = new OrderSQLDAO(connection);
-        this.productDAO = new ProductSQLDAO(connection);
-        this.customerDAO = new CustomerSQLDAO(connection);
-        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO);
+        this.connection = connection;
+        this.orderDAO = new OrderSQLDAO(this.connection, id -> {
+            try {
+                return new OrderProductDAO(connection, id);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return null;
+        });
+        this.orderCertifierDAO = new OrderSQLDAO(connection, id -> {
+            try {
+                return new OrderProductDAO(connection, id);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return null;
+        });
+        this.productDAO = new ProductSQLDAO(this.connection);
+        this.customerDAO = new CustomerSQLDAO(this.connection);
+        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null);
     }
-
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, int databasePort, int totalServerCount) throws SQLException {
-        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"), totalServerCount);
-    }
-
 
     @Override
     public Message handleMessage(Message message) {
@@ -90,26 +115,33 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     @Override
     public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
+        SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates);
         boolean success = false;
+
         if(message instanceof AddCustomerMessage) {
             String customer = ((AddCustomerMessage) message).getBody();
-            success = superMarket.addCustomer(customer, updates);
+            success = superMarket.addCustomer(customer);
 
         } else if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();
-            success = superMarket.finishOrder(customer, updates);
+            success = superMarket.finishOrder(customer);
 
         } else if (message instanceof ResetOrderMessage) {
             String customer = ((ResetOrderMessage) message).getBody();
-            success = superMarket.resetOrder(customer, updates);
+            success = superMarket.resetOrder(customer);
 
         } else if (message instanceof AddProductMessage) {
             AddProductBody body = ((AddProductMessage) message).getBody();
-            success = superMarket.addProduct(body.getCustomer(), body.getProduct(), body.getAmount(), updates);
+            success = superMarket.addProduct(body.getCustomer(), body.getProduct(), body.getAmount());
+
+        } else if (message instanceof UpdateProductMessage) {
+            UpdateProductBody body = ((UpdateProductMessage) message).getBody();
+            success = superMarket.updateProduct(body.getName(), body.getPrice(), body.getDescription(), body.getStock());
+
         }
 
         if(success)
-            return new CertifyWriteMessage<>(updates.getWriteSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
+            return new CertifyWriteMessage<>(updates.getWriteSets(), updates.getReadSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
 
         return null;
     }
@@ -131,7 +163,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
     @Override
     public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
-        // this.connection.setAutoCommit(false);
+        this.connection.setAutoCommit(false);
         //TODO verificar se é necessário transação
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
@@ -140,25 +172,25 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
             switch (tag) {
                 case "customer": {
                     if(object != null) {
-                        customerDAO.put((Customer) object);
+                        if(!customerDAO.put((Customer) object)) throw new SQLException();
                     } else {
-                        customerDAO.delete(key);
+                        if(!customerDAO.delete(key)) throw new SQLException();
                     }
                 }
                 break;
                 case "order": {
                     if(object != null) {
-                        orderDAO.put((Order) object);
+                        if(!orderDAO.put((Order) object)) throw new SQLException();
                     } else {
-                        orderDAO.delete(key);
+                        if(!orderDAO.delete(key)) throw new SQLException();
                     }
                 }
                 break;
                 case "product": {
                     if(object != null) {
-                        productDAO.put((Product) object);
+                        if(!productDAO.put((Product) object)) throw new SQLException();
                     } else {
-                        orderDAO.delete(key);
+                        if(!orderDAO.delete(key)) throw new SQLException();
                     }
                 }
                 break;
@@ -172,13 +204,12 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
                 break;
             }
         }
-        //this.connection.commit();
+        this.connection.commit();
         System.out.println("Server : " + this.getPrivateName() + " commit");
     }
 
     @Override
     public void rollback(){
-        //TODO
         System.out.println("Server : " + this.getPrivateName() + " rollback");
     }
 
@@ -197,15 +228,5 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        String serverName = args.length < 1 ? "Server0" : args[0];
-        int spreadPort = args.length < 2 ? 4803 : Integer.parseInt(args[1]);
-        int atomixPort = args.length < 3 ? 6666 : Integer.parseInt(args[2]);
-        new HSQLServer(serverName).start();
-        int totalServers = 3;
-        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort, 9000, totalServers);
-        server.start();
     }
 }

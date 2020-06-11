@@ -9,14 +9,16 @@ import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
 import middleware.certifier.TaggedObject;
 import middleware.certifier.WriteSet;
-import middleware.logreader.LogReader;
+import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.FullState;
+import middleware.reader.TimestampReader;
 import spread.SpreadException;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -39,14 +41,16 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public Certifier<K, W> certifier;
     private final String privateName;
     private final LogReader logReader;
+    private final TimestampReader timestampReader;
     private boolean isPaused;
 
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath){
         this.privateName = privateName;
-        this.logReader = new LogReader("db/" + privateName + ".log"); //TODO: passar como argumento
+        this.logReader = new LogReader(logPath);
+        this.timestampReader = new TimestampReader(timestampPath);
         this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -149,14 +153,18 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }
     }
 
-    public void updateQueries(Collection<String> queries, Connection c){
+    public void updateQueries(Collection<String> queries, String logPath, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
             for(String query : queries) {
-                c.prepareCall(query).execute();
+                if(query.startsWith("--")) {
+                    logReader.putTimeStamp(query.substring(2));
+                } else {
+                    c.prepareCall(query).execute();
+                }
                 System.out.println("query: " + query);
             }
-        } catch (SQLException ex) {
+        } catch (SQLException | IOException ex) {
             ex.printStackTrace();
             //TODO: Parar execução
         }
@@ -187,7 +195,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     //TODO não mexer sem perguntar !!
     protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message){
         CompletableFuture.runAsync(() -> {
-            boolean isWritable = !certifier.hasConflict(message.getWriteSets(), message.getStartTimestamp());
+            boolean isWritable = certifier.isWritable(message.getWriteSets(), message.getWriteSets(), message.getStartTimestamp());
             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
 
             Address cli;
@@ -198,25 +206,31 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 rl.unlock();
             }
             try {
-                if (cli != null)
-                    CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
-                        message.getStartTimestamp()), taskExecutor);
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
+                    logReader.putTimestamp(certifier.getTimestamp());
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
+
                 } else {
                     System.out.println("Server " + privateName + " rolling back write from db");
                     rollback();
                 }
             } catch (Exception e) {
-                // TODO: verificar se parar o programa é a melhor opção
+                // TODO: verificar se parar o programa é a melhor opção e ver isto do sendReply
                 sendReply(new ContentMessage<>(false), cli);
                 // If exception should stop program
-                System.exit(1);
+                try {
+                    this.stop();
+                } catch (SpreadException spreadException) {
+                    spreadException.printStackTrace();
+                }
             }
             if(isWritable)
                 certifier.commit(message.getWriteSets());
-            sendReply(new ContentMessage<>(isWritable), cli);
+            if (cli != null)
+                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getWriteTables(),
+                        message.getStartTimestamp()), taskExecutor);
+                sendReply(new ContentMessage<>(isWritable), cli);
         }, certifierExecutor);
     }
 
@@ -232,7 +246,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         return CompletableFuture.supplyAsync(() -> {
             HashMap<String, HashMap<Long, WriteSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
-                return new FullState<>(logReader.getQueries(lowerBound), writes);
+                FullState<K> state = new FullState<>(logReader.getQueries(lowerBound), writes);
+                logReader.resetQueries();
+                return state;
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -262,7 +278,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      */
     private void startTransaction(Address requester, CertifyWriteMessage<W,?> cwm) throws Exception {
         long ts = certifier.getTimestamp();
-        certifier.transactionStarted(cwm.getTables(), ts);
+        certifier.transactionStarted(cwm.getWriteTables(), ts);
         cwm.setTimestamp(ts);
         try {
             rl.lock();

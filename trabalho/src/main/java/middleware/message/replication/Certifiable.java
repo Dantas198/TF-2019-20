@@ -9,6 +9,8 @@ import java.util.Set;
 public interface Certifiable<K>{
     // Maps table name to Bit Write Set
     Map<String, K> getWriteSets();
-    Set<String> getTables();
+    Map<String, K> getReadSets();
+    Set<String> getWriteTables();
+    Set<String> getReadTables();
     long getStartTimestamp();
 }

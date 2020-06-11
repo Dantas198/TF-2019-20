@@ -60,23 +60,27 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
         tables.forEach(t -> this.writesPerTable.put(t, new HashMap<>()));
     }
 
-    public boolean hasConflict(Map<String, K> ws, long ts) {
-        if (ts <= lowWaterMark) {
-            System.out.println("Certifier: old timestamp arrived");
-            return false;
-        }
-
-        for(Map.Entry<String, K> entry : ws.entrySet()) {
+    private boolean compare(Map<String, K> s, long ts){
+        for(Map.Entry<String, K> entry : s.entrySet()) {
             String table = entry.getKey();
             HashMap<Long, WriteSet<V>> writes = writesPerTable.get(table);
             for (long i = ts; i < timestamp; i++) {
                 WriteSet<V> set = writes.get(i);
                 System.out.println(i);
                 if(set.intersects(entry.getValue()))
-                    return true;
+                    return false;
             }
         }
-        return false;
+        return true;
+    }
+
+
+    public boolean isWritable(Map<String, K> ws, Map<String, K> rs, long ts) {
+        if (ts <= lowWaterMark) {
+            System.out.println("Certifier: old timestamp arrived");
+            return true;
+        }
+        return compare(ws, ts) && compare(rs, ts);
     }
 
     public void transactionStarted(Set<String> tables, long ts) {

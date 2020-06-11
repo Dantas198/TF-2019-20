@@ -1,7 +1,6 @@
-package middleware.logreader;
+package middleware.reader;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,7 +61,7 @@ public class LogReader {
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
                     String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
-                    //System.out.println("Query--" + query);
+                    System.out.println("Query: " + query);
                     queries.add(query);
                 } else {
                     System.out.println("Log " + log + " couldn't be parsed");
@@ -72,7 +71,27 @@ public class LogReader {
     }
 
     public static void main(String[] args)  throws  Exception{
-        LogReader logReader = new LogReader("db/Server1.log");
+        LogReader logReader = new LogReader("db/Server1.file");
         logReader.getQueries(18).forEach(System.out::println);
+    }
+
+    public void resetQueries() {
+        this.queries = null;
+    }
+
+    public String getPath() {
+        return this.logPath;
+    }
+
+    public void putTimestamp(long timestamp) throws IOException {
+        putTimeStamp(Long.toString(timestamp));
+    }
+
+    public void putTimeStamp(String timestamp) throws IOException {
+        FileOutputStream log = new FileOutputStream(new File(logPath), true);
+        log.write("/*T".getBytes());
+        log.write(timestamp.getBytes());
+        log.write("*/".getBytes());
+        log.close();
     }
 }

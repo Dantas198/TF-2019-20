@@ -38,7 +38,7 @@ public class DBInitialization {
         c.prepareStatement("CREATE TABLE \"product\" (\n" +
                 "    \"name\" varchar(255),\n" +
                 "    \"description\" varchar(255),\n" +
-                "    \"price\" int,\n" +
+                "    \"price\" float,\n" +
                 "    \"stock\" int,\n" +
                 "    PRIMARY KEY(\"name\")\n" +
                 "); ").execute();
