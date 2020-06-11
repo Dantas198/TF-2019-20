@@ -9,9 +9,7 @@ import spread.*;
 import java.net.InetAddress;
 import java.sql.Connection;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 public class ClusterReplicationService<K, W extends WriteSet<K>> {
@@ -33,7 +31,8 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
 
     // safe delete
-    private ScheduledThreadPoolExecutor executor;
+    private ScheduledExecutorService executor;
+
     private SpreadGroup[] members;
     private List<SpreadGroup> sdRequested; // SafeDeleteRequest sent to these members
 
@@ -54,18 +53,18 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
 
-        this.electionManager = new ElectionManager(this.spreadConnection.getPrivateGroup());
+        this.electionManager = new ElectionManager(this.spreadGroup);
         this.imLeader = false;
 
         this.evicting = false;
         this.timestamps = new ArrayList<>();
         this.stateRequests = new ArrayList<>();
-        this.executor = new ScheduledThreadPoolExecutor(1);
+        this.executor =Executors.newScheduledThreadPool(1);
     }
 
 
     public CompletableFuture<Void> start() throws Exception {
-        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
+        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName + " " + UUID.randomUUID().toString(),
                 false, true);
         this.spreadGroup.join(this.spreadConnection, "grupo");
         this.spreadConnection.add(messageListener());
@@ -193,15 +192,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         server.handleCertifierAnswer(cwm);
     }
 
-    private void handleStateLengthRequestMessage(StateLengthRequestMessage msg, SpreadGroup sender) throws Exception {
-        System.out.println("Received request for logs size");
-        //TODO ver quantas linhas tenho !!!!!!
-        int latestLogLine = 0;
-        long latestTimestamp = server.certifier.getTimestamp();
-        ReplicaLatestState rls = new ReplicaLatestState(latestTimestamp, latestLogLine);
-        //noAgreementFloodMessage(m, sender);
-    }
-
     private void handleStateLengthReplyMessage(StateLengthReplyMessage msg, SpreadGroup sender) throws Exception {
         System.out.println("Received request logs");
         ReplicaLatestState rls = msg.getBody();
@@ -209,15 +199,14 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         CompletableFuture<Void> response = new CompletableFuture<>();
         response.thenAccept((x) -> {
             try {
-                server.getState(rls.getLowerBound(), rls.getLatestTimestamp())
-                        .thenAccept((fullState) -> {
-                            Message m = new StateTransferMessage<>(fullState);
-                            try {
-                                noAgreementFloodMessage(m, sender);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        });
+                server.getState(rls.getLowerBound(), rls.getLatestTimestamp()).thenAccept((fullState) -> {
+                        Message m = new StateTransferMessage<>(fullState);
+                        try {
+                            noAgreementFloodMessage(m, sender);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -276,10 +265,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                         if(received instanceof CertifyWriteMessage){
                             handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
 
-                        } else if(received instanceof StateLengthRequestMessage){
+                        } else if(received instanceof StateLengthReplyMessage){
                             // enviado pelo líder a um membro novo
                             // TODO: Não é Serializable
-                            handleStateLengthRequestMessage((StateLengthRequestMessage) received, spreadMessage.getSender());
+                            handleStateLengthReplyMessage((StateLengthReplyMessage) received, spreadMessage.getSender());
 
                         } else if(received instanceof SafeDeleteRequestMessage){
                             // enviado pelo líder a todos os membros no evento de GarbageCollection do certifier
