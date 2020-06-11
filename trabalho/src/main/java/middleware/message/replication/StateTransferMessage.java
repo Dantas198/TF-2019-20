@@ -13,7 +13,7 @@ public class StateTransferMessage<V> extends Message implements Serializable, Re
 
     @Override
     public FullState<V> getState() {
-        return null;
+        return this.state;
     }
 
 }

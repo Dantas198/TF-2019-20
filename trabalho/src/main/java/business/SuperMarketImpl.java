@@ -4,44 +4,42 @@ import business.customer.Customer;
 import business.customer.CustomerImpl;
 import business.customer.CustomerPlaceholder;
 import business.data.DAO;
-import business.data.customer.CustomerSQLDAO;
-import business.data.order.OrderSQLDAO;
-import business.data.product.ProductSQLDAO;
 import business.order.Order;
 import business.product.OrderProductQuantity;
 import business.product.Product;
+import business.product.ProductImpl;
 import middleware.certifier.StateUpdater;
 import server.CurrentOrderCleaner;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.Duration;
 import java.util.*;
 
-public class SuperMarketImpl implements Serializable { // Implement SuperMarket
+public class SuperMarketImpl implements SuperMarket, Serializable {
 
 	private DAO<String, Order> orderDAO;
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
+	private StateUpdater<String, Serializable> updater;
 	private CurrentOrderCleaner cleaner;
 
 	public SuperMarketImpl(DAO<String, Order> orderDAO,
 						   DAO<String, Product> productDAO,
-						   DAO<String, Customer> customerDAO) {
+						   DAO<String, Customer> customerDAO,
+						   StateUpdater<String, Serializable> updater) {
 		this.orderDAO = orderDAO;
 		this.productDAO = productDAO;
 		this.customerDAO = customerDAO;
+		this.updater = updater;
 	}
 
-	public boolean addCustomer(String customer, StateUpdater<String, Serializable> updater) {
+	public boolean addCustomer(String customer) {
 		if(customerDAO.get(customer) != null) return false;
 		Customer c = new CustomerImpl(customer);
 		updater.put("customer", customer, c);
 		return true;
 	}
 
-	public boolean resetOrder(String customer, StateUpdater<String, Serializable> updater) {
+	public boolean resetOrder(String customer) {
 		Customer c = customerDAO.get(customer);
 		if(c == null) return false;
 		if(!c.hasCurrentOrder()) return false;
@@ -52,7 +50,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return true;
 	}
 
-	public boolean finishOrder(String customer, StateUpdater<String, Serializable> updater) {
+	public boolean finishOrder(String customer) {
 		// TODO tmax
 		Customer c = customerDAO.get(customer);
 		if(!c.hasCurrentOrder())
@@ -83,8 +81,7 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 		return true;
 	}
 
-	public boolean addProduct(String customerName, String product, int amount, StateUpdater<String, Serializable> updater) {
-		// TODO usar updater
+	public boolean addProduct(String customerName, String product, int amount) {
 		System.out.println("addProduct");
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;
@@ -120,5 +117,11 @@ public class SuperMarketImpl implements Serializable { // Implement SuperMarket
 
 	public Collection<Product> getCatalogProducts() {
 		return productDAO.getAll().values();
+	}
+
+	public boolean updateProduct(String name, float price, String description, int stock) {
+		Product product = new ProductImpl(name, price, description, stock);
+		updater.put("product", name, product);
+		return true;
 	}
 }

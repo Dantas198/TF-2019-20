@@ -16,6 +16,9 @@ import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.FullState;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -43,9 +46,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath){
         this.privateName = privateName;
-        this.logReader = new LogReader("db/" + privateName + ".log"); //TODO: passar como argumento
+        this.logReader = new LogReader(logPath);
         this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -148,14 +151,21 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }
     }
 
-    public void updateQueries(Collection<String> queries, Connection c){
+    public void updateQueries(Collection<String> queries, String logPath, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
             for(String query : queries) {
-                c.prepareCall(query).execute();
+                if(query.startsWith("--")) {
+                    FileOutputStream log = new FileOutputStream(new File(logPath), true);
+                    log.write(query.getBytes());
+                    log.write('\n');
+                    log.close();
+                } else {
+                    c.prepareCall(query).execute();
+                }
                 System.out.println("query: " + query);
             }
-        } catch (SQLException ex) {
+        } catch (SQLException | IOException ex) {
             ex.printStackTrace();
             //TODO: Parar execução
         }
@@ -231,7 +241,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         return CompletableFuture.supplyAsync(() -> {
             HashMap<String, HashMap<Long, WriteSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
-                return new FullState<K>(logReader.getQueries(lowerBound), writes);
+                FullState<K> state = new FullState<K>(logReader.getQueries(lowerBound), writes);
+                logReader.resetQueries();
+                return state;
             } catch (Exception e) {
                 e.printStackTrace();
             }

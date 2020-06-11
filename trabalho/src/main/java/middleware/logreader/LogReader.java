@@ -62,7 +62,7 @@ public class LogReader {
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
                     String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
-                    //System.out.println("Query--" + query);
+                    System.out.println("Query: " + query);
                     queries.add(query);
                 } else {
                     System.out.println("Log " + log + " couldn't be parsed");
@@ -74,5 +74,13 @@ public class LogReader {
     public static void main(String[] args)  throws  Exception{
         LogReader logReader = new LogReader("db/Server1.log");
         logReader.getQueries(18).forEach(System.out::println);
+    }
+
+    public void resetQueries() {
+        this.queries = null;
+    }
+
+    public String getPath() {
+        return this.logPath;
     }
 }

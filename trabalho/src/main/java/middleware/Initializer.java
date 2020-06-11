@@ -43,7 +43,7 @@ public class Initializer {
                     StateTransferMessage stm = (StateTransferMessage) received;
                     ArrayList<String> logs = stm.getState().getBusinessState();
                     server.rebuildCertifier(stm.getState().getCertifierState());
-                    server.updateQueries(logs, this.connection);
+                    server.updateQueries(logs, server.getLogReader().getPath(), this.connection);
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){
                         respondMessage.accept(sm);

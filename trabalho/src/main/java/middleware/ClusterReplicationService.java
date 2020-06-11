@@ -62,7 +62,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
 
     public CompletableFuture<Void> start() throws Exception {
-        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName + " " + UUID.randomUUID().toString(),
+        this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
                 false, true);
         this.spreadGroup.join(this.spreadConnection, "grupo");
         this.spreadConnection.add(messageListener());
@@ -285,7 +285,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
                         } else if(received instanceof StateLengthReplyMessage){
                             // enviado pelo líder a um membro novo
-                            // TODO: Não é Serializable
                             handleStateLengthReplyMessage((StateLengthReplyMessage) received, spreadMessage.getSender());
 
                         } else if(received instanceof SafeDeleteRequestMessage){

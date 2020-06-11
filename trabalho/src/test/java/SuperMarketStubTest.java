@@ -17,18 +17,16 @@ public class SuperMarketStubTest {
     private SuperMarket stub;
 
     public SuperMarketStubTest() throws Exception{
-        server = new GandaGotaServerImpl(4803, "1", 7777, 9000, 3);
-        new Thread(() ->{
-            try {
-                server.start();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
         List<Address> servers = new ArrayList<>();
-        servers.add(Address.from("localhost", 7777));
-        //...
-        this.stub = new SuperMarketStub(8888, servers);
+        servers.add(Address.from("localhost", 6000));
+        this.stub = new SuperMarketStub(9999, servers);
+    }
+
+    @Test
+    public void spamTest() throws Exception {
+        for(int i = 0; i < 100000; i++) {
+            assertTrue(stub.addCustomer(UUID.randomUUID().toString()));
+        }
     }
 
     @Test
@@ -53,6 +51,7 @@ public class SuperMarketStubTest {
     }
 
 
+    //@Test
     private void addCustomerTest(String customerName) throws Exception {
         boolean added = stub.addCustomer(customerName);
         System.out.println(customerName);

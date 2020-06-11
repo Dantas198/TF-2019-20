@@ -25,7 +25,7 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement getAll() throws SQLException {
-                String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
+                String current_order_restrinction = current_order_id == null ? "" : " AND \"id\" <> ?";
                 PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ? " + current_order_restrinction);
                 ps.setString(1, current_id);
                 if(current_order_id != null)
@@ -35,7 +35,7 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement size() throws SQLException {
-                String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
+                String current_order_restrinction = current_order_id == null ? "" : " AND \"id\" <> ?";
                 PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM \"order\" WHERE \"customer_id\" = ?" + current_order_restrinction);
                 ps.setString(1, current_id);
                 if(current_order_id != null)

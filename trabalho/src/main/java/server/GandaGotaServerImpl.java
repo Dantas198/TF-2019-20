@@ -1,5 +1,6 @@
 package server;
 
+import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.data.DAO;
@@ -13,6 +14,7 @@ import business.product.Product;
 import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
+import client.message.bodies.UpdateProductBody;
 import middleware.certifier.BitWriteSet;
 import middleware.Server;
 import middleware.ServerImpl;
@@ -40,18 +42,18 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount) throws SQLException {
-        super(spreadPort, privateName, atomixPort, connection, totalServerCount);
+    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount, String logPath) throws SQLException {
+        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
         this.orderDAO = new OrderSQLDAO(this.connection);
         this.productDAO = new ProductSQLDAO(this.connection);
         this.customerDAO = new CustomerSQLDAO(this.connection);
-        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO);
+        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null);
     }
 
     public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, int databasePort, int totalServerCount) throws SQLException {
-        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"), totalServerCount);
+        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"), totalServerCount, privateName);
     }
 
 
@@ -90,22 +92,29 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     @Override
     public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
+        SuperMarket superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, updates);
         boolean success = false;
+
         if(message instanceof AddCustomerMessage) {
             String customer = ((AddCustomerMessage) message).getBody();
-            success = superMarket.addCustomer(customer, updates);
+            success = superMarket.addCustomer(customer);
 
         } else if (message instanceof FinishOrderMessage) {
             String customer = ((FinishOrderMessage) message).getBody();
-            success = superMarket.finishOrder(customer, updates);
+            success = superMarket.finishOrder(customer);
 
         } else if (message instanceof ResetOrderMessage) {
             String customer = ((ResetOrderMessage) message).getBody();
-            success = superMarket.resetOrder(customer, updates);
+            success = superMarket.resetOrder(customer);
 
         } else if (message instanceof AddProductMessage) {
             AddProductBody body = ((AddProductMessage) message).getBody();
-            success = superMarket.addProduct(body.getCustomer(), body.getProduct(), body.getAmount(), updates);
+            success = superMarket.addProduct(body.getCustomer(), body.getProduct(), body.getAmount());
+
+        } else if (message instanceof UpdateProductMessage) {
+            UpdateProductBody body = ((UpdateProductMessage) message).getBody();
+            success = superMarket.updateProduct(body.getName(), body.getPrice(), body.getDescription(), body.getStock());
+
         }
 
         if(success)
