@@ -1,6 +1,5 @@
 import business.SuperMarket;
 import business.SuperMarketStub;
-import business.customer.Customer;
 import business.product.Product;
 import io.atomix.utils.net.Address;
 import org.junit.Test;
@@ -62,7 +61,7 @@ public class SuperMarketStubTest {
     public void addProductTest() throws Exception {
         String customerName = UUID.randomUUID().toString();
         stub.addCustomer(customerName);
-        boolean added = stub.addProduct(customerName, "Queijo", 1);
+        boolean added = stub.addProductToOrder(customerName, "Queijo", 1);
         if(added) {
             stub.getCurrentOrderProducts(customerName);
             Iterator<Map.Entry<Product, Integer>> iter = stub.getCurrentOrderProducts(customerName).entrySet().iterator();

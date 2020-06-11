@@ -20,7 +20,6 @@ import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
 import middleware.certifier.BitWriteSet;
-import middleware.Server;
 import middleware.ServerImpl;
 import middleware.certifier.StateUpdates;
 import middleware.certifier.StateUpdatesBitSet;
@@ -109,7 +108,9 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     }
 
 
-    // returns null if execution fails
+    /**
+     * returns null if execution fails
+    */
     @Override
     public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
@@ -130,7 +131,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
         } else if (message instanceof AddProductMessage) {
             AddProductBody body = ((AddProductMessage) message).getBody();
-            success = superMarket.addProduct(body.getCustomer(), body.getProduct(), body.getAmount());
+            success = superMarket.addProductToOrder(body.getCustomer(), body.getProduct(), body.getAmount());
 
         } else if (message instanceof UpdateProductMessage) {
             UpdateProductBody body = ((UpdateProductMessage) message).getBody();
