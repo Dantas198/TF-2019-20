@@ -5,6 +5,7 @@ import middleware.certifier.BitWriteSet;
 import middleware.certifier.WriteSet;
 import middleware.message.replication.CertifyWriteMessage;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -13,6 +14,6 @@ import java.util.Map;
 public class FinishOrderPreProcessedMessage<K extends WriteSet<?>> extends CertifyWriteMessage<K, FinishOrderState>{
     //TODO passar lógica de conversão de order para write set
     public FinishOrderPreProcessedMessage(Map<String, K> ws, FinishOrderState calculatedState){
-        super(ws, calculatedState);
+        super(ws, new HashMap<>(0), calculatedState);
     }
 }

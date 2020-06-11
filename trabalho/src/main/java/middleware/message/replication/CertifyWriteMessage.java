@@ -17,17 +17,24 @@ public class CertifyWriteMessage<K extends WriteSet<?>, V extends Serializable> 
 
     // Maps table name and BitWriteSet
     private final Map<String, K> bws;
+    private final Map<String, K> brs;
     private long timestamp;
     private final V state;
 
-    public CertifyWriteMessage(Map<String, K> bws, V state){
+    public CertifyWriteMessage(Map<String, K> bws, Map<String, K> brs, V state){
         this.bws = bws;
+        this.brs = brs;
         this.state = state;
     }
 
     @Override
     public Map<String, K> getWriteSets() {
         return this.bws;
+    }
+
+    @Override
+    public Map<String, K> getReadSets() {
+        return this.brs;
     }
 
     @Override
@@ -41,9 +48,10 @@ public class CertifyWriteMessage<K extends WriteSet<?>, V extends Serializable> 
     }
 
     @Override
-    public Set<String> getTables() {
-        return this.bws.keySet();
-    }
+    public Set<String> getWriteTables() { return this.bws.keySet(); }
+
+    @Override
+    public Set<String> getReadTables() { return this.brs.keySet(); }
 
     public void setTimestamp(long timestamp){
         this.timestamp = timestamp;

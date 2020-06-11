@@ -4,7 +4,6 @@ import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.data.DAO;
-import business.data.DAOMap;
 import business.data.customer.CustomerCertifierDAO;
 import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderCertifierDAO;
@@ -48,8 +47,14 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
     private DAO<String, Customer> customerDAO;
     private DAO<String, Order> orderCertifierDAO;
 
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, Connection connection, int totalServerCount, String logPath) throws SQLException {
-        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath);
+    public GandaGotaServerImpl(int spreadPort,
+                               String privateName,
+                               int atomixPort,
+                               Connection connection,
+                               int totalServerCount,
+                               String logPath,
+                               String timestampPath) throws SQLException {
+        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath, timestampPath);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
@@ -72,11 +77,6 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         this.customerDAO = new CustomerSQLDAO(this.connection);
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null);
     }
-
-    public GandaGotaServerImpl(int spreadPort, String privateName, int atomixPort, int databasePort, int totalServerCount) throws SQLException {
-        this(spreadPort, privateName, atomixPort, DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + databasePort, "user", "password"), totalServerCount, privateName);
-    }
-
 
     @Override
     public Message handleMessage(Message message) {
@@ -139,7 +139,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         }
 
         if(success)
-            return new CertifyWriteMessage<>(updates.getWriteSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
+            return new CertifyWriteMessage<>(updates.getWriteSets(), updates.getReadSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
 
         return null;
     }
@@ -161,7 +161,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
     @Override
     public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
-        // this.connection.setAutoCommit(false);
+        this.connection.setAutoCommit(false);
         //TODO verificar se é necessário transação
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
@@ -202,13 +202,12 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
                 break;
             }
         }
-        //this.connection.commit();
+        this.connection.commit();
         System.out.println("Server : " + this.getPrivateName() + " commit");
     }
 
     @Override
     public void rollback(){
-        //TODO
         System.out.println("Server : " + this.getPrivateName() + " rollback");
     }
 
@@ -227,15 +226,5 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        String serverName = args.length < 1 ? "Server0" : args[0];
-        int spreadPort = args.length < 2 ? 4803 : Integer.parseInt(args[1]);
-        int atomixPort = args.length < 3 ? 6666 : Integer.parseInt(args[2]);
-        new HSQLServer(serverName).start();
-        int totalServers = 3;
-        Server server = new GandaGotaServerImpl(spreadPort, serverName, atomixPort, 9000, totalServers);
-        server.start();
     }
 }

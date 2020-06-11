@@ -9,16 +9,15 @@ import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
 import middleware.certifier.TaggedObject;
 import middleware.certifier.WriteSet;
-import middleware.logreader.LogReader;
+import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.FullState;
+import middleware.reader.TimestampReader;
 import spread.SpreadException;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Connection;
@@ -42,14 +41,16 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     public Certifier<K, W> certifier;
     private final String privateName;
     private final LogReader logReader;
+    private final TimestampReader timestampReader;
     private boolean isPaused;
 
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath){
         this.privateName = privateName;
         this.logReader = new LogReader(logPath);
+        this.timestampReader = new TimestampReader(timestampPath);
         this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -157,10 +158,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             System.out.println("Updating queries (size: " + queries.size() + ")");
             for(String query : queries) {
                 if(query.startsWith("--")) {
-                    FileOutputStream log = new FileOutputStream(new File(logPath), true);
-                    log.write(query.getBytes());
-                    log.write('\n');
-                    log.close();
+                    logReader.putTimeStamp(query.substring(2));
                 } else {
                     c.prepareCall(query).execute();
                 }
@@ -210,7 +208,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             try {
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
+                    logReader.putTimestamp(certifier.getTimestamp());
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
+
                 } else {
                     System.out.println("Server " + privateName + " rolling back write from db");
                     rollback();
@@ -228,7 +228,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             if(isWritable)
                 certifier.commit(message.getWriteSets());
             if (cli != null)
-                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
+                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getWriteTables(),
                         message.getStartTimestamp()), taskExecutor);
                 sendReply(new ContentMessage<>(isWritable), cli);
         }, certifierExecutor);
@@ -278,7 +278,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      */
     private void startTransaction(Address requester, CertifyWriteMessage<W,?> cwm) throws Exception {
         long ts = certifier.getTimestamp();
-        certifier.transactionStarted(cwm.getTables(), ts);
+        certifier.transactionStarted(cwm.getWriteTables(), ts);
         cwm.setTimestamp(ts);
         try {
             rl.lock();

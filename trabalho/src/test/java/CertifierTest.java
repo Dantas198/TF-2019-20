@@ -14,7 +14,7 @@ public class CertifierTest {
     Certifier c;
 
     private boolean checkConflict(Map<String, BitWriteSet> ws, long ts){
-        if (c.isWritable(ws, ts)) {
+        if (c.isWritable(ws, ws, ts)) {
             c.commit(ws);
             c.shutDownLocalStartedTransaction(ws.keySet(), ts);
             System.out.println("Commited");

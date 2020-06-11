@@ -1,7 +1,6 @@
-package middleware.logreader;
+package middleware.reader;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,7 +71,7 @@ public class LogReader {
     }
 
     public static void main(String[] args)  throws  Exception{
-        LogReader logReader = new LogReader("db/Server1.log");
+        LogReader logReader = new LogReader("db/Server1.file");
         logReader.getQueries(18).forEach(System.out::println);
     }
 
@@ -82,5 +81,17 @@ public class LogReader {
 
     public String getPath() {
         return this.logPath;
+    }
+
+    public void putTimestamp(long timestamp) throws IOException {
+        putTimeStamp(Long.toString(timestamp));
+    }
+
+    public void putTimeStamp(String timestamp) throws IOException {
+        FileOutputStream log = new FileOutputStream(new File(logPath), true);
+        log.write("/*T".getBytes());
+        log.write(timestamp.getBytes());
+        log.write("*/".getBytes());
+        log.close();
     }
 }
