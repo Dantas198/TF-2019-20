@@ -197,7 +197,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     //TODO não mexer sem perguntar !!
     protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message){
         CompletableFuture.runAsync(() -> {
-            boolean isWritable = !certifier.hasConflict(message.getWriteSets(), message.getStartTimestamp());
+            boolean isWritable = certifier.isWritable(message.getWriteSets(), message.getWriteSets(), message.getStartTimestamp());
             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
 
             Address cli;
@@ -208,9 +208,6 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 rl.unlock();
             }
             try {
-                if (cli != null)
-                    CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
-                        message.getStartTimestamp()), taskExecutor);
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
@@ -219,7 +216,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                     rollback();
                 }
             } catch (Exception e) {
-                // TODO: verificar se parar o programa é a melhor opção
+                // TODO: verificar se parar o programa é a melhor opção e ver isto do sendReply
                 sendReply(new ContentMessage<>(false), cli);
                 // If exception should stop program
                 try {
@@ -230,7 +227,10 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
             }
             if(isWritable)
                 certifier.commit(message.getWriteSets());
-            sendReply(new ContentMessage<>(isWritable), cli);
+            if (cli != null)
+                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
+                        message.getStartTimestamp()), taskExecutor);
+                sendReply(new ContentMessage<>(isWritable), cli);
         }, certifierExecutor);
     }
 
