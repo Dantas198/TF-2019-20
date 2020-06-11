@@ -15,6 +15,7 @@ import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.FullState;
+import spread.SpreadException;
 
 import java.io.Serializable;
 import java.sql.Connection;
@@ -231,7 +232,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         return CompletableFuture.supplyAsync(() -> {
             HashMap<String, HashMap<Long, WriteSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
-                return new FullState<K>(logReader.getQueries(lowerBound), writes);
+                return new FullState<>(logReader.getQueries(lowerBound), writes);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -308,8 +309,10 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
 
     @Override
-    public void stop() {
+    public void stop() throws SpreadException {
         this.runningCompletable.complete(null);
+        this.replicationService.stop();
+        this.mms.stop();
     }
 
     public String getPrivateName() {
