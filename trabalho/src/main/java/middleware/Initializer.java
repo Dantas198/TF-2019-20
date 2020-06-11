@@ -1,11 +1,7 @@
 package middleware;
 
-import middleware.certifier.Certifier;
 import middleware.message.Message;
-import middleware.message.replication.GetLengthRequestMessage;
-import middleware.message.replication.StateLengthRequestMessage;
-import middleware.message.replication.StateTransferMessage;
-import spread.SpreadException;
+import middleware.message.replication.*;
 import spread.SpreadMessage;
 
 import java.sql.Connection;
@@ -46,8 +42,8 @@ public class Initializer {
                     System.out.println("Received state transfer");
                     StateTransferMessage stm = (StateTransferMessage) received;
                     ArrayList<String> logs = stm.getState().getBusinessState();
-                    service.rebuildCertifier(stm.getState().getCertifierState());
-                    server.updateQueries(logs, this.connection);
+                    server.rebuildCertifier(stm.getState().getCertifierState());
+                    server.updateQueries(logs, server.getLogReader().getPath(), this.connection);
                     initializing = false;
                     for(SpreadMessage sm : messageQueue){
                         respondMessage.accept(sm);
@@ -55,8 +51,9 @@ public class Initializer {
                     messageQueue = null;
                 } else if (received instanceof GetLengthRequestMessage){
                     System.out.println("Received logs length request");
-                    int logSize = Math.max(0, service.getLogReader().size()-1);
-                    Message logsLength = new StateLengthRequestMessage(logSize);
+                    int logSize = Math.max(0, server.getLogReader().size());
+                    long latestTimestamp = server.certifier.getTimestamp();
+                    Message logsLength = new StateLengthReplyMessage(new ReplicaLatestState(latestTimestamp, logSize));
                     service.noAgreementFloodMessage(logsLength, spreadMessage.getSender());
                 }  else {
                     messageQueue.add(spreadMessage);

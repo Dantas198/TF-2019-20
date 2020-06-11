@@ -1,6 +1,8 @@
 package business.product;
 
-public interface Product {
+import java.io.Serializable;
+
+public interface Product extends Serializable {
 
 	String getName();
 

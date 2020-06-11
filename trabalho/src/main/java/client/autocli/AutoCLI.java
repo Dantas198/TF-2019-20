@@ -132,6 +132,14 @@ public class AutoCLI<I> {
                         throw new Exception("int arg was not parsable");
                     }
                     break;
+                case "float":
+                    try {
+                        System.out.println(param + " " + Float.parseFloat(param));
+                        params[i] = Float.parseFloat(param);
+                    } catch (NumberFormatException e) {
+                        throw new Exception("float arg was not parsable");
+                    }
+                    break;
                 default:
                     throw new Exception("only methods with int or string arg types are supported");
             }

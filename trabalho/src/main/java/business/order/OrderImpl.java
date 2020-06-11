@@ -10,6 +10,7 @@ public class OrderImpl implements Order, Serializable{
 	private String id;
 	private Map<Product, Integer> products;
 	private Date timestamp;
+	private String customerId;
 
 	public OrderImpl(){
 		this(UUID.randomUUID().toString());
@@ -31,6 +32,13 @@ public class OrderImpl implements Order, Serializable{
 		this.id = id;
 		this.products = products;
 		this.timestamp = timestamp;
+	}
+
+	public OrderImpl(String id, Map<Product, Integer> products, Date timestamp, String customerId) {
+		this.id = id;
+		this.products = products;
+		this.timestamp = timestamp;
+		this.customerId = customerId;
 	}
 
 	@Override
@@ -82,5 +90,25 @@ public class OrderImpl implements Order, Serializable{
 
 	public void setTimestamp(Date timestamp) {
 		this.timestamp = timestamp;
+	}
+
+	@Override
+	public String getCustomerId() {
+		return this.customerId;
+	}
+
+	@Override
+	public void setCustomerId(String customerId) {
+		this.customerId = customerId;
+	}
+
+	@Override
+	public String toString() {
+		return "OrderImpl{" +
+				"id='" + id + '\'' +
+				", products=" + products +
+				", timestamp=" + timestamp +
+				", customerId='" + customerId + '\'' +
+				'}';
 	}
 }

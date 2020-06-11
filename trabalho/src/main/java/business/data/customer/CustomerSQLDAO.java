@@ -13,7 +13,7 @@ import business.order.OrderImpl;
 import java.sql.*;
 
 public class CustomerSQLDAO extends SQLDAO<String, Customer> {
-    public CustomerSQLDAO(Connection c, OrderSQLDAO orderDAO) throws SQLException {
+    public CustomerSQLDAO(Connection c) throws SQLException {
         super(c, new DAOPS<>() {
             PreparedStatement getPS = c.prepareStatement("SELECT * FROM \"customer\" WHERE \"id\" = ?");
             PreparedStatement putPS = c.prepareStatement("INSERT INTO \"customer\" (\"id\", \"current_order_id\") VALUES (?, ?) ON DUPLICATE KEY UPDATE \"current_order_id\" = ?");
@@ -26,11 +26,9 @@ public class CustomerSQLDAO extends SQLDAO<String, Customer> {
                 String id = resultSet.getString("id");
                 String currentOrder = resultSet.getString("current_order_id");
                 Order order = currentOrder != null ? new OrderImpl(currentOrder) : null;
-                return new CustomerSQLImpl(id,
+                return new CustomerImpl(id,
                         order,
-                        new CustomerOldOrderDAO(c, id, currentOrder),
-                        orderDAO,
-                        c
+                        new CustomerOldOrderDAO(c, id, currentOrder)
                 );
             }
 

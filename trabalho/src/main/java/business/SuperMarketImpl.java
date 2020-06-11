@@ -2,173 +2,119 @@ package business;
 
 import business.customer.Customer;
 import business.customer.CustomerImpl;
-import business.data.DBInitialization;
+import business.customer.CustomerPlaceholder;
 import business.data.DAO;
-import business.data.customer.CustomerSQLDAO;
-import business.data.order.OrderSQLDAO;
-import business.data.product.ProductSQLDAO;
 import business.order.Order;
-import business.order.OrderImpl;
+import business.product.OrderProductQuantity;
 import business.product.Product;
-import middleware.certifier.BitWriteSet;
+import business.product.ProductImpl;
+import middleware.certifier.StateUpdater;
 import server.CurrentOrderCleaner;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.time.Duration;
 import java.util.*;
 
-public class SuperMarketImpl implements Serializable { // Implement SuperMarket
+public class SuperMarketImpl implements SuperMarket, Serializable {
 
 	private DAO<String, Order> orderDAO;
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
+	private StateUpdater<String, Serializable> updater;
 	private CurrentOrderCleaner cleaner;
-	private Connection connection;
 
-	public SuperMarketImpl(String privateName, Connection connection) throws SQLException {
-		this.connection = connection;
-		DBInitialization dbInit = new DBInitialization(this.connection);
-		if(!dbInit.exists()){
-			dbInit.init();
-			System.out.println("Database initialized");
-			if(privateName.equals("Server0")) {
-				dbInit.populateProduct();
-				System.out.println("Populated database");
-			} else {
-				// TODO: pedir os dados
-				/*
-				try {
-					Files.copy(new File("db/Server0.sql").toPath(), new File("db/" + privateName + ".script").toPath());
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				 */
-			}
-			//this.connection.prepareCall("SCRIPT 'db/" + privateName  + ".sql'").execute();
-		}
-		OrderSQLDAO orderSQLDAO = new OrderSQLDAO(this.connection);
-		this.orderDAO = orderSQLDAO;
-		this.productDAO = new ProductSQLDAO(this.connection);
-		CustomerSQLDAO customerSQLDAO = new CustomerSQLDAO(this.connection, orderSQLDAO);
-		this.customerDAO = customerSQLDAO;
-		long tmax = 100;
-		cleaner = new CurrentOrderCleaner(customerSQLDAO, Duration.ofDays(tmax));
+	public SuperMarketImpl(DAO<String, Order> orderDAO,
+						   DAO<String, Product> productDAO,
+						   DAO<String, Customer> customerDAO,
+						   StateUpdater<String, Serializable> updater) {
+		this.orderDAO = orderDAO;
+		this.productDAO = productDAO;
+		this.customerDAO = customerDAO;
+		this.updater = updater;
 	}
 
 	public boolean addCustomer(String customer) {
+		if(customerDAO.get(customer) != null) return false;
 		Customer c = new CustomerImpl(customer);
-		return customerDAO.put(c);
+		customerDAO.put(c);
+		return true;
 	}
 
 	public boolean resetOrder(String customer) {
 		Customer c = customerDAO.get(customer);
-		c.newCurrentOrder();
-		customerDAO.update(customer, c);
+		if(c == null) return false;
+		if(!c.hasCurrentOrder()) return false;
+		String oldCurrentOrder = c.getCurrentOrder().getId();
+		c.deleteCurrentOrder();
+		customerDAO.put(new CustomerPlaceholder(c));
+		orderDAO.delete(oldCurrentOrder); // Apaga ordem atual
 		return true;
 	}
 
-	public boolean finishOrder(String customer, Map<String, BitWriteSet> writeSets) {
-		// TODO: Resolver problemas de transação
-		try {
-			connection.setAutoCommit(false);
-		} catch (SQLException throwables) {
-			return false;
-		}
+	public boolean finishOrder(String customer) {
 		// TODO tmax
 		Customer c = customerDAO.get(customer);
 		if(!c.hasCurrentOrder())
 			return false;
-		Order order = c.getCurrentOrder();
+		Order order = orderDAO.get(c.getCurrentOrder().getId());
 		Map<Product,Integer> products = order.getProducts();
 
-		// TODO trocar order por lista de Strings?
 		// verifica se existe stock e substitui keySet por produto completo do stock
 		for (Product p : products.keySet()) {
-			String name = p.getName();
 			int quantity = products.get(p);
-			Product product = productDAO.get(name);
-			products.put(product, quantity);
-			int stock = product.getStock();
-			if (!(stock - quantity < 0)) return false;
+			int stock = p.getStock();
+			if (quantity > stock) return false;
 		}
 
 		// atualiza stock
-		BitWriteSet productBws = new BitWriteSet();
 		for (Product p : products.keySet()) {
 			int quantity = products.get(p);
 			p.reduceStock(quantity);
 			productDAO.update(p.getName(), p);
-			productBws.add(p.getName());
 		}
-		writeSets.put("product", productBws);
-		BitWriteSet customerBws = new BitWriteSet();
-		customerBws.add(c.getId());
-		writeSets.put("customer", customerBws);
-
-		c.getOldOrders().add(order); // pode ser removido
-		c.newCurrentOrder();
-		customerDAO.update(customer, c);
-		/*
-		try {
-			this.connection.commit();
-		} catch (SQLException throwables) {
-			try {
-				this.connection.rollback();
-				this.connection.setAutoCommit(true);
-			} catch (SQLException throwables1) {
-				return false;
-			}
-			return false;
-		}
-		 */
+		c.deleteCurrentOrder();
+		customerDAO.put(new CustomerPlaceholder(c));
 		return true;
 	}
 
 	public boolean addProduct(String customerName, String product, int amount) {
-		System.out.println("addProduct");
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;
-		try {
-			cleaner.clean();
-		} catch (SQLException throwables) {
-			throwables.printStackTrace();
-		}
+		Product p = productDAO.get(product);
+		if(p.getStock() < amount) return false;
 		if (!customer.hasCurrentOrder()) {
-			/* customerDAO retorna uma instância de CustomerSQLImpl
-			// CustomerSQLImpl subrepõe o método newCurrentOrder
-			// e ao fazer newCurrentOrder ele remove a current order antiga da tabela Order
-			// e adiciona a current order à tabela e no cliente
-			*/
 			customer.newCurrentOrder();
+			orderDAO.put(customer.getCurrentOrder());
+			// A nova order deve vir antes do customer por causa de restrições da Foreign Key
+			customerDAO.put(new CustomerPlaceholder(customer));
 		}
 		Order order = customer.getCurrentOrder();
-		System.out.println(order);
-		Product p = productDAO.get(product);
-		System.out.println(p.getName());
-		order.addProduct(p, amount);
+		updater.put("order_product",
+				order.getId() + ";" + p.getName(),
+				new OrderProductQuantity(order.getId(), p.getName(), amount));
 		return true;
 	}
 
 	public Map<Product, Integer> getCurrentOrderProducts(String customerName) {
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null || !customer.hasCurrentOrder()) return null;
-		return customer.getCurrentOrder().getProducts();
+		Order currentOrder = orderDAO.get(customer.getCurrentOrder().getId());
+		if(currentOrder == null) return new HashMap<>(0);
+		return currentOrder.getProducts();
 	}
 
 	public Collection<Order> getHistory(String customerName) {
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return new ArrayList<>(0);
-		// TODO: implementar método clone
 		return customer.getOldOrders();
 	}
 
 	public Collection<Product> getCatalogProducts() {
 		return productDAO.getAll().values();
+	}
+
+	public boolean updateProduct(String name, float price, String description, int stock) {
+		Product product = new ProductImpl(name, price, description, stock);
+		productDAO.put(product);
+		return true;
 	}
 }

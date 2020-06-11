@@ -2,7 +2,7 @@ package business.data.customer;
 
 import business.data.DAOSet;
 import business.data.DAOSetPS;
-import business.data.product.OrderProductDAO;
+import business.data.order.OrderProductDAO;
 import business.order.Order;
 import business.order.OrderImpl;
 
@@ -17,13 +17,16 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
             @Override
             public Order fromResultSet(ResultSet resultSet) throws SQLException {
                 String id = resultSet.getString("id");
-                return new OrderImpl(id, new OrderProductDAO(c, id));
+                String customerId = resultSet.getString("customer_id");
+                Order order = new OrderImpl(id, new OrderProductDAO(c, id));
+                order.setCustomerId(customerId);
+                return order;
             }
 
             @Override
             public PreparedStatement getAll() throws SQLException {
-                String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
-                PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ?" + current_order_restrinction);
+                String current_order_restrinction = current_order_id == null ? "" : " AND \"id\" <> ?";
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM \"order\" WHERE \"customer_id\" = ? " + current_order_restrinction);
                 ps.setString(1, current_id);
                 if(current_order_id != null)
                     ps.setString(2, current_order_id);
@@ -32,7 +35,7 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement size() throws SQLException {
-                String current_order_restrinction = current_order_id == null ? "" : " AND NOT \"id\" <> ?";
+                String current_order_restrinction = current_order_id == null ? "" : " AND \"id\" <> ?";
                 PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM \"order\" WHERE \"customer_id\" = ?" + current_order_restrinction);
                 ps.setString(1, current_id);
                 if(current_order_id != null)

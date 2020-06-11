@@ -1,8 +1,8 @@
 package client.message;
 
-import middleware.message.ContentMessage;
+import middleware.message.WriteMessage;
 
-public class AddCustomerMessage extends ContentMessage<String> {
+public class AddCustomerMessage extends WriteMessage<String> {
     public AddCustomerMessage(String custumer) {
         super(custumer);
     }

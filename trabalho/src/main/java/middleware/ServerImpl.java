@@ -6,18 +6,21 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
-import middleware.certifier.NoTableDefinedException;
+import middleware.certifier.Certifier;
+import middleware.certifier.TaggedObject;
 import middleware.certifier.WriteSet;
-import middleware.logreader.LogReader;
+import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
-import middleware.message.TransactionMessage;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
+import middleware.message.replication.FullState;
+import middleware.reader.TimestampReader;
+import spread.SpreadException;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -27,26 +30,32 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Serializable> implements Server {
 
-    private final ClusterReplicationService<K, W> replicationService;
-    private final ExecutorService e;
+    private final ClusterReplicationService<K,W> replicationService;
     private final Serializer s;
     private final ManagedMessagingService mms;
     private final CompletableFuture<Void> runningCompletable;
     private ReentrantLock rl;
-    private Map<String, CompletableFuture<Boolean>> pendingWrites;
-    private String privateName;
-    private LogReader logReader;
+
+    //TODO remove/update
+    private final Map<String, Address> writesRequests;
+    public Certifier<K, W> certifier;
+    private final String privateName;
+    private final LogReader logReader;
+    private final TimestampReader timestampReader;
     private boolean isPaused;
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection){
+    private final ExecutorService certifierExecutor;
+    private final ExecutorService taskExecutor;
+
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath){
         this.privateName = privateName;
-        // TODO numero de servidores max/total
-        this.logReader = new LogReader("db/" + privateName + ".log");
-        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, 3, logReader, databaseConnection);
-        this.e = Executors.newFixedThreadPool(1);
+        this.logReader = new LogReader(logPath);
+        this.timestampReader = new TimestampReader(timestampPath);
+        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
-        this.pendingWrites = new HashMap<>();
+        this.certifier = new Certifier<>();
+        this.writesRequests = new HashMap<>();
         this.s = new SerializerBuilder()
                 .withRegistrationRequired(false)
                 .build();
@@ -56,6 +65,10 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
                 myAddress,
                 new MessagingConfig());
         this.isPaused = false;
+
+        this.certifierExecutor = Executors.newFixedThreadPool(1);
+        this.taskExecutor = Executors.newFixedThreadPool(8);
+
     }
 
     /**
@@ -74,8 +87,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * @param message The body Message received
      * @return the message body of the response
      */
-    //TODO: Converter para WriteMessage visto que só aceita write message
-    public abstract CertifyWriteMessage<W,?> handleTransactionMessage(TransactionMessage<?> message);
+    public abstract CertifyWriteMessage<W,?> handleWriteMessage(WriteMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
@@ -89,8 +101,9 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * Called from handleCertifierAnswer when a write request was made and is considered valid.
      * Needs to make changes effective
      * server
+     * @param changes Objects changed and have to persist
      */
-    public abstract void commit();
+    public abstract void commit(Set<TaggedObject<String, Serializable>> changes) throws Exception;
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered invalid.
@@ -127,7 +140,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * Set of tables for certifier module
      */
     public void addTablesToCertifier(List<String> tables){
-        this.replicationService.certifier.addTables(tables);
+        this.certifier.addTables(tables);
     }
 
     public Collection<String> getQueries(int from){
@@ -140,15 +153,20 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }
     }
 
-    public void updateQueries(Collection<String> queries, Connection c){
+    public void updateQueries(Collection<String> queries, String logPath, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
-            for(String querie : queries) {
-                c.prepareStatement(querie).execute();
-                System.out.println("querie: " + querie);
+            for(String query : queries) {
+                if(query.startsWith("--")) {
+                    logReader.putTimeStamp(query.substring(2));
+                } else {
+                    c.prepareCall(query).execute();
+                }
+                System.out.println("query: " + query);
             }
-        } catch (SQLException ex) {
+        } catch (SQLException | IOException ex) {
             ex.printStackTrace();
+            //TODO: Parar execução
         }
     }
 
@@ -173,90 +191,73 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
      * process and got answered.
      * server
      */
-    protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message, boolean isWritable) throws NoTableDefinedException {
-        CompletableFuture<Boolean> res;
-        try{
-            rl.lock();
-            res = this.pendingWrites.get(message.getId());
-        }finally {
-            rl.unlock();
-        }
-        // se for null então não foi iniciada a escrita neste servidor
-        if(res == null){
-            if(isWritable) {
-                updateStateFromCommitedWrite(message);
-                //assumimos que a função anterior não falha..senão está tudo perdido...talvez resolver com os acks
-                //Só é incrementado o timestamp e dado o "commit" quando as mudanças estão feitas na BD
-                System.out.println("Server " + privateName + " commiting to certifier");
-                replicationService.certifier.commit(message.getWriteSets());
-            }
-        }
-        else{
-            //Eu acho que a execução do res após o complete continua na thread do spread ....terá de ser assim para funcionar
-            //Chama a callback de onde foi iniciado o pedido de escrita
-            res.complete(isWritable);
-        }
 
+    //TODO não mexer sem perguntar !!
+    protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message){
+        CompletableFuture.runAsync(() -> {
+            boolean isWritable = certifier.isWritable(message.getWriteSets(), message.getWriteSets(), message.getStartTimestamp());
+            System.out.println("Server : " + privateName + " isWritable: " + isWritable);
+
+            Address cli;
+            try{
+                rl.lock();
+                cli = this.writesRequests.get(message.getId());
+            } finally {
+                rl.unlock();
+            }
+            try {
+                if (isWritable) {
+                    System.out.println("Server " + privateName + " commiting to db");
+                    logReader.putTimestamp(certifier.getTimestamp());
+                    commit((Set<TaggedObject<String, Serializable>>) message.getState());
+
+                } else {
+                    System.out.println("Server " + privateName + " rolling back write from db");
+                    rollback();
+                }
+            } catch (Exception e) {
+                // TODO: verificar se parar o programa é a melhor opção e ver isto do sendReply
+                sendReply(new ContentMessage<>(false), cli);
+                // If exception should stop program
+                try {
+                    this.stop();
+                } catch (SpreadException spreadException) {
+                    spreadException.printStackTrace();
+                }
+            }
+            if(isWritable)
+                certifier.commit(message.getWriteSets());
+            if (cli != null)
+                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getWriteTables(),
+                        message.getStartTimestamp()), taskExecutor);
+                sendReply(new ContentMessage<>(isWritable), cli);
+        }, certifierExecutor);
     }
 
-
-
-
-
-
-    /**
-     * Called from clientListener handler when a transactionMessage arrived. Starts a transaction by getting the current starting
-     * timestamp and pre-processing the request.
-     * server
-     * @param cwm message
-     * @return the information necessary to certify and replicate the transaction that is for now in a transient state
-     */
-    private CertifyWriteMessage<W,?> startTransaction(CertifyWriteMessage<W,?> cwm) throws NoTableDefinedException {
-        long ts = replicationService.certifier.getTimestamp();
-        replicationService.certifier.transactionStarted(cwm.getTables(), ts, cwm.getId());
-        cwm.setTimestamp(ts);
-        //TODO tirar o sleep após testes
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException interruptedException) {
-            interruptedException.printStackTrace();
-        }
-        return cwm;
+    protected CompletableFuture<Long> getSafeToDeleteTimestamp(){
+        return CompletableFuture.supplyAsync(() -> certifier.getSafeToDeleteTimestamp(), certifierExecutor);
     }
 
-    /**
-     * Called from clientListener handler when a transactionMessage arrived. Tries to commit a transient transaction and also
-     * formulates logic of the incoming answer
-     * server
-     * @param cwm message necessary for the certification and replication of the transaction
-     * @param requester address of the requester
-     */
-    private void tryCommit(Address requester, CertifyWriteMessage<W, ?> cwm) throws Exception {
-        CompletableFuture<Boolean> res = new CompletableFuture<>();
-        try {
-            rl.lock();
-            this.pendingWrites.put(cwm.getId(), res);
-        } finally {
-            rl.unlock();
-        }
-        res.thenAccept(isWritable -> {
-            if (isWritable) {
-                //Primeiro persiste o estado
-                System.out.println("Server " + privateName + " flushing write to db");
-                commit();
-                //Atualiza as transações que foram feitas
-                System.out.println("Server " + privateName + " commiting to certifier");
-                replicationService.certifier.commitLocalStartedTransaction(cwm.getWriteSets(), cwm.getStartTimestamp(), cwm.getId());
-            } else {
-                System.out.println("Server " + privateName + " rolling back write from db");
-                rollback();
+    protected CompletableFuture<Void> evictStoredWriteSets(long ts){
+        return CompletableFuture.runAsync(() -> certifier.evictStoredWriteSets(ts), certifierExecutor);
+    }
+
+    protected CompletableFuture<FullState<K>> getState(int lowerBound, long latestTimestamp){
+        return CompletableFuture.supplyAsync(() -> {
+            HashMap<String, HashMap<Long, WriteSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
+            try {
+                FullState<K> state = new FullState<>(logReader.getQueries(lowerBound), writes);
+                logReader.resetQueries();
+                return state;
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            Message message = new ContentMessage<>(isWritable);
-            System.out.println("Sending response message: " + message);
-            sendReply(message, requester);
-        });
-        System.out.println("Server: " + privateName + " trying to commit " + cwm.getId());
-        replicationService.floodMessage(cwm);
+            return null;
+        }, certifierExecutor);
+    }
+
+    public void rebuildCertifier(HashMap<String, HashMap<Long, WriteSet<K>>> c){
+        this.certifier.addState(c);
     }
 
     private void sendReply(Message message, Address address) {
@@ -269,47 +270,72 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
 
     /**
+     * Called from clientListener handler when a transactionMessage arrived. Starts a transaction by getting the current starting
+     * timestamp and pre-processing the request.
+     * server
+     * @param cwm message
+     * @return the information necessary to certify and replicate the transaction that is for now in a transient state
+     */
+    private void startTransaction(Address requester, CertifyWriteMessage<W,?> cwm) throws Exception {
+        long ts = certifier.getTimestamp();
+        certifier.transactionStarted(cwm.getWriteTables(), ts);
+        cwm.setTimestamp(ts);
+        try {
+            rl.lock();
+            this.writesRequests.put(cwm.getId(), requester);
+        } finally {
+            rl.unlock();
+        }
+        replicationService.floodMessage(cwm);
+        System.out.println("Server: " + privateName + " trying to commit " + cwm.getId());
+    }
+
+    /**
      * Provides middleware logic to receive and reply to clients requests.
      * server
      */
     public void startClientListener(){
         this.mms.start();
         mms.registerHandler("request", (requester,b) -> {
-            System.out.println("\uD83D\uDE02");
             if(isPaused)
                 return;
 
             Message request = s.decode(b);
             try {
-                if(request instanceof TransactionMessage) {
+                if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
-                    tryCommit(requester, startTransaction(handleTransactionMessage((TransactionMessage<?>) request)));
-                }
-                else if(request instanceof WriteMessage) {
-                    System.out.println("Server " + privateName + " handling the request with group members");
-                    Message reply = handleMessage(request);
-                    replicationService.floodMessage(request);
-                    // TODO espera por acks?
-                    sendReply(reply, requester);
-                }
-                else {
+                    CertifyWriteMessage<W, ?> cwm = handleWriteMessage((WriteMessage<?>) request);
+                    if(cwm != null) {
+                        startTransaction(requester, cwm);
+                    } else {
+                        // error
+                        ContentMessage<Boolean> reply = new ContentMessage<>(false);
+                        sendReply(reply, requester);
+                    }
+                } else {
                     System.out.println("Server " + privateName + " handling the request locally");
-                    System.out.println("??");
                     Message reply = handleMessage(request);
                     sendReply(reply, requester);
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-        },e);
+        }, taskExecutor);
     }
 
+
     @Override
-    public void stop() {
+    public void stop() throws SpreadException {
         this.runningCompletable.complete(null);
+        this.replicationService.stop();
+        this.mms.stop();
     }
 
     public String getPrivateName() {
         return privateName;
+    }
+
+    public LogReader getLogReader() {
+        return logReader;
     }
 }

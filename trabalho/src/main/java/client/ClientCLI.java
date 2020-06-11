@@ -12,9 +12,11 @@ public class ClientCLI {
 
     public static void main(String[] args) throws Exception {
 
-        Address primaryServer = Address.from(6000);
         List<Address> addresses = new LinkedList<>();
-        addresses.add(primaryServer);
+        for (int i = 0; i < 5; i++) {
+            Address serverAddress = Address.from(6000 + i);
+            addresses.add(serverAddress);
+        }
         int myPort = 5555;
         SuperMarket sm = new SuperMarketStub(myPort, addresses);
 

@@ -4,34 +4,29 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
 
-
 public abstract class ConnectionManager<K> {
-    private Map<String, K> writeRequestsConnections;
-    private Queue<K> freeConnections;
-    private Queue<CompletableFuture<K>> writesOnWait;
+    private final Queue<K> freeConnections;
+    private final Queue<CompletableFuture<K>> writesOnWait;
 
     //TODO o lock vai depender de como usamos a classe. Ver melhor depois
     private ReentrantLock rl;
-    private final int maxConnectionNumber;
+    private final int maxWriteConnectionNumber;
     private int currentConnections;
 
-    //readers use writers connections or own pool
-    private boolean sharedPool;
     private List<K> readersPool;
 
-    public ConnectionManager(int maxConnectionNumber){
-        this.writeRequestsConnections = new HashMap<>();
+    public ConnectionManager(int maxWriteConnectionNumber){
         this.freeConnections = new LinkedList<>();
         this.writesOnWait = new LinkedList<>();
         this.rl = new ReentrantLock();
-        this.maxConnectionNumber = maxConnectionNumber;
+        this.maxWriteConnectionNumber = maxWriteConnectionNumber;
         this.currentConnections = 0;
-        this.sharedPool = false;
+        this.readersPool = new ArrayList<>(1);
+        this.readersPool.add(produceConnection());
     }
 
-    public ConnectionManager(int maxConnectionNumber, int readersPoolSize){
-        this(maxConnectionNumber);
-        this.sharedPool = true;
+    public ConnectionManager(int maxWriteConnectionNumber, int readersPoolSize){
+        this(maxWriteConnectionNumber);
         readersPool = new ArrayList<>();
         for(int i = 0; i < readersPoolSize; i++)
             readersPool.add(produceConnection());
@@ -43,10 +38,10 @@ public abstract class ConnectionManager<K> {
      */
     public abstract K produceConnection();
 
-    public CompletableFuture<K> assignWriteRequest(String writeMsgId){
+    public CompletableFuture<K> assignWriteRequest(){
         try {
             rl.lock();
-            if (freeConnections.isEmpty() && currentConnections == maxConnectionNumber) {
+            if (freeConnections.isEmpty() && currentConnections == maxWriteConnectionNumber) {
                 CompletableFuture<K> cf = new CompletableFuture<>();
                 writesOnWait.add(cf);
                 return cf;
@@ -58,7 +53,6 @@ public abstract class ConnectionManager<K> {
             }else
                 offered_connection = freeConnections.poll();
 
-            writeRequestsConnections.put(writeMsgId, offered_connection);
             return CompletableFuture.completedFuture(offered_connection);
 
         } finally {
@@ -66,21 +60,9 @@ public abstract class ConnectionManager<K> {
         }
     }
 
-    public K getAssignedConnection(String writeMsgId){
-        K connection;
+    public void releaseConnection(K connection){
         try{
             rl.lock();
-            connection = writeRequestsConnections.get(writeMsgId);
-            return connection;
-        }finally {
-            rl.unlock();
-        }
-    }
-
-    public void releaseConnection(String writeMsgId){
-        try{
-            rl.lock();
-            K connection = writeRequestsConnections.remove(writeMsgId);
             if (!writesOnWait.isEmpty())
                 writesOnWait.poll().complete(connection);
             else
@@ -105,29 +87,7 @@ public abstract class ConnectionManager<K> {
     }
 
     public K getReadConnection(){
-        if(!sharedPool) {
-            Random rand = new Random();
-            return readersPool.get(rand.nextInt(readersPool.size()));
-        }
-        return getReadConnectionFromSharedPool();
+        Random rand = new Random();
+        return readersPool.get(rand.nextInt(readersPool.size()));
     }
-
-    private K getReadConnectionFromSharedPool(){
-        try{
-            K offered_connection;
-            rl.lock();
-            if (freeConnections.isEmpty() && writeRequestsConnections.isEmpty()){
-                offered_connection = produceConnection();
-            }
-            else if(freeConnections.isEmpty())
-                //não gosto muito
-                offered_connection = writeRequestsConnections.values().iterator().next();
-            else
-                offered_connection = freeConnections.peek();
-            return offered_connection;
-        }finally {
-            rl.unlock();
-        }
-    }
-
 }

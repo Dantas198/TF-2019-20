@@ -1,9 +1,6 @@
 package middleware;
 
-import middleware.certifier.Certifier;
-import middleware.certifier.NoTableDefinedException;
 import middleware.certifier.WriteSet;
-import middleware.logreader.LogReader;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.*;
@@ -11,8 +8,8 @@ import spread.*;
 
 import java.net.InetAddress;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 public class ClusterReplicationService<K, W extends WriteSet<K>> {
@@ -26,15 +23,24 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     //private Map<String, List<Message>> cachedMessages;
 
     private final Initializer initializer;
-    public  Certifier<K, W> certifier;
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl<K, W, ?> server;
+    private ServerImpl<K,W,?> server;
     private CompletableFuture<Void> started;
-    private LogReader logReader;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K, W, ?> server, int totalServers, LogReader logReader, Connection connection){
+    // safe delete
+    private ScheduledExecutorService executor;
+
+    private SpreadGroup[] members;
+    private List<SpreadGroup> sdRequested; // SafeDeleteRequest sent to these members
+
+    //Leader vars
+    private boolean evicting;
+    private List<Long> timestamps;
+    private List<CompletableFuture<Void>> stateRequests;
+
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K,W,?> server, int totalServers, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -44,10 +50,14 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.initializer = new Initializer(server, this, connection);
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
-        this.certifier = new Certifier<>();
-        this.electionManager = new ElectionManager(this.spreadConnection);
+
+        this.electionManager = new ElectionManager(this.spreadGroup);
         this.imLeader = false;
-        this.logReader = logReader;
+
+        this.evicting = false;
+        this.timestamps = new ArrayList<>();
+        this.stateRequests = new ArrayList<>();
+        this.executor =Executors.newScheduledThreadPool(1);
     }
 
 
@@ -60,10 +70,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         return started;
     }
 
-
-    public void rebuildCertifier(Certifier c){
-        this.certifier = new Certifier<K, W>(c);
-    }
 
     /**
      * Method used to respond to the Sender the message defined in the handleMessage abstract method
@@ -81,6 +87,24 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     };
 
 
+    private class SafeDeleteEvent implements Runnable {
+        @Override
+        public void run() {
+            if (!imLeader) return;
+            SafeDeleteRequestMessage msg = new SafeDeleteRequestMessage();
+            try {
+                evicting = true;
+                noAgreementFloodMessage(msg);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void scheduleSafeDeleteEvent() {
+        long minutesUntilSafeDelete = 1000;
+        executor.schedule(new SafeDeleteEvent(), minutesUntilSafeDelete, TimeUnit.MINUTES);
+    }
 
     private boolean isInMainPartition(SpreadGroup[] partition) {
         return partition.length > totalServers/2;
@@ -95,7 +119,9 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             System.out.println("Server : " + privateName + ", network partition, im in main group");
             if(!imLeader) {
                 imLeader = electionManager.amILeader(stayed);
+
                 if (imLeader){
+                    scheduleSafeDeleteEvent();
                     System.out.println("Assuming leader role");
                 }
             }
@@ -111,11 +137,13 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
         //TODO ENVIAR ESTADO CORRETO. De momento não funciona
         System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
+        //TODO enviar apenas o que interessa do certifier
         Message message = new GetLengthRequestMessage();
         noAgreementFloodMessage(message, newMember);
     }
 
     private void handleSelfJoin(MembershipInfo info) {
+        //TODO URGENTE!!! NÃO PODE DAR UNPAUSE. TEM DE RECUPERAR O QUE PERDEU
         if(isInMainPartition(info.getMembers()))
             server.unpause();
 
@@ -127,31 +155,45 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             System.out.println("Server : " + privateName + ", and I'm the first member");
             initializer.initialized();
             imLeader = true;
+            scheduleSafeDeleteEvent();
             if (!started.isDone())
                 started.complete(null);
         }
     }
+
 
     private void handleDisconnect(MembershipInfo info) {
         SpreadGroup member = info.getDisconnected();
         System.out.println("Server : " + privateName + ", a member disconnected");
         imLeader = electionManager.amILeader(member);
         if (imLeader){
+            scheduleSafeDeleteEvent();
             System.out.println("Assuming leader role");
         }
     }
+
 
     private void handleLeave(MembershipInfo info) {
         SpreadGroup member = info.getLeft();
         System.out.println("Server : " + privateName + ", a member left");
         imLeader = electionManager.amILeader(member);
         if (imLeader){
+            scheduleSafeDeleteEvent();
             System.out.println("Assuming leader role");
         }
     }
 
 
-
+    private void reduceWaits(MembershipInfo info){
+        if(evicting){
+            SpreadGroup member;
+            if(info.isCausedByDisconnect())
+                member = info.getDisconnected();
+            else
+                member = info.getLeft();
+            sdRequested.remove(member);
+        }
+    }
 
 
     private void handleWriteMessage(WriteMessage<?> msg) {
@@ -159,20 +201,67 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     }
 
 
-    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) throws NoTableDefinedException {
+    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) {
         System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
-        boolean isWritable = !certifier.hasConflict(cwm.getWriteSets(), cwm.getStartTimestamp());
-        System.out.println("Server : " + privateName + " isWritable: " + isWritable);
-        server.handleCertifierAnswer(cwm, isWritable);
+        server.handleCertifierAnswer(cwm);
     }
 
-    private void handleStateLengthRequestMessage(StateLengthRequestMessage msg, SpreadGroup sender) throws Exception {
+    private void handleStateLengthReplyMessage(StateLengthReplyMessage msg, SpreadGroup sender) throws Exception {
         System.out.println("Received request logs");
-        int lowerBound = msg.getBody();
-        System.out.println("Logs lower bound = " + lowerBound );
-        ArrayList<String> queries = new ArrayList<>(logReader.getQueries(lowerBound));
-        Message m = new StateTransferMessage(new State(queries, certifier));
-        noAgreementFloodMessage(m, sender);
+        ReplicaLatestState rls = msg.getBody();
+        System.out.println("Logs lower bound = " + rls.getLowerBound());
+        CompletableFuture<Void> response = new CompletableFuture<>();
+        response.thenAccept((x) -> {
+            try {
+                server.getState(rls.getLowerBound(), rls.getLatestTimestamp()).thenAccept((fullState) -> {
+                        Message m = new StateTransferMessage<>(fullState);
+                        try {
+                            noAgreementFloodMessage(m, sender);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        if (this.evicting)
+            this.stateRequests.add(response);
+        else
+            response.complete(null);
+    }
+
+    private void handleSafeDeleteRequestMessage(SpreadGroup sender) {
+        server.getSafeToDeleteTimestamp()
+            .thenAccept((ts) -> {
+                SafeDeleteReplyMessage reply = new SafeDeleteReplyMessage(ts);
+                sdRequested = Arrays.asList(members);
+                try {
+                    noAgreementFloodMessage(reply, sender);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+    }
+
+    private void handleSafeDeleteReplyMessage(SafeDeleteReplyMessage msg) throws Exception {
+        long ts = msg.getTs();
+        timestamps.add(ts);
+        int arrived = timestamps.size();
+        if (arrived == sdRequested.size()) { // TODO ver se chegaram todos, mas direito
+            long minTs = Collections.min(timestamps);
+            SafeDeleteMessage sdmsg = new SafeDeleteMessage(minTs);
+            floodMessage(sdmsg);
+        }
+    }
+
+    private void handleSafeDeleteMessage(SafeDeleteMessage msg) {
+        long ts = msg.getTs();
+        server.evictStoredWriteSets(ts).thenAccept((x) -> {
+            evicting = false;
+            this.stateRequests.forEach(req -> req.complete(null));
+            this.stateRequests.clear();
+        });
     }
 
 
@@ -186,16 +275,29 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                         if(!started.isDone())
                             started.complete(null);
 
+
                         Message received = (Message) spreadMessage.getObject();
                         if(received instanceof WriteMessage) {
                             handleWriteMessage((WriteMessage<?>) received);
-                        } else
-                        if(received instanceof CertifyWriteMessage){
+
+                        } else if(received instanceof CertifyWriteMessage){
                             handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
-                        } else
-                        if(received instanceof StateLengthRequestMessage){
-                            // TODO: Não é Serializable
-                            handleStateLengthRequestMessage((StateLengthRequestMessage) received, spreadMessage.getSender());
+
+                        } else if(received instanceof StateLengthReplyMessage){
+                            // enviado pelo líder a um membro novo
+                            handleStateLengthReplyMessage((StateLengthReplyMessage) received, spreadMessage.getSender());
+
+                        } else if(received instanceof SafeDeleteRequestMessage){
+                            // enviado pelo líder a todos os membros no evento de GarbageCollection do certifier
+                            handleSafeDeleteRequestMessage(spreadMessage.getSender());
+
+                        } else if(received instanceof SafeDeleteReplyMessage && imLeader) {
+                            // resposta á SafeDeleteRequestMessage
+                            handleSafeDeleteReplyMessage((SafeDeleteReplyMessage) received);
+
+                        } else if (received instanceof SafeDeleteMessage) {
+                            // enviada pelo líder depois de obter as respostas ao SafeDeleteRequest
+                            handleSafeDeleteMessage((SafeDeleteMessage) received);
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
@@ -218,6 +320,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                     System.out.println("Server : " + privateName + ", Membership Message received -------------");
                     MembershipInfo info = spreadMessage.getMembershipInfo();
 
+                    if(info.isRegularMembership()) {
+                        members = info.getMembers();
+                    } else return;
+
                     if(info.isCausedByJoin() && info.getJoined().equals(spreadConnection.getPrivateGroup())) {
                         handleSelfJoin(info);
                         return;
@@ -232,6 +338,8 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                         if(info.isCausedByJoin()) {
                             handleJoin(info);
                         }
+                        else
+                            reduceWaits(info);
                     }
                     else {
                         if(info.isCausedByDisconnect()) {
@@ -289,8 +397,8 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         //System.out.println("Sending to group ("+ sg + "): " + message);
     }
 
-
-    public LogReader getLogReader() {
-        return logReader;
+    public void stop() throws SpreadException {
+        this.spreadConnection.disconnect();
     }
+
 }

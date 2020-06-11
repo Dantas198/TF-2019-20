@@ -2,11 +2,10 @@ import business.customer.Customer;
 import business.customer.CustomerImpl;
 import business.data.DBInitialization;
 import business.data.customer.CustomerDAO;
-import business.data.customer.CustomerSQLDAO;
 import business.data.DAO;
 import business.data.order.OrderDAO;
+import business.data.order.OrderProductDAO;
 import business.data.order.OrderSQLDAO;
-import business.data.product.OrderProductDAO;
 import business.data.product.ProductDAO;
 import business.data.product.ProductSQLDAO;
 import business.order.Order;
@@ -47,7 +46,14 @@ public class DAOTest {
         Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/test;shutdown=true;sql.syntax_mys=true;inc_backup=false", "", "");
         new DBInitialization(c).init();
         //CustomerDAOTest(new CustomerSQLDAO(c, new OrderSQLDAO(c)));
-        OrderDAOTest(new OrderSQLDAO(c));
+        OrderDAOTest(new OrderSQLDAO(c, id -> {
+            try {
+                return new OrderProductDAO(c, id);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return null;
+        }));
         System.out.println("OI");
         ProductDAOTest(new ProductSQLDAO(c));
     }

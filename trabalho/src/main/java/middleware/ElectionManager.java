@@ -1,42 +1,47 @@
 package middleware;
-import spread.MembershipInfo;
-import spread.SpreadConnection;
 import spread.SpreadGroup;
-import spread.SpreadMessage;
 
 import java.util.*;
 
 /**
- * Class responsible to notify when a server if it is a secondary server or a primary server
+ * Class used to check if a server is the leader
  */
-
 public class ElectionManager {
-    private Set<SpreadGroup> groupsLeftForPrimary;
-    private SpreadConnection spreadConnection;
 
-    public ElectionManager(SpreadConnection spreadConnection){
-        this.groupsLeftForPrimary = new HashSet<>();
-        this.spreadConnection = spreadConnection;
+    private Set<SpreadGroup> groupsLeftForLeader;
+    private SpreadGroup spreadGroup;
+
+    public ElectionManager(SpreadGroup spreadGroup){
+        this.groupsLeftForLeader = new HashSet<>();
+        this.spreadGroup = spreadGroup;
     }
 
     /**
-     * Used to know if the current server can be the leader or not
-     * @param oldMember The spread message received by a membership message handler
-     * @return if the current message allows the server to be the Leader or not
+     * Used to know if the current server is the leader after a member left
+     * @param oldMember member who left the group
+     * @return if the server is the new leader
      */
     public boolean amILeader(SpreadGroup oldMember){
-        groupsLeftForPrimary.remove(oldMember);
-        return this.groupsLeftForPrimary.isEmpty();
+        groupsLeftForLeader.remove(oldMember);
+        return this.groupsLeftForLeader.isEmpty();
     }
 
+    /**
+     * Used to know if the current server can be the leader after several members left
+     * @param updatedMembers current members in the group
+     * @return if the server is the new leader
+     */
     public boolean amILeader(SpreadGroup[] updatedMembers){
-        groupsLeftForPrimary.retainAll(Arrays.asList(updatedMembers));
-        return this.groupsLeftForPrimary.isEmpty();
+        groupsLeftForLeader.retainAll(Arrays.asList(updatedMembers));
+        return this.groupsLeftForLeader.isEmpty();
     }
 
-
+    /**
+     * Used when the server joins a new group
+     * @param members members of the group
+     */
     public void joinedGroup(SpreadGroup[] members) {
-        groupsLeftForPrimary.addAll(Arrays.asList(members));
-        groupsLeftForPrimary.remove(spreadConnection.getPrivateGroup());
+        groupsLeftForLeader.addAll(Arrays.asList(members));
+        groupsLeftForLeader.remove(spreadGroup);
     }
 }
