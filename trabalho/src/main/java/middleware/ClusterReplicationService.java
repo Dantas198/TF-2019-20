@@ -130,6 +130,7 @@ public class ClusterReplicationService {
     }
 
 
+
     // ###################################################################
     // Listener
     // ###################################################################
@@ -310,31 +311,6 @@ public class ClusterReplicationService {
         server.handleCertifierAnswer(cwm);
     }
 
-    private void handleStateLengthReplyMessage(StateLengthReplyMessage msg, SpreadGroup sender) {
-        System.out.println(privateName + ": RegularMessage received -> StateLengthReply");
-        ReplicaLatestState rls = msg.getBody();
-        System.out.println(privateName + ": Logs lower bound = " + rls.getLowerBound());
-        CompletableFuture<Void> response = new CompletableFuture<>();
-        response.thenAccept((x) -> {
-            try {
-                server.getState(rls.getLowerBound(), rls.getLatestTimestamp()).thenAccept((fullState) -> {
-                        Message m = new StateTransferMessage(fullState);
-                        try {
-                            noAgreementFloodMessage(m, sender);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    });
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        if (this.evicting)
-            this.stateRequests.add(response);
-        else
-            response.complete(null);
-    }
-
     private void handleSafeDeleteRequestMessage(SpreadGroup sender) {
         System.out.println(privateName + ": RegularMessage received -> SafeDeleteRequest");
         server.getSafeToDeleteTimestamp()
@@ -357,7 +333,7 @@ public class ClusterReplicationService {
         if (arrived >= sdRequested.size()) {
             long minTs = Collections.min(timestamps);
             SafeDeleteMessage sdmsg = new SafeDeleteMessage(minTs);
-            floodMessage(sdmsg); // TODO enviar apenas aos sdRequested
+            floodMessage(sdmsg);
         }
     }
 
