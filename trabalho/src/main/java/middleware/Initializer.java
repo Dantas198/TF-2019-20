@@ -24,13 +24,15 @@ public class Initializer<K, W extends WriteSet<K>> {
     private ServerImpl<K,W,?> server;
     private ClusterReplicationService<K,W> service;
     private Connection connection;
+    private String privateName;
 
-    public Initializer(ServerImpl<K,W,?> server, ClusterReplicationService<K,W> service, Connection connection){
+    public Initializer(ServerImpl<K,W,?> server, ClusterReplicationService<K,W> service, Connection connection, String privateName){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
         this.service = service;
         this.connection = connection;
+        this.privateName = privateName;
     }
 
     public boolean isInitializing(SpreadMessage spreadMessage, Consumer<SpreadMessage> respondMessage){
@@ -41,7 +43,7 @@ public class Initializer<K, W extends WriteSet<K>> {
                 if(received instanceof StateTransferMessage){
                     //TODO URGENTE
                     //server.setState(((StateTransferMessage) received).getState());
-                    System.out.println("Received state transfer");
+                    System.out.println(privateName + ": RegularMessage received -> State Transfer");
                     StateTransferMessage<K> stm = (StateTransferMessage<K>) received;
                     ArrayList<String> logs = stm.getState().getBusinessState();
                     server.rebuildCertifier(stm.getState().getCertifierState());
@@ -52,7 +54,7 @@ public class Initializer<K, W extends WriteSet<K>> {
                     }
                     messageQueue = null;
                 } else if (received instanceof GetLengthRequestMessage){
-                    System.out.println("Received logs length request");
+                    System.out.println(privateName + ": RegularMessage received -> State Length Request");
                     int logSize = Math.max(0, server.getLogReader().size());
                     long latestTimestamp = server.certifier.getTimestamp();
                     Message logsLength = new StateLengthReplyMessage(new ReplicaLatestState(latestTimestamp, logSize));
