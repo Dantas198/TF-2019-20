@@ -23,7 +23,7 @@ public class Initializer {
     private Connection connection;
     private String privateName;
 
-    public Initializer(ServerImpl<?> server, ClusterReplicationService<K,W> service, Connection connection, String privateName){
+    public Initializer(ServerImpl<?> server, ClusterReplicationService service, Connection connection, String privateName){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;

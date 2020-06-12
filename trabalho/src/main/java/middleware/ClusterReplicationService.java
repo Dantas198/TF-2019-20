@@ -25,7 +25,7 @@ public class ClusterReplicationService {
     //Caso sejam necessário acks poderá ser utilizada esta estrutura
     //private Map<String, List<Message>> cachedMessages;
 
-    private final Initializer<K,W> initializer;
+    private final Initializer initializer;
     private final ElectionManager electionManager;
     private boolean imLeader;
 
@@ -51,8 +51,7 @@ public class ClusterReplicationService {
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.initializer = new Initializer<>(server, this, connection, privateName);
-        this.initializer = new Initializer(server, this, connection);
+        this.initializer = new Initializer(server, this, connection, privateName);
         this.dbConnection = connection;
 
         //this.cachedMessages = new HashMap<>();
@@ -81,6 +80,10 @@ public class ClusterReplicationService {
         this.spreadConnection.disconnect();
     }
 
+
+    public Connection getDbConnection() {
+        return dbConnection;
+    }
 
     // ###################################################################
     // Messaging Utilities
@@ -145,6 +148,9 @@ public class ClusterReplicationService {
         }
     };
 
+
+
+
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
@@ -156,11 +162,7 @@ public class ClusterReplicationService {
 
                         Message received = (Message) spreadMessage.getObject();
                         if(received instanceof CertifyWriteMessage){
-                            handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
-
-                        } else if(received instanceof StateLengthReplyMessage){
-                            // enviado pelo líder a um membro novo
-                            handleStateLengthReplyMessage((StateLengthReplyMessage) received, spreadMessage.getSender());
+                            handleCertifyWriteMessage((CertifyWriteMessage<?>) received);
 
                         } else if(received instanceof SafeDeleteRequestMessage){
                             // enviado pelo líder a todos os membros no evento de GarbageCollection do certifier
@@ -173,6 +175,10 @@ public class ClusterReplicationService {
                         } else if (received instanceof SafeDeleteMessage) {
                             // enviada pelo líder depois de obter as respostas ao SafeDeleteRequest
                             handleSafeDeleteMessage((SafeDeleteMessage) received);
+
+                        } else if (received instanceof SendTimeStampMessage){
+                            // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
+                            handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
@@ -437,13 +443,7 @@ public class ClusterReplicationService {
         executor.schedule(new SafeDeleteEvent(), minutesUntilSafeDelete, TimeUnit.MINUTES);
     }
 
-    public Connection getDbConnection() {
-        return dbConnection;
-    }
 
-    else if (received instanceof SendTimeStampMessage){
-        // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
-        handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
-    }
+
 
 }
