@@ -51,7 +51,7 @@ public class ClusterReplicationService {
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.initializer = new Initializer(server, this, connection, privateName);
+        this.initializer = new Initializer(server, this, privateName);
         this.dbConnection = connection;
 
         //this.cachedMessages = new HashMap<>();
@@ -133,30 +133,14 @@ public class ClusterReplicationService {
     // Listener
     // ###################################################################
 
-    /**
-     * Method used to respond to the Sender the message defined in the handleMessage abstract method
-     * @param spreadMessage
-     */
-    //TODO corrigir.  por no initializer?
-    private final Consumer<SpreadMessage> respondMessage = (spreadMessage) -> {
-        try {
-            Message received = (Message) spreadMessage.getObject();
-            Message response = server.handleMessage(received).from(received);
-            noAgreementFloodMessage(response, spreadMessage.getSender());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    };
-
-
-
 
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    if (!initializer.isInitializing(spreadMessage, respondMessage)) {
+
+                    if (!initializer.isInitializing(spreadMessage)) {
                         if(!started.isDone())
                             started.complete(null);
 
