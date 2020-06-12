@@ -12,12 +12,10 @@ public class LogReader {
 
     private String logPath;
     private List<Pair<String, Long>> queries;
-    private List<Long> timeStamps;
 
     public LogReader(String logPath){
         this.logPath = logPath;
         this.queries = null;
-        this.timeStamps = new LinkedList<>();
     }
 
     public int size() throws Exception{
@@ -40,7 +38,7 @@ public class LogReader {
 
     public ArrayList<Pair<String, Long>> getQueries(int lowerBound, int upperBound) throws Exception{
         System.out.println(lowerBound + " -> " + upperBound + " " + logPath);
-        String fileString = getFileString();
+        getQueries();
         if(lowerBound > upperBound) {
             return new ArrayList<>(0);
         }
@@ -56,32 +54,29 @@ public class LogReader {
     }
 
     private void getQueriesFromString(String filestr){
-        if(queries == null){
-            queries = new ArrayList<>();
-            //String splitRegex = "\\d+-\\d+-\\d+ \\d+:\\d+:\\d+\\.\\d+ \\d+";
-            String splitRegex = "\n"; //(?=DROP|SET|INSERT|DELETE|CREATE|REPLACE|COMMIT|ROLLBACK)"; //"\n(?=\\d{4}-\\d+-\\d+)";
-            Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
-            String[] split = filestr.split(splitRegex);
-            long lastTimeStamp = -1;
-            for(String log : split){
-                Matcher matcher = logLine.matcher(log);
-                if(matcher.find()){
-                    String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
-                    String timeStampStr = matcher.group(1);
-                    if(timeStampStr != null
-                            && timeStampStr.length() > 4
-                            && !timeStampStr.contains("C")){
-                        timeStampStr =  timeStampStr.substring(3, timeStampStr.length()-2);
-                        long timeStamp = Long.parseLong(timeStampStr);
-                        lastTimeStamp = timeStamp;
-                    }
-                    System.out.println("Query: /*" + lastTimeStamp +"*/" + query);
-                    Pair<String, Long> queryPair = new Pair<>(query, lastTimeStamp);
-                    timeStamps.add(lastTimeStamp);
-                    queries.add(queryPair);
-                } else {
-                    System.out.println("Log " + log + " couldn't be parsed");
+        queries = new ArrayList<>();
+        //String splitRegex = "\\d+-\\d+-\\d+ \\d+:\\d+:\\d+\\.\\d+ \\d+";
+        String splitRegex = "\n"; //(?=DROP|SET|INSERT|DELETE|CREATE|REPLACE|COMMIT|ROLLBACK)"; //"\n(?=\\d{4}-\\d+-\\d+)";
+        Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
+        String[] split = filestr.split(splitRegex);
+        long lastTimeStamp = -1;
+        for(String log : split){
+            Matcher matcher = logLine.matcher(log);
+            if(matcher.find()){
+                String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
+                String timeStampStr = matcher.group(1);
+                if(timeStampStr != null
+                        && timeStampStr.length() > 4
+                        && !timeStampStr.contains("C")){
+                    timeStampStr =  timeStampStr.substring(3, timeStampStr.length()-2);
+                    long timeStamp = Long.parseLong(timeStampStr);
+                    lastTimeStamp = timeStamp;
                 }
+                System.out.println("Query: /*" + lastTimeStamp +"*/" + query);
+                Pair<String, Long> queryPair = new Pair<>(query, lastTimeStamp);
+                queries.add(queryPair);
+            } else {
+                System.out.println("Log " + log + " couldn't be parsed");
             }
         }
     }
@@ -120,7 +115,7 @@ public class LogReader {
     public ArrayList<Pair<String, Long>> getLogsAfter(long timeStamp) throws Exception{
         getQueries();
         int i = 0;
-        for(; i < timeStamps.size() && timeStamps.get(i) <= timeStamp; i++);
-        return new ArrayList<>(this.queries.subList(i, timeStamps.size()));
+        for(; i < queries.size() && queries.get(i).getValue() <= timeStamp; i++);
+        return new ArrayList<>(this.queries.subList(i, queries.size()));
     }
 }

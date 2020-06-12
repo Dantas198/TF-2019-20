@@ -17,7 +17,7 @@ import java.util.Calendar;
 import static org.junit.Assert.*;
 
 public class CurrentOrderCleanerTest {
-    @Test
+    /*@Test
     public void test() throws SQLException {
         Connection c = DriverManager.getConnection("jdbc:hsqldb:file:db/currentOrderCleanerTest2;shutdown=true;hsqldb.sqllog=2;hsqldb.lock_file=false;sql.syntax_mys=true", "", "");
         new DBInitialization(c).init();
@@ -38,5 +38,5 @@ public class CurrentOrderCleanerTest {
         System.out.println(customerSQLDAO.get("Customer 1").getCurrentOrder());
         Customer customer = customerSQLDAO.get("Customer 1");
         assertNull("Customer shouldn't have current order", customerSQLDAO.get("Customer 1").getCurrentOrder());
-    }
+    }*/
 }
