@@ -9,9 +9,9 @@ import business.product.OrderProductQuantity;
 import business.product.Product;
 import business.product.ProductImpl;
 import middleware.certifier.StateUpdater;
-import server.CurrentOrderCleaner;
 
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.*;
 
 public class SuperMarketImpl implements SuperMarket, Serializable {
@@ -20,15 +20,20 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
 	private StateUpdater<String, Serializable> updater;
+	private Calendar calendar;
+	private long tmax;
 
 	public SuperMarketImpl(DAO<String, Order> orderDAO,
 						   DAO<String, Product> productDAO,
 						   DAO<String, Customer> customerDAO,
-						   StateUpdater<String, Serializable> updater) {
+						   StateUpdater<String, Serializable> updater,
+						   Duration tmax) {
 		this.orderDAO = orderDAO;
 		this.productDAO = productDAO;
 		this.customerDAO = customerDAO;
 		this.updater = updater;
+		this.calendar = Calendar.getInstance();
+		this.tmax = tmax.toMillis();
 	}
 
 	public boolean addCustomer(String customer) {
@@ -54,6 +59,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		if(!c.hasCurrentOrder())
 			return false;
 		Order order = orderDAO.get(c.getCurrentOrder().getId());
+		if(order == null || isClosed(order)) return false;
 		Map<Product,Integer> products = order.getProducts();
 
 		// verifica se existe stock e substitui keySet por produto completo do stock
@@ -78,15 +84,21 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		if(amount < 0) return false;
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;
-		Product p = productDAO.get(product);
-		if(p.getStock() < amount) return false;
 		if (!customer.hasCurrentOrder()) {
+			customer.newCurrentOrder();
+			orderDAO.put(customer.getCurrentOrder());
+			// A nova order deve vir antes do customer por causa de restrições da Foreign Key
+			customerDAO.put(new CustomerPlaceholder(customer));
+		} else if(isClosed(customer.getCurrentOrder())) {
+			orderDAO.delete(customer.getCurrentOrder().getId());
 			customer.newCurrentOrder();
 			orderDAO.put(customer.getCurrentOrder());
 			// A nova order deve vir antes do customer por causa de restrições da Foreign Key
 			customerDAO.put(new CustomerPlaceholder(customer));
 		}
 		Order order = customer.getCurrentOrder();
+		Product p = productDAO.get(product);
+		if(p.getStock() < amount) return false;
 		updater.put("order_product",
 				order.getId() + ";" + p.getName(),
 				new OrderProductQuantity(order.getId(), p.getName(), amount));
@@ -97,7 +109,7 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null || !customer.hasCurrentOrder()) return null;
 		Order currentOrder = orderDAO.get(customer.getCurrentOrder().getId());
-		if(currentOrder == null) return new HashMap<>(0);
+		if(currentOrder == null || isClosed(currentOrder)) return new HashMap<>(0);
 		return currentOrder.getProducts();
 	}
 
@@ -115,5 +127,12 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		Product product = new ProductImpl(name, price, description, stock);
 		productDAO.put(product);
 		return true;
+	}
+
+	private boolean isClosed(Order order) {
+		long now = calendar.getTime().getTime();
+		long threshold = now - tmax;
+		long orderTime = order.getTimestamp().getTime();
+		return orderTime < threshold;
 	}
 }

@@ -6,6 +6,7 @@ import middleware.message.Message;
 import middleware.message.replication.DBReplicationMessage;
 import middleware.message.replication.GetTimeStampMessage;
 import middleware.message.replication.SendTimeStampMessage;
+import spread.AdvancedMessageListener;
 import spread.SpreadMessage;
 
 import java.nio.file.Files;
@@ -45,6 +46,15 @@ public class Initializer {
                 } else if (received instanceof DBReplicationMessage){
                     handleDBReplicationMessage((DBReplicationMessage) received);
                     initializing = false;
+                    for (SpreadMessage message:
+                         messageQueue) {
+                        AdvancedMessageListener listener = service.messageListener();
+                        if(message.isMembership()) {
+                            listener.membershipMessageReceived(message);
+                        } else {
+                            listener.regularMessageReceived(message);
+                        }
+                    }
                 } else {
                     messageQueue.add(spreadMessage);
                 }

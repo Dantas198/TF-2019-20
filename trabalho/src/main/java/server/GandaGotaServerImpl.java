@@ -19,7 +19,6 @@ import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
-import com.google.common.collect.Sets;
 import middleware.certifier.*;
 import middleware.ServerImpl;
 import middleware.message.ContentMessage;
@@ -33,6 +32,7 @@ import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.*;
 
 public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
@@ -43,6 +43,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
     private DAO<String, Order> orderCertifierDAO;
+    private Duration tmax = Duration.ofMinutes(1);
 
     public GandaGotaServerImpl(int spreadPort,
                                String privateName,
@@ -72,7 +73,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         });
         this.productDAO = new ProductSQLDAO(this.connection);
         this.customerDAO = new CustomerSQLDAO(this.connection);
-        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null);
+        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null, Duration.ofMinutes(1));
     }
 
     @Override
@@ -112,7 +113,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     @Override
     public CertifyWriteMessage<?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
-        SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates);
+        SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates, tmax);
         boolean success = false;
 
         if(message instanceof AddCustomerMessage) {
