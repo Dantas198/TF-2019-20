@@ -4,6 +4,7 @@ import middleware.certifier.OperationalSets;
 import middleware.certifier.WriteSet;
 import middleware.message.Message;
 import middleware.message.replication.*;
+import middleware.reader.Pair;
 import spread.*;
 
 import java.net.InetAddress;
@@ -51,7 +52,7 @@ public class ClusterReplicationService {
         this.spreadGroup = new SpreadGroup();
         this.spreadConnection = new SpreadConnection();
         this.server = server;
-        this.initializer = new Initializer(server, this, connection, privateName);
+        this.initializer = new Initializer(server, this, privateName);
         this.dbConnection = connection;
 
         //this.cachedMessages = new HashMap<>();
@@ -133,30 +134,14 @@ public class ClusterReplicationService {
     // Listener
     // ###################################################################
 
-    /**
-     * Method used to respond to the Sender the message defined in the handleMessage abstract method
-     * @param spreadMessage
-     */
-    //TODO corrigir.  por no initializer?
-    private final Consumer<SpreadMessage> respondMessage = (spreadMessage) -> {
-        try {
-            Message received = (Message) spreadMessage.getObject();
-            Message response = server.handleMessage(received).from(received);
-            noAgreementFloodMessage(response, spreadMessage.getSender());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    };
-
-
-
 
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
-                    if (!initializer.isInitializing(spreadMessage, respondMessage)) {
+
+                    if (!initializer.isInitializing(spreadMessage)) {
                         if(!started.isDone())
                             started.complete(null);
 
@@ -393,7 +378,7 @@ public class ClusterReplicationService {
         long currentLowWaterMark = server.getCertifier().getLowWaterMark();
         long currentTimeStamp = server.getCertifier().getTimestamp();
         HashMap<String, HashMap<Long, OperationalSets>> writes = new HashMap<>();
-        ArrayList<String> queries = server.getLogReader().getLogsAfter(timeStamp);
+        ArrayList<Pair<String, Long>> queries = server.getLogReader().getLogsAfter(timeStamp);
         HashMap<String, HashMap<Long, OperationalSets>> tables = server.getCertifier().getWritesPerTable();
         if(queries.size() == 0){
             script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));
