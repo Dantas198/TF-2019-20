@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Set;
 
 public interface StateUpdates<K, V> extends StateUpdater<K, V> {
-    Map<String, BitWriteSet> getWriteSets();
-    Map<String, BitWriteSet> getReadSets();
+    Map<String, BitOperationSet> getWriteSets();
+    Map<String, BitOperationSet> getReadSets();
     Set<TaggedObject<String, V>> getAllUpdates();
 }

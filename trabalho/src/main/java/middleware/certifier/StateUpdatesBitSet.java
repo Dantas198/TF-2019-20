@@ -4,23 +4,22 @@ import java.util.*;
 
 public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
-    private final Map<String, BitWriteSet> writeSets;
-    private final Map<String, BitWriteSet> readSets;
-    private final Set<TaggedObject<String, V>> objects;
+    private Map<String, BitOperationSet> writeSets;
+    private Map<String, BitOperationSet> readSets;
+    private Set<TaggedObject<String, V>> objects;
 
     public StateUpdatesBitSet() {
         this.writeSets = new HashMap<>();
-        this.readSets = new HashMap<>();
         this.objects = new LinkedHashSet<>();
     }
 
     @Override
-    public Map<String, BitWriteSet> getWriteSets() {
+    public Map<String, BitOperationSet> getWriteSets() {
         return this.writeSets;
     }
 
     @Override
-    public Map<String, BitWriteSet> getReadSets() {
+    public Map<String, BitOperationSet> getReadSets() {
         return this.readSets;
     }
 
@@ -31,13 +30,12 @@ public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
     @Override
     public void put(String tag, String key, V value) {
-        this.writeSets.computeIfAbsent(tag, k -> new BitWriteSet()).add(key);
+        this.writeSets.computeIfAbsent(tag, k -> new BitOperationSet()).add(key);
         objects.add(new TaggedObject<>(tag, key, value));
     }
 
     @Override
     public void read(String tag, String key) {
-        // Allows duplicates in read and write Set
-        this.readSets.computeIfAbsent(tag, k -> new BitWriteSet()).add(key);
+        this.readSets.computeIfAbsent(tag, k -> new BitOperationSet()).add(key);
     }
 }

@@ -1,10 +1,11 @@
 package middleware;
 
 import middleware.certifier.Certifier;
+import middleware.certifier.OperationalSets;
 import middleware.certifier.WriteSet;
+import middleware.message.Message;
 import middleware.message.replication.DBReplicationMessage;
 import middleware.message.replication.GetTimeStampMessage;
-import middleware.message.Message;
 import middleware.message.replication.SendTimeStampMessage;
 import middleware.reader.TimestampReader;
 import spread.SpreadMessage;
@@ -23,7 +24,7 @@ import java.util.function.Consumer;
  * @param <K>
  * @param <W>
  */
-public class Initializer<K, W extends WriteSet<K>> {
+public class Initializer<K, W extends OperationalSets<K>> {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;

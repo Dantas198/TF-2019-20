@@ -5,18 +5,19 @@ import middleware.message.Message;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 
-public class DBReplicationMessage extends Message {
+public class DBReplicationMessage<W> extends Message {
     private String script;
     private ArrayList<String> logs;
     private Long lowWaterMark;
     private Long timeStamp;
-    private ArrayList<WriteSet> writeSets;
+    private HashMap<String, HashMap<Long, W>> writeSets;
 
     public DBReplicationMessage(String script, ArrayList<String> logs, long lowWaterMark,
-                                long timeStamp, Collection<WriteSet> writeSets){
-        this.writeSets = new ArrayList<>(writeSets);
+                                long timeStamp, HashMap<String, HashMap<Long, W>> writeSets){
+        this.writeSets = writeSets;
         this.script = script;
         this.logs = logs;
         this.lowWaterMark = lowWaterMark;
@@ -39,7 +40,7 @@ public class DBReplicationMessage extends Message {
         return timeStamp;
     }
 
-    public ArrayList<WriteSet> getWriteSets() {
+    public HashMap<String, HashMap<Long, W>> getWriteSets() {
         return writeSets;
     }
 }

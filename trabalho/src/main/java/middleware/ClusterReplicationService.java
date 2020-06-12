@@ -1,7 +1,7 @@
 package middleware;
 
+import middleware.certifier.OperationalSets;
 import middleware.certifier.WriteSet;
-import middleware.message.*;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import spread.*;
@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService<K, W extends WriteSet<K>> {
+public class ClusterReplicationService<K, W extends OperationalSets<K>> {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
@@ -258,24 +258,26 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         String script = null;
         long currentLowWaterMark = server.getCertifier().getLowWaterMark();
         long currentTimeStamp = server.getCertifier().getTimestamp();
-        List<WriteSet> writes = new LinkedList<>();
+        HashMap<String, HashMap<Long, W>> writes = new HashMap<>();
         ArrayList<String> queries = server.getLogReader().getLogsAfter(timeStamp);
-        HashMap<String, HashMap<Long, WriteSet<K>>> tables = server.getCertifier().getWritesPerTable();
+        HashMap<String, HashMap<Long, W>> tables = server.getCertifier().getWritesPerTable();
         if(queries.size() == 0){
             script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));
         }
         if(currentLowWaterMark < timeStamp){
-            for(HashMap<Long, WriteSet<K>> table : tables.values()){
-                writes.addAll(table.values());
-            }
+            writes = tables;
         } else {
-            for(HashMap<Long, WriteSet<K>> table : tables.values()){
-                for(long wsTimeStamp : table.keySet())
-                    if(wsTimeStamp > timeStamp)
-                        writes.add(table.get(wsTimeStamp));
+            for(String table : tables.keySet()){
+                writes.put(table, new HashMap<>());
+                for(Long tableTimestamp: tables.get(table).keySet()){
+                    if(tableTimestamp > timeStamp) {
+                        W write = writes.get(table).get(tableTimestamp);
+                        writes.get(table).put(tableTimestamp, write);
+                    }
+                }
             }
         }
-        Message response = new DBReplicationMessage(script, queries, currentLowWaterMark, currentTimeStamp, writes);
+        Message response = new DBReplicationMessage<>(script, queries, currentLowWaterMark, currentTimeStamp, writes);
         noAgreementFloodMessage(response, sender);
     }
 

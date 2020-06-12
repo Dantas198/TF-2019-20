@@ -7,14 +7,14 @@ import java.util.BitSet;
  * WriteSet used to certify writes.
  */
 
-public class BitWriteSet implements Serializable, WriteSet<BitSet>  {
+public class BitOperationSet implements Serializable, OperationSet<BitSet> {
     private BitSet set;
 
-    public BitWriteSet() {
+    public BitOperationSet() {
         this(1024);
     }
 
-    public BitWriteSet(int nbits) {
+    public BitOperationSet(int nbits) {
         this.set = new BitSet(nbits);
     }
 
@@ -25,7 +25,7 @@ public class BitWriteSet implements Serializable, WriteSet<BitSet>  {
     }
 
     @Override
-    public boolean intersects(WriteSet<BitSet> set) {
+    public boolean intersects(OperationSet<BitSet> set) {
         return this.set.intersects(set.getSet());
     }
 
