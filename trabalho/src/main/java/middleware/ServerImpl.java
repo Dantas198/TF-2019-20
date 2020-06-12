@@ -333,7 +333,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         return logReader;
     }
 
-    public Certifier<K, W> getCertifier() {
+    public Certifier getCertifier() {
         return certifier;
     }
 

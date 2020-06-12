@@ -202,7 +202,7 @@ public class ClusterReplicationService {
         response.thenAccept((x) -> {
             try {
                 server.getState(rls.getLowerBound(), rls.getLatestTimestamp()).thenAccept((fullState) -> {
-                        Message m = new StateTransferMessage<>(fullState);
+                        Message m = new StateTransferMessage(fullState);
                         try {
                             noAgreementFloodMessage(m, sender);
                         } catch (Exception e) {
@@ -258,9 +258,9 @@ public class ClusterReplicationService {
         String script = null;
         long currentLowWaterMark = server.getCertifier().getLowWaterMark();
         long currentTimeStamp = server.getCertifier().getTimestamp();
-        HashMap<String, HashMap<Long, W>> writes = new HashMap<>();
+        HashMap<String, HashMap<Long, OperationalSets>> writes = new HashMap<>();
         ArrayList<String> queries = server.getLogReader().getLogsAfter(timeStamp);
-        HashMap<String, HashMap<Long, W>> tables = server.getCertifier().getWritesPerTable();
+        HashMap<String, HashMap<Long, OperationalSets>> tables = server.getCertifier().getWritesPerTable();
         if(queries.size() == 0){
             script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));
         }
@@ -271,13 +271,13 @@ public class ClusterReplicationService {
                 writes.put(table, new HashMap<>());
                 for(Long tableTimestamp: tables.get(table).keySet()){
                     if(tableTimestamp > timeStamp) {
-                        W write = writes.get(table).get(tableTimestamp);
+                        OperationalSets write = writes.get(table).get(tableTimestamp);
                         writes.get(table).put(tableTimestamp, write);
                     }
                 }
             }
         }
-        Message response = new DBReplicationMessage<>(script, queries, currentLowWaterMark, currentTimeStamp, writes);
+        Message response = new DBReplicationMessage(script, queries, currentLowWaterMark, currentTimeStamp, writes);
         noAgreementFloodMessage(response, sender);
     }
 

@@ -2,21 +2,16 @@ package middleware;
 
 import middleware.certifier.Certifier;
 import middleware.certifier.OperationalSets;
-import middleware.certifier.WriteSet;
 import middleware.message.Message;
 import middleware.message.replication.DBReplicationMessage;
 import middleware.message.replication.GetTimeStampMessage;
 import middleware.message.replication.SendTimeStampMessage;
-import middleware.reader.TimestampReader;
 import spread.SpreadMessage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class Initializer {
@@ -26,8 +21,6 @@ public class Initializer {
     private ServerImpl<?> server;
     private ClusterReplicationService service;
     private Connection connection;
-    private ServerImpl<K,W,?> server;
-    private ClusterReplicationService<K,W> service;
 
     public Initializer(ServerImpl<?> server, ClusterReplicationService service, Connection connection){
         this.server = server;
@@ -65,7 +58,7 @@ public class Initializer {
         ArrayList<String> queries = received.getLogs();
         long lowWaterMark = received.getLowWaterMark();
         long timeStamp = received.getTimeStamp();
-        List<WriteSet> writeSets = received.getWriteSets();
+        HashMap<String, HashMap<Long, OperationalSets>> writeSets = received.getWriteSets();
         if(script != null){
             Files.write(Path.of("db/" + server.getPrivateName() + ".script"), script.getBytes());
         }
