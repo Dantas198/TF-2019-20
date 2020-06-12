@@ -19,11 +19,9 @@ import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
-import middleware.certifier.BitOperationSet;
+import com.google.common.collect.Sets;
+import middleware.certifier.*;
 import middleware.ServerImpl;
-import middleware.certifier.StateUpdates;
-import middleware.certifier.StateUpdatesBitSet;
-import middleware.certifier.TaggedObject;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
@@ -37,7 +35,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 
-public class GandaGotaServerImpl extends ServerImpl<BitSet, BitOperationSet, ArrayList<String>> {
+public class GandaGotaServerImpl extends ServerImpl<BitSet, OperationalSets, ArrayList<String>> {
 
     private SuperMarketImpl superMarket;
     private Connection connection;

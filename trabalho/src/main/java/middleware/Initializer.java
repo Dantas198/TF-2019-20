@@ -1,11 +1,10 @@
 package middleware;
 
-import middleware.certifier.WriteSet;
+import middleware.certifier.OperationalSets;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import spread.SpreadMessage;
 
-import java.io.Serializable;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -17,7 +16,7 @@ import java.util.function.Consumer;
  * @param <K>
  * @param <W>
  */
-public class Initializer<K, W extends WriteSet<K>> {
+public class Initializer<K, W extends OperationalSets<K>> {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
@@ -42,7 +41,7 @@ public class Initializer<K, W extends WriteSet<K>> {
                     //TODO URGENTE
                     //server.setState(((StateTransferMessage) received).getState());
                     System.out.println("Received state transfer");
-                    StateTransferMessage<K> stm = (StateTransferMessage<K>) received;
+                    StateTransferMessage<W> stm = (StateTransferMessage<W>) received;
                     ArrayList<String> logs = stm.getState().getBusinessState();
                     server.rebuildCertifier(stm.getState().getCertifierState());
                     server.updateQueries(logs, server.getLogReader().getPath(), this.connection);

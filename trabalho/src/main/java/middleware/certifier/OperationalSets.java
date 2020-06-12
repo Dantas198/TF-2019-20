@@ -1,10 +1,10 @@
 package middleware.certifier;
 
-public class Sets<V> {
+public class OperationalSets<V> {
     private OperationSet<V> writeSet;
     private OperationSet<V> readSet;
 
-    public Sets(OperationSet<V> writeSet, OperationSet<V> readSet){
+    public OperationalSets(OperationSet<V> writeSet, OperationSet<V> readSet){
         this.writeSet = writeSet;
         this.readSet = readSet;
     }
@@ -34,7 +34,7 @@ public class Sets<V> {
         return writeSet.intersects(writeSet) || writeSet.intersects(readSet);
     }
 
-    public boolean intersect(Sets<V> set){
+    public boolean intersect(OperationalSets<V> set){
         return intersectWrite(set.getWriteSet()) || intersectRead(set.getReadSet());
     }
 }

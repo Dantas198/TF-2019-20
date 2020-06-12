@@ -1,6 +1,6 @@
 package middleware;
 
-import middleware.certifier.OperationSet;
+import middleware.certifier.OperationalSets;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import spread.*;
@@ -11,7 +11,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService<K, W extends OperationSet<K>> {
+public class ClusterReplicationService<K, W extends OperationalSets<K>> {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;

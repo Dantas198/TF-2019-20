@@ -1,17 +1,17 @@
 package middleware.message.replication;
 
-import middleware.certifier.OperationSet;
+import middleware.certifier.OperationalSets;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class FullState<V> implements Serializable {
+public class FullState<K extends OperationalSets<?>> implements Serializable {
     private ArrayList<String> businessState;
-    private HashMap<String, HashMap<Long, OperationSet<V>>> certifierState;
+    private HashMap<String, HashMap<Long, K>> certifierState;
 
 
-    public FullState(ArrayList<String> businessState, HashMap<String, HashMap<Long, OperationSet<V>>>  certifierState){
+    public FullState(ArrayList<String> businessState, HashMap<String, HashMap<Long, K>>  certifierState){
         this.businessState = businessState;
         this.certifierState = certifierState;
     }
@@ -20,7 +20,7 @@ public class FullState<V> implements Serializable {
         return businessState;
     }
 
-    public HashMap<String, HashMap<Long, OperationSet<V>>>  getCertifierState() {
+    public HashMap<String, HashMap<Long, K>>  getCertifierState() {
         return certifierState;
     }
 }

@@ -7,6 +7,7 @@ import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
+import middleware.certifier.OperationalSets;
 import middleware.certifier.TaggedObject;
 import middleware.certifier.OperationSet;
 import middleware.reader.LogReader;
@@ -28,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Serializable> implements Server {
+public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends Serializable> implements Server {
 
     private final ClusterReplicationService<K,W> replicationService;
     private final Serializer s;
@@ -136,13 +137,6 @@ public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Ser
         isPaused = false;
     }
 
-    /**
-     * Set of tables for certifier module
-     */
-    public void addTablesToCertifier(List<String> tables){
-        this.certifier.addTables(tables);
-    }
-
     public Collection<String> getQueries(int from){
         try {
             return logReader.getQueries(from);
@@ -195,7 +189,7 @@ public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Ser
     //TODO não mexer sem perguntar !!
     protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message){
         CompletableFuture.runAsync(() -> {
-            boolean isWritable = certifier.isWritable(message.getWriteSets(), message.getWriteSets(), message.getStartTimestamp());
+            boolean isWritable = certifier.isWritable(message.getSets(), message.getStartTimestamp());
             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
 
             Address cli;
@@ -226,9 +220,9 @@ public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Ser
                 }
             }
             if(isWritable)
-                certifier.commit(message.getWriteSets());
+                certifier.commit(message.getSets());
             if (cli != null)
-                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getWriteTables(),
+                CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
                         message.getStartTimestamp()), taskExecutor);
                 sendReply(new ContentMessage<>(isWritable), cli);
         }, certifierExecutor);
@@ -242,11 +236,11 @@ public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Ser
         return CompletableFuture.runAsync(() -> certifier.evictStoredWriteSets(ts), certifierExecutor);
     }
 
-    protected CompletableFuture<FullState<K>> getState(int lowerBound, long latestTimestamp){
+    protected CompletableFuture<FullState<W>> getState(int lowerBound, long latestTimestamp){
         return CompletableFuture.supplyAsync(() -> {
-            HashMap<String, HashMap<Long, OperationSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
+            HashMap<String, HashMap<Long, W>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
-                FullState<K> state = new FullState<>(logReader.getQueries(lowerBound), writes);
+                FullState<W> state = new FullState<>(logReader.getQueries(lowerBound), writes);
                 logReader.resetQueries();
                 return state;
             } catch (Exception e) {
@@ -256,7 +250,7 @@ public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Ser
         }, certifierExecutor);
     }
 
-    public void rebuildCertifier(HashMap<String, HashMap<Long, OperationSet<K>>> c){
+    public void rebuildCertifier(HashMap<String, HashMap<Long, W>> c){
         this.certifier.addState(c);
     }
 
@@ -278,7 +272,7 @@ public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Ser
      */
     private void startTransaction(Address requester, CertifyWriteMessage<W,?> cwm) throws Exception {
         long ts = certifier.getTimestamp();
-        certifier.transactionStarted(cwm.getWriteTables(), ts);
+        certifier.transactionStarted(cwm.getTables(), ts);
         cwm.setTimestamp(ts);
         try {
             rl.lock();
