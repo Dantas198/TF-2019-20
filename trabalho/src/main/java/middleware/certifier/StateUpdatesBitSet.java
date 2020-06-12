@@ -10,17 +10,20 @@ public class StateUpdatesBitSet<V> implements StateUpdates<String, V> {
 
     public StateUpdatesBitSet() {
         this.writeSets = new HashMap<>();
+        this.readSets = new HashMap<>();
         this.objects = new LinkedHashSet<>();
     }
 
-    @Override
-    public Map<String, BitOperationSet> getWriteSets() {
-        return this.writeSets;
-    }
-
-    @Override
-    public Map<String, BitOperationSet> getReadSets() {
-        return this.readSets;
+    public Map<String, OperationalSets> getSets() {
+        Set<String> keys = new HashSet<>();
+        keys.addAll(writeSets.keySet());
+        keys.addAll(readSets.keySet());
+        Map<String, OperationalSets> result = new HashMap<>();
+        for (String tag: keys) {
+            OperationalSets operationalSets = new OperationalSets(writeSets.get(tag), readSets.get(tag));
+            result.put(tag, operationalSets);
+        }
+        return result;
     }
 
     @Override
