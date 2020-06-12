@@ -15,6 +15,7 @@ import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.FullState;
+import middleware.reader.Pair;
 import middleware.reader.TimestampReader;
 import spread.SpreadException;
 
@@ -137,7 +138,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         isPaused = false;
     }
 
-    public Collection<String> getQueries(int from){
+    public Collection<Pair<String, Long>> getQueries(int from){
         try {
             return logReader.getQueries(from);
         } catch (Exception ex) {
@@ -147,12 +148,13 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         }
     }
 
-    public void updateQueries(Collection<String> queries, Connection c){
+    public void updateQueries(Collection<Pair<String, Long>> queries, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
-            for(String query : queries) {
+            for(Pair<String, Long> pair : queries) {
+                String query = pair.getKey();
                 if(query.startsWith("--")) {
-                    logReader.putTimeStamp(query.substring(2));
+                    logReader.putTimeStamp(pair.getValue());
                 } else {
                     c.prepareCall(query).execute();
                 }
@@ -202,7 +204,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             try {
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
-                    logReader.putTimestamp(certifier.getTimestamp());
+                    logReader.putTimeStamp(certifier.getTimestamp());
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
 
                 } else {
@@ -240,7 +242,10 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         return CompletableFuture.supplyAsync(() -> {
             HashMap<String, HashMap<Long, OperationalSets>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
-                FullState state = new FullState(logReader.getQueries(lowerBound), writes);
+                List<Pair<String, Long>> queriesWithTS = logReader.getQueries(lowerBound);
+                ArrayList<String> onlyQueries = new ArrayList<>();
+                queriesWithTS.forEach(pair -> {onlyQueries.add(pair.getKey());});
+                FullState state = new FullState(onlyQueries, writes);
                 logReader.resetQueries();
                 return state;
             } catch (Exception e) {

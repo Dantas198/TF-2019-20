@@ -2,18 +2,19 @@ package middleware.message.replication;
 
 import middleware.certifier.OperationalSets;
 import middleware.message.Message;
+import middleware.reader.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class DBReplicationMessage extends Message {
     private String script;
-    private ArrayList<String> logs;
+    private ArrayList<Pair<String, Long>> logs;
     private Long lowWaterMark;
     private Long timeStamp;
     private HashMap<String, HashMap<Long, OperationalSets>> writeSets;
 
-    public DBReplicationMessage(String script, ArrayList<String> logs, long lowWaterMark,
+    public DBReplicationMessage(String script, ArrayList<Pair<String, Long>> logs, long lowWaterMark,
                                 long timeStamp, HashMap<String, HashMap<Long, OperationalSets>> writeSets){
         this.writeSets = writeSets;
         this.script = script;
@@ -26,7 +27,7 @@ public class DBReplicationMessage extends Message {
         return script;
     }
 
-    public ArrayList<String> getLogs() {
+    public ArrayList<Pair<String, Long>> getLogs() {
         return logs;
     }
 

@@ -6,6 +6,7 @@ import middleware.message.Message;
 import middleware.message.replication.DBReplicationMessage;
 import middleware.message.replication.GetTimeStampMessage;
 import middleware.message.replication.SendTimeStampMessage;
+import middleware.reader.Pair;
 import spread.SpreadMessage;
 
 import java.nio.file.Files;
@@ -55,7 +56,7 @@ public class Initializer {
     private void handleDBReplicationMessage(DBReplicationMessage received) throws Exception {
         System.out.println("Received DBReplicationMessage");
         String script = received.getScript();
-        ArrayList<String> queries = received.getLogs();
+        ArrayList<Pair<String, Long>> queries = received.getLogs();
         long lowWaterMark = received.getLowWaterMark();
         long timeStamp = received.getTimeStamp();
         HashMap<String, HashMap<Long, OperationalSets>> writeSets = received.getWriteSets();
