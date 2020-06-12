@@ -32,7 +32,7 @@ public class MultiGandaGotaServerInitializer {
                              String logPath,
                              String timestampPath) {
         try {
-            Server server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath, timestampPath);
+            Server server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath);
             new Thread(() -> {
                 try {
                     server.start();

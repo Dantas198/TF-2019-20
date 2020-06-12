@@ -22,6 +22,7 @@ import spread.SpreadException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +36,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private final Serializer s;
     private final ManagedMessagingService mms;
     private final CompletableFuture<Void> runningCompletable;
+    private final Connection databaseConnection;
     private ReentrantLock rl;
 
     //TODO remove/update
@@ -42,17 +44,16 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public Certifier certifier;
     private final String privateName;
     private final LogReader logReader;
-    private final TimestampReader timestampReader;
     private boolean isPaused;
 
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath){
         this.privateName = privateName;
         this.logReader = new LogReader(logPath);
-        this.timestampReader = new TimestampReader(timestampPath);
+        this.databaseConnection = databaseConnection;
         this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -159,6 +160,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             }
         } catch (SQLException | IOException ex) {
             ex.printStackTrace();
+            try {
+                this.stop();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             //TODO: Parar execução
         }
     }
@@ -339,7 +345,12 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         return certifier;
     }
 
-    public TimestampReader getTimestampReader() {
-        return timestampReader;
+    public long getTimestamp() throws Exception {
+        ResultSet resultSet = databaseConnection.prepareCall("SELECT \"timestamp\" FROM \"__certifier\" ORDER BY \"timestamp\" DESC LIMIT 1").executeQuery();
+        if(resultSet.next()) {
+            return resultSet.getLong("timestamp");
+        } else {
+            return -1;
+        }
     }
 }

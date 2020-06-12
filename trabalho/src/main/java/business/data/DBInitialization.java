@@ -13,29 +13,29 @@ public class DBInitialization {
     }
 
     public void init() throws SQLException {
-        c.prepareStatement("DROP SCHEMA PUBLIC CASCADE").execute();
+        c.prepareCall("DROP SCHEMA PUBLIC CASCADE").execute();
         // Customer table
-        c.prepareStatement("DROP TABLE IF EXISTS \"customer\";\n").execute();
-        c.prepareStatement("CREATE TABLE \"customer\" (\n" +
+        c.prepareCall("DROP TABLE IF EXISTS \"customer\";\n").execute();
+        c.prepareCall("CREATE TABLE \"customer\" (\n" +
                 "    \"id\" varchar(255),\n" +
                 "    \"current_order_id\" varchar(255),\n" +
                 "    PRIMARY KEY(\"id\")\n" +
                 "); ").execute();
         // Order table
-        c.prepareStatement("DROP TABLE IF EXISTS \"order\";\n").execute();
-        c.prepareStatement("CREATE TABLE \"order\" (\n" +
+        c.prepareCall("DROP TABLE IF EXISTS \"order\";\n").execute();
+        c.prepareCall("CREATE TABLE \"order\" (\n" +
                 "    \"id\" varchar(255),\n" +
                 "    \"customer_id\" varchar(255),\n" +
                 "    \"timestamp\" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" +
                 "    PRIMARY KEY(\"id\"),\n" +
                 "    FOREIGN KEY (\"customer_id\") REFERENCES \"customer\"(\"id\")" +
                 "); ").execute();
-        c.prepareStatement("ALTER TABLE \"customer\"\n" +
+        c.prepareCall("ALTER TABLE \"customer\"\n" +
                 "   ADD CONSTRAINT FK_customer_current_order_id_order_id\n" +
-                "   FOREIGN KEY (\"current_order_id\") REFERENCES \"order\"(\"id\")").execute();
+                "   FOREIGN KEY (\"current_order_id\") REFERENCES \"order\"(\"id\") ON DELETE SET NULL").execute();
         // Product table
-        c.prepareStatement("DROP TABLE IF EXISTS \"product\";\n").execute();
-        c.prepareStatement("CREATE TABLE \"product\" (\n" +
+        c.prepareCall("DROP TABLE IF EXISTS \"product\";\n").execute();
+        c.prepareCall("CREATE TABLE \"product\" (\n" +
                 "    \"name\" varchar(255),\n" +
                 "    \"description\" varchar(255),\n" +
                 "    \"price\" float,\n" +
@@ -43,14 +43,21 @@ public class DBInitialization {
                 "    PRIMARY KEY(\"name\")\n" +
                 "); ").execute();
         // Order <-> Product table
-        c.prepareStatement("DROP TABLE IF EXISTS \"order_product\";\n").execute();
-        c.prepareStatement("CREATE TABLE \"order_product\" (\n" +
+        c.prepareCall("DROP TABLE IF EXISTS \"order_product\";\n").execute();
+        c.prepareCall("CREATE TABLE \"order_product\" (\n" +
                 "    \"order_id\" varchar(255),\n" +
                 "    \"product_name\" varchar(255),\n" +
                 "    \"quantity\" int,\n" +
                 "    PRIMARY KEY(\"order_id\", \"product_name\"),\n" +
                 "    FOREIGN KEY (\"order_id\") REFERENCES \"order\"(\"id\"),\n" +
                 "    FOREIGN KEY (\"product_name\") REFERENCES \"product\"(\"name\")" +
+                "); ").execute();
+        c.prepareCall("DROP TABLE IF EXISTS \"__certifier\";\n").execute();
+        c.prepareCall("CREATE TABLE \"__certifier\" (\n" +
+                "    \"timestamp\" bigint,\n" +
+                "    \"table_name\" varchar(255),\n" +
+                "    \"keys\" longvarchar,\n" +
+                "    PRIMARY KEY(\"timestamp\", \"table_name\")\n" +
                 "); ").execute();
     }
 
@@ -75,7 +82,7 @@ public class DBInitialization {
     }
 
     public boolean exists() throws SQLException{
-        List<String> tables = Arrays.asList("customer", "order", "product", "order_product");
+        List<String> tables = Arrays.asList("customer", "order", "product", "order_product", "__certifier");
         final DatabaseMetaData metaData = c.getMetaData();
         for (String table:
              tables) {

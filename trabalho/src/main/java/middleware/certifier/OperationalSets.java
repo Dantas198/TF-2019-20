@@ -1,6 +1,8 @@
 package middleware.certifier;
 
-public class OperationalSets {
+import java.io.Serializable;
+
+public class OperationalSets implements Serializable {
     private BitOperationSet writeSet;
     private BitOperationSet readSet;
 

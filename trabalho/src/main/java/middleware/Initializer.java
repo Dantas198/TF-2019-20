@@ -39,7 +39,7 @@ public class Initializer {
                 // apagar este if e o seu conteudo quando se remover o state
                 if (received instanceof GetTimeStampMessage){
                     System.out.println(privateName + ": Received RegularMessage -> request for timestamp");
-                    long timestamp = server.getTimestampReader().getTimestamp();
+                    long timestamp = server.getTimestamp();
                     Message timeStampMessage = new SendTimeStampMessage(timestamp);
                     service.noAgreementFloodMessage(timeStampMessage, spreadMessage.getSender());
                 } else if (received instanceof DBReplicationMessage){

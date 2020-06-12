@@ -50,9 +50,8 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                int atomixPort,
                                Connection connection,
                                int totalServerCount,
-                               String logPath,
-                               String timestampPath) throws Exception {
-        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath, timestampPath);
+                               String logPath) throws Exception {
+        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
