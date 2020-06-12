@@ -69,6 +69,8 @@ public class MessagingService {
     @SuppressWarnings("unchecked")
     private class Request<R extends Message> {
 
+        // TODO timeout, enviar a outro servidor?
+        //  implementar primeiro no servidor para o caso de falhar antes de enviar resposta
         public R sendAndReceive(Message request) throws ExecutionException, InterruptedException {
             res = new CompletableFuture<>();
             /*

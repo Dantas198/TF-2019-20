@@ -2,6 +2,7 @@ package middleware;
 
 import middleware.certifier.WriteSet;
 import middleware.message.*;
+import middleware.message.Message;
 import middleware.message.replication.*;
 import spread.*;
 
@@ -31,6 +32,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private ServerImpl<K,W,?> server;
     private CompletableFuture<Void> started;
 
+
     // safe delete
     private ScheduledExecutorService executor;
 
@@ -51,6 +53,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.server = server;
         this.initializer = new Initializer(server, this, connection);
         this.dbConnection = connection;
+
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
 
@@ -60,7 +63,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.evicting = false;
         this.timestamps = new ArrayList<>();
         this.stateRequests = new ArrayList<>();
-        this.executor =Executors.newScheduledThreadPool(1);
+        this.executor = Executors.newScheduledThreadPool(1);
     }
 
 
@@ -78,7 +81,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
      * Method used to respond to the Sender the message defined in the handleMessage abstract method
      * @param spreadMessage
      */
-    //TODO corrigir.
+    //TODO corrigir.  por no initializer?
     private final Consumer<SpreadMessage> respondMessage = (spreadMessage) -> {
         try {
             Message received = (Message) spreadMessage.getObject();
@@ -115,7 +118,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
 
 
     private void handleNetworkPartition(MembershipInfo info) {
-        info.getStayed();
         SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
 
         if(isInMainPartition(stayed)) {
@@ -130,6 +132,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             }
         } else {
             server.pause();
+            initializer.reset();
             System.out.println("Server : " + privateName + ", network partition, im not in main group, will stop working");
         }
     }
@@ -138,7 +141,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         System.out.println("Server : " + privateName + ", a member joined");
         SpreadGroup newMember = info.getJoined();
 
-        //TODO ENVIAR ESTADO CORRETO. De momento não funciona
         System.out.println("Server : " + privateName + ", I'm leader. Requesting latest timestamp to " + newMember);
         //TODO enviar apenas o que interessa do certifier
         Message message = new GetTimeStampMessage();
@@ -146,15 +148,15 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     }
 
     private void handleSelfJoin(MembershipInfo info) {
-        //TODO URGENTE!!! NÃO PODE DAR UNPAUSE. TEM DE RECUPERAR O QUE PERDEU
         if(isInMainPartition(info.getMembers()))
             server.unpause();
 
         System.out.println("Server : " + privateName + ", I joined");
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);
-        // é o primeiro servidor, não precisa de transferência de estado
+
         if (members.length == 1) {
+            // é o primeiro servidor, não precisa de transferência de estado
             System.out.println("Server : " + privateName + ", and I'm the first member");
             initializer.initialized();
             imLeader = true;
@@ -184,23 +186,6 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             scheduleSafeDeleteEvent();
             System.out.println("Assuming leader role");
         }
-    }
-
-
-    private void reduceWaits(MembershipInfo info){
-        if(evicting){
-            SpreadGroup member;
-            if(info.isCausedByDisconnect())
-                member = info.getDisconnected();
-            else
-                member = info.getLeft();
-            sdRequested.remove(member);
-        }
-    }
-
-
-    private void handleWriteMessage(WriteMessage<?> msg) {
-        server.handleMessage(msg); // TODO distinguir handlemessage para transaction write e read??
     }
 
 
@@ -251,10 +236,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         long ts = msg.getTs();
         timestamps.add(ts);
         int arrived = timestamps.size();
-        if (arrived == sdRequested.size()) { // TODO ver se chegaram todos, mas direito
+        if (arrived >= sdRequested.size()) {
             long minTs = Collections.min(timestamps);
             SafeDeleteMessage sdmsg = new SafeDeleteMessage(minTs);
-            floodMessage(sdmsg);
+            floodMessage(sdmsg); // TODO enviar apenas aos sdRequested
         }
     }
 
@@ -307,12 +292,8 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                         if(!started.isDone())
                             started.complete(null);
 
-
                         Message received = (Message) spreadMessage.getObject();
-                        if(received instanceof WriteMessage) {
-                            handleWriteMessage((WriteMessage<?>) received);
-
-                        } else if(received instanceof CertifyWriteMessage){
+                        if(received instanceof CertifyWriteMessage){
                             handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
 
                         } else if(received instanceof StateLengthReplyMessage){
@@ -392,6 +373,19 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             }
         };
     }
+
+    private void reduceWaits(MembershipInfo info){
+        if(evicting){
+            SpreadGroup member;
+            if(info.isCausedByDisconnect())
+                member = info.getDisconnected();
+            else
+                member = info.getLeft();
+            sdRequested.remove(member);
+        }
+    }
+
+
 
 
     public void floodMessage(Message msg) throws Exception {

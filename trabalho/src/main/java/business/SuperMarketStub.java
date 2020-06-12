@@ -53,7 +53,7 @@ public class SuperMarketStub implements SuperMarket {
     }
 
     @Override
-    public boolean addProduct(String customer, String product, int amount) {
+    public boolean addProductToOrder(String customer, String product, int amount) {
         try {
             Message msg = new AddProductMessage(customer, product, amount);
             return ms.<ContentMessage<Boolean>>sendAndReceive(msg).getBody();

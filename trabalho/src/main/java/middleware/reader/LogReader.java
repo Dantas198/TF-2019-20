@@ -67,7 +67,8 @@ public class LogReader {
                 if(matcher.find()){
                     String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
                     String timeStampStr = matcher.group(3);
-                    timeStampStr = timeStampStr == null ? "-1" : timeStampStr.substring(4);
+                    System.out.println("timeStampStr: \"" + timeStampStr + "\"");
+                    timeStampStr = timeStampStr != null && timeStampStr.length() > 4 ?  timeStampStr.substring(4) : "-1";
                     long timeStamp = Long.parseLong(timeStampStr);
                     System.out.println("Query: " + query);
                     timeStamps.add(timeStamp);

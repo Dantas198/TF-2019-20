@@ -18,19 +18,19 @@ import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 
-//TODO Servidores à escuta veem que entrou um servidor ou novo ou que tinha ido abaixo.
-// Enviam o número de linhas que teem (Refletir sobre a melhor maneiro)
-// Initializor espera por isso e compara com os seus logs
-// Envia pedido do que falta e recebe o estado que falta
-
-public class Initializer {
+/**
+ * Used to manage the state update and transfer for joining servers on the ClusterReplicationService
+ * @param <K>
+ * @param <W>
+ */
+public class Initializer<K, W extends WriteSet<K>> {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
-    private ServerImpl server;
-    private ClusterReplicationService service;
+    private ServerImpl<K,W,?> server;
+    private ClusterReplicationService<K,W> service;
 
-    public Initializer(ServerImpl server, ClusterReplicationService service, Connection connection){
+    public Initializer(ServerImpl<K,W,?> server, ClusterReplicationService<K,W> service, Connection connection){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
@@ -78,6 +78,10 @@ public class Initializer {
     }
 
     public void initialized(){
+        this.initializing = false;
+    }
+
+    public void reset() {
         this.initializing = false;
     }
 }

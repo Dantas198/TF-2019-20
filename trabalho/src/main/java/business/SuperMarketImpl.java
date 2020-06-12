@@ -20,7 +20,6 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	private DAO<String, Product> productDAO;
 	private DAO<String, Customer> customerDAO;
 	private StateUpdater<String, Serializable> updater;
-	private CurrentOrderCleaner cleaner;
 
 	public SuperMarketImpl(DAO<String, Order> orderDAO,
 						   DAO<String, Product> productDAO,
@@ -41,17 +40,16 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 
 	public boolean resetOrder(String customer) {
 		Customer c = customerDAO.get(customer);
-		if(c == null) return false;
-		if(!c.hasCurrentOrder()) return false;
+		if(c == null || !c.hasCurrentOrder())
+			return false;
 		String oldCurrentOrder = c.getCurrentOrder().getId();
 		c.deleteCurrentOrder();
 		customerDAO.put(new CustomerPlaceholder(c));
-		orderDAO.delete(oldCurrentOrder); // Apaga ordem atual
+		orderDAO.delete(oldCurrentOrder); // Apaga encomenda atual
 		return true;
 	}
 
 	public boolean finishOrder(String customer) {
-		// TODO tmax
 		Customer c = customerDAO.get(customer);
 		if(!c.hasCurrentOrder())
 			return false;
@@ -76,7 +74,8 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 		return true;
 	}
 
-	public boolean addProduct(String customerName, String product, int amount) {
+	public boolean addProductToOrder(String customerName, String product, int amount) {
+		if(amount < 0) return false;
 		Customer customer = customerDAO.get(customerName);
 		if(customer == null) return false;
 		Product p = productDAO.get(product);
