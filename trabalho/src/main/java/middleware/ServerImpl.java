@@ -9,6 +9,7 @@ import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
 import middleware.certifier.OperationalSets;
 import middleware.certifier.TaggedObject;
+import middleware.message.replication.GlobalEventMessage;
 import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
@@ -49,11 +50,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private final ExecutorService taskExecutor;
 
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath, List<GlobalEvent> events){
         this.privateName = privateName;
         this.logReader = new LogReader(logPath);
         this.timestampReader = new TimestampReader(timestampPath);
-        this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, totalServerCount, databaseConnection);
+        this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, totalServerCount, databaseConnection, events);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
         this.certifier = new Certifier();
@@ -114,6 +115,8 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      */
     public abstract void rollback();
 
+
+    public abstract void handleGlobalEvent(GlobalEvent e);
 
     /**
      * Get of the state of the current Server
@@ -225,6 +228,10 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                         message.getStartTimestamp()), taskExecutor);
                 sendReply(new ContentMessage<>(isWritable), cli);
         }, certifierExecutor);
+    }
+
+    protected CompletableFuture<Void> handleGlobalEvent(GlobalEventMessage e){
+        return CompletableFuture.runAsync(() -> handleGlobalEvent(e.getBody()));
     }
 
     protected CompletableFuture<Long> getSafeToDeleteTimestamp(){
