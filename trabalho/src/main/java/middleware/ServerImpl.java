@@ -153,11 +153,8 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             System.out.println("Updating queries (size: " + queries.size() + ")");
             for(Pair<String, Long> pair : queries) {
                 String query = pair.getKey();
-                if(query.startsWith("--")) {
-                    logReader.putTimeStamp(pair.getValue());
-                } else {
-                    c.prepareCall(query).execute();
-                }
+                logReader.putTimeStamp(pair.getValue());
+                c.prepareCall(query).execute();
                 System.out.println("query: " + query);
             }
         } catch (SQLException | IOException ex) {
