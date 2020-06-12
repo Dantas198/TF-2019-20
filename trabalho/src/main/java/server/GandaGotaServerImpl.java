@@ -19,11 +19,9 @@ import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
-import middleware.certifier.BitWriteSet;
+import com.google.common.collect.Sets;
+import middleware.certifier.*;
 import middleware.ServerImpl;
-import middleware.certifier.StateUpdates;
-import middleware.certifier.StateUpdatesBitSet;
-import middleware.certifier.TaggedObject;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
@@ -37,7 +35,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 
-public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayList<String>> {
+public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     private SuperMarketImpl superMarket;
     private Connection connection;
@@ -112,7 +110,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
      * returns null if execution fails
     */
     @Override
-    public CertifyWriteMessage<BitWriteSet, ?> handleWriteMessage(WriteMessage<?> message){
+    public CertifyWriteMessage<?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
         SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates);
         boolean success = false;
@@ -140,7 +138,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
         }
 
         if(success)
-            return new CertifyWriteMessage<>(updates.getWriteSets(), updates.getReadSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
+            return new CertifyWriteMessage<>(updates.getSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
 
         return null;
     }
@@ -148,7 +146,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, BitWriteSet, ArrayLi
 
 
     @Override
-    public void updateStateFromCommitedWrite(CertifyWriteMessage<BitWriteSet, ?> message) {
+    public void updateStateFromCommitedWrite(CertifyWriteMessage<?> message) {
         //TODO
         //TESTE
         System.out.println("Server : " + this.getPrivateName() + " update state from commit");

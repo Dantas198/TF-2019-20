@@ -1,18 +1,18 @@
 package middleware.message.replication;
 
 import middleware.message.Message;
-
 import java.io.Serializable;
 
-public class StateTransferMessage<V> extends Message implements Serializable, Replicable<FullState<V>> {
-    private FullState<V> state;
+@Deprecated
+public class StateTransferMessage extends Message implements Serializable, Replicable<FullState> {
+    private FullState state;
 
-    public StateTransferMessage(FullState<V> state){
+    public StateTransferMessage(FullState state){
         this.state = state;
     }
 
     @Override
-    public FullState<V> getState() {
+    public FullState getState() {
         return this.state;
     }
 

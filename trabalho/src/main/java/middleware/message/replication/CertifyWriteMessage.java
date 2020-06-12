@@ -1,6 +1,6 @@
 package middleware.message.replication;
 
-import middleware.certifier.WriteSet;
+import middleware.certifier.OperationalSets;
 import middleware.message.Message;
 
 import java.io.Serializable;
@@ -12,29 +12,22 @@ import java.util.Set;
  * A certifiable operation needs to hold its WriteSet and Start timestamp.
  * This class also holds state so that it can be applied if the operation is valid.
  */
-public class CertifyWriteMessage<K extends WriteSet<?>, V extends Serializable> extends Message
-        implements Certifiable<K>, Replicable<V>, Serializable {
+public class CertifyWriteMessage<V extends Serializable> extends Message
+        implements Certifiable, Replicable<V>, Serializable {
 
     // Maps table name and BitWriteSet
-    private final Map<String, K> bws;
-    private final Map<String, K> brs;
+    private final Map<String, OperationalSets> sets;
     private long timestamp;
     private final V state;
 
-    public CertifyWriteMessage(Map<String, K> bws, Map<String, K> brs, V state){
-        this.bws = bws;
-        this.brs = brs;
+    public CertifyWriteMessage(Map<String, OperationalSets> sets, V state){
+        this.sets = sets;
         this.state = state;
     }
 
     @Override
-    public Map<String, K> getWriteSets() {
-        return this.bws;
-    }
-
-    @Override
-    public Map<String, K> getReadSets() {
-        return this.brs;
+    public Map<String, OperationalSets> getSets() {
+        return this.sets;
     }
 
     @Override
@@ -48,10 +41,7 @@ public class CertifyWriteMessage<K extends WriteSet<?>, V extends Serializable> 
     }
 
     @Override
-    public Set<String> getWriteTables() { return this.bws.keySet(); }
-
-    @Override
-    public Set<String> getReadTables() { return this.brs.keySet(); }
+    public Set<String> getTables() { return this.sets.keySet(); }
 
     public void setTimestamp(long timestamp){
         this.timestamp = timestamp;

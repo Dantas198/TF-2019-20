@@ -18,10 +18,15 @@ public class TimestampReader {
     }
 
     public void putTimeStamp(String timestamp) throws IOException {
+        if(!Files.exists(timestampPath))
+           Files.createFile(timestampPath);
         Files.write(timestampPath, timestamp.getBytes());
     }
 
     public long getTimestamp() throws IOException {
+        if(!Files.exists(timestampPath)){
+            putTimestamp(0);
+        }
         return Long.parseLong(Files.readString(timestampPath, StandardCharsets.US_ASCII));
     }
 }

@@ -1,22 +1,26 @@
 package middleware;
 
+import middleware.certifier.OperationalSets;
 import middleware.certifier.WriteSet;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import spread.*;
 
 import java.net.InetAddress;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService<K, W extends WriteSet<K>> {
+public class ClusterReplicationService {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
     private final SpreadGroup spreadGroup;
     private final int port;
+    private Connection dbConnection;
 
     //Caso sejam necessário acks poderá ser utilizada esta estrutura
     //private Map<String, List<Message>> cachedMessages;
@@ -25,7 +29,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl<K,W,?> server;
+    private ServerImpl<?> server;
     private CompletableFuture<Void> started;
 
 
@@ -40,7 +44,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private List<Long> timestamps;
     private List<CompletableFuture<Void>> stateRequests;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K,W,?> server, int totalServers, Connection connection){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -48,6 +52,8 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.spreadConnection = new SpreadConnection();
         this.server = server;
         this.initializer = new Initializer<>(server, this, connection, privateName);
+        this.initializer = new Initializer(server, this, connection);
+        this.dbConnection = connection;
 
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
@@ -253,7 +259,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
             System.out.println(privateName + ": I'm leader. Requesting state diff from " + newMember);
             //TODO URGENTISSIMO -> ENVIAR ESTADO CORRETO. De momento não funciona
             //TODO enviar apenas o que interessa do certifier
-            Message message = new GetLengthRequestMessage();
+            Message message = new GetTimeStampMessage();
             noAgreementFloodMessage(message, newMember);
         }
     }
@@ -307,7 +313,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     // Handling RegularMessage
     // ###################################################################
 
-    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) {
+    private void handleCertifyWriteMessage(CertifyWriteMessage<?> cwm) {
         System.out.println(privateName + ": RegularMessage received -> CertifyWrite");
         System.out.println(privateName + ": write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
         server.handleCertifierAnswer(cwm);
@@ -321,7 +327,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         response.thenAccept((x) -> {
             try {
                 server.getState(rls.getLowerBound(), rls.getLatestTimestamp()).thenAccept((fullState) -> {
-                        Message m = new StateTransferMessage<>(fullState);
+                        Message m = new StateTransferMessage(fullState);
                         try {
                             noAgreementFloodMessage(m, sender);
                         } catch (Exception e) {
@@ -374,6 +380,37 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         });
     }
 
+    private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {
+        long timeStamp = msg.getBody();
+        System.out.println("Handling SendTimeStampMessage");
+        String script = null;
+        long currentLowWaterMark = server.getCertifier().getLowWaterMark();
+        long currentTimeStamp = server.getCertifier().getTimestamp();
+        HashMap<String, HashMap<Long, OperationalSets>> writes = new HashMap<>();
+        ArrayList<String> queries = server.getLogReader().getLogsAfter(timeStamp);
+        HashMap<String, HashMap<Long, OperationalSets>> tables = server.getCertifier().getWritesPerTable();
+        if(queries.size() == 0){
+            script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));
+        }
+        if(currentLowWaterMark < timeStamp){
+            writes = tables;
+        } else {
+            for(String table : tables.keySet()){
+                writes.put(table, new HashMap<>());
+                for(Long tableTimestamp: tables.get(table).keySet()){
+                    if(tableTimestamp > timeStamp) {
+                        OperationalSets write = writes.get(table).get(tableTimestamp);
+                        writes.get(table).put(tableTimestamp, write);
+                    }
+                }
+            }
+        }
+        Message response = new DBReplicationMessage(script, queries, currentLowWaterMark, currentTimeStamp, writes);
+        noAgreementFloodMessage(response, sender);
+    }
+
+
+
 
     // ###################################################################
     // Safe Delete
@@ -399,4 +436,14 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         long minutesUntilSafeDelete = 1000;
         executor.schedule(new SafeDeleteEvent(), minutesUntilSafeDelete, TimeUnit.MINUTES);
     }
+
+    public Connection getDbConnection() {
+        return dbConnection;
+    }
+
+    else if (received instanceof SendTimeStampMessage){
+        // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
+        handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
+    }
+
 }
