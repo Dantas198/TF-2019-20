@@ -9,7 +9,6 @@ import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
 import middleware.certifier.OperationalSets;
 import middleware.certifier.TaggedObject;
-import middleware.certifier.OperationSet;
 import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
@@ -29,9 +28,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends Serializable> implements Server {
+public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
-    private final ClusterReplicationService<K,W> replicationService;
+    private final ClusterReplicationService replicationService;
     private final Serializer s;
     private final ManagedMessagingService mms;
     private final CompletableFuture<Void> runningCompletable;
@@ -39,7 +38,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
 
     //TODO remove/update
     private final Map<String, Address> writesRequests;
-    public Certifier<K, W> certifier;
+    public Certifier certifier;
     private final String privateName;
     private final LogReader logReader;
     private final TimestampReader timestampReader;
@@ -53,10 +52,10 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
         this.privateName = privateName;
         this.logReader = new LogReader(logPath);
         this.timestampReader = new TimestampReader(timestampPath);
-        this.replicationService = new ClusterReplicationService<>(spreadPort, privateName, this, totalServerCount, databaseConnection);
+        this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, totalServerCount, databaseConnection);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
-        this.certifier = new Certifier<>();
+        this.certifier = new Certifier();
         this.writesRequests = new HashMap<>();
         this.s = new SerializerBuilder()
                 .withRegistrationRequired(false)
@@ -89,7 +88,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
      * @param message The body Message received
      * @return the message body of the response
      */
-    public abstract CertifyWriteMessage<W,?> handleWriteMessage(WriteMessage<?> message);
+    public abstract CertifyWriteMessage<?> handleWriteMessage(WriteMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
@@ -97,7 +96,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
      * server
      * @param message contains the state to persist
      */
-    public abstract void updateStateFromCommitedWrite(CertifyWriteMessage<W,?> message);
+    public abstract void updateStateFromCommitedWrite(CertifyWriteMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered valid.
@@ -188,7 +187,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
      */
 
     //TODO não mexer sem perguntar !!
-    protected void handleCertifierAnswer(CertifyWriteMessage<W,?> message){
+    protected void handleCertifierAnswer(CertifyWriteMessage<?> message){
         CompletableFuture.runAsync(() -> {
             boolean isWritable = certifier.isWritable(message.getSets(), message.getStartTimestamp());
             System.out.println("Server : " + privateName + " isWritable: " + isWritable);
@@ -237,11 +236,11 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
         return CompletableFuture.runAsync(() -> certifier.evictStoredWriteSets(ts), certifierExecutor);
     }
 
-    protected CompletableFuture<FullState<W>> getState(int lowerBound, long latestTimestamp){
+    protected CompletableFuture<FullState> getState(int lowerBound, long latestTimestamp){
         return CompletableFuture.supplyAsync(() -> {
-            HashMap<String, HashMap<Long, W>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
+            HashMap<String, HashMap<Long, OperationalSets>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
-                FullState<W> state = new FullState<>(logReader.getQueries(lowerBound), writes);
+                FullState state = new FullState(logReader.getQueries(lowerBound), writes);
                 logReader.resetQueries();
                 return state;
             } catch (Exception e) {
@@ -251,7 +250,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
         }, certifierExecutor);
     }
 
-    public void rebuildCertifier(HashMap<String, HashMap<Long, W>> c){
+    public void rebuildCertifier(HashMap<String, HashMap<Long, OperationalSets>> c){
         this.certifier.addState(c);
     }
 
@@ -271,7 +270,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
      * @param cwm message
      * @return the information necessary to certify and replicate the transaction that is for now in a transient state
      */
-    private void startTransaction(Address requester, CertifyWriteMessage<W,?> cwm) throws Exception {
+    private void startTransaction(Address requester, CertifyWriteMessage<?> cwm) throws Exception {
         long ts = certifier.getTimestamp();
         certifier.transactionStarted(cwm.getTables(), ts);
         cwm.setTimestamp(ts);
@@ -299,7 +298,7 @@ public abstract class ServerImpl<K, W extends OperationalSets<K>, STATE extends 
             try {
                 if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
-                    CertifyWriteMessage<W, ?> cwm = handleWriteMessage((WriteMessage<?>) request);
+                    CertifyWriteMessage<?> cwm = handleWriteMessage((WriteMessage<?>) request);
                     if(cwm != null) {
                         startTransaction(requester, cwm);
                     } else {

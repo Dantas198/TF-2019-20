@@ -1,7 +1,9 @@
 package middleware.certifier;
 
-public interface OperationSet<K> {
+import java.util.BitSet;
+
+public interface OperationSet {
     void add(String key);
-    boolean intersects(OperationSet<K> ws);
-    K getSet();
+    boolean intersects(BitOperationSet ws);
+    BitSet getSet();
 }

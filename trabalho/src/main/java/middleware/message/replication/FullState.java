@@ -6,12 +6,12 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class FullState<K extends OperationalSets<?>> implements Serializable {
+public class FullState implements Serializable {
     private ArrayList<String> businessState;
-    private HashMap<String, HashMap<Long, K>> certifierState;
+    private HashMap<String, HashMap<Long, OperationalSets>> certifierState;
 
 
-    public FullState(ArrayList<String> businessState, HashMap<String, HashMap<Long, K>>  certifierState){
+    public FullState(ArrayList<String> businessState, HashMap<String, HashMap<Long, OperationalSets>>  certifierState){
         this.businessState = businessState;
         this.certifierState = certifierState;
     }
@@ -20,7 +20,7 @@ public class FullState<K extends OperationalSets<?>> implements Serializable {
         return businessState;
     }
 
-    public HashMap<String, HashMap<Long, K>>  getCertifierState() {
+    public HashMap<String, HashMap<Long, OperationalSets>>  getCertifierState() {
         return certifierState;
     }
 }

@@ -35,7 +35,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 
-public class GandaGotaServerImpl extends ServerImpl<BitSet, OperationalSets, ArrayList<String>> {
+public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     private SuperMarketImpl superMarket;
     private Connection connection;
@@ -110,7 +110,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, OperationalSets, Arr
      * returns null if execution fails
     */
     @Override
-    public CertifyWriteMessage<BitOperationSet, ?> handleWriteMessage(WriteMessage<?> message){
+    public CertifyWriteMessage<?> handleWriteMessage(WriteMessage<?> message){
         StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
         SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates);
         boolean success = false;
@@ -138,7 +138,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, OperationalSets, Arr
         }
 
         if(success)
-            return new CertifyWriteMessage<>(updates.getWriteSets(), updates.getReadSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
+            return new CertifyWriteMessage<>(updates.getSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
 
         return null;
     }
@@ -146,7 +146,7 @@ public class GandaGotaServerImpl extends ServerImpl<BitSet, OperationalSets, Arr
 
 
     @Override
-    public void updateStateFromCommitedWrite(CertifyWriteMessage<BitOperationSet, ?> message) {
+    public void updateStateFromCommitedWrite(CertifyWriteMessage<?> message) {
         //TODO
         //TESTE
         System.out.println("Server : " + this.getPrivateName() + " update state from commit");

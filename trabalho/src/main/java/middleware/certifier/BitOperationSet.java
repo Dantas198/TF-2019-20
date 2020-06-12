@@ -7,7 +7,7 @@ import java.util.BitSet;
  * WriteSet used to certify writes.
  */
 
-public class BitOperationSet implements Serializable, OperationSet<BitSet> {
+public class BitOperationSet implements Serializable, OperationSet {
     private BitSet set;
 
     public BitOperationSet() {
@@ -25,7 +25,7 @@ public class BitOperationSet implements Serializable, OperationSet<BitSet> {
     }
 
     @Override
-    public boolean intersects(OperationSet<BitSet> set) {
+    public boolean intersects(BitOperationSet set) {
         return this.set.intersects(set.getSet());
     }
 

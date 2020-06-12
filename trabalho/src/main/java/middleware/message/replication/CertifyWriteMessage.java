@@ -12,21 +12,21 @@ import java.util.Set;
  * A certifiable operation needs to hold its WriteSet and Start timestamp.
  * This class also holds state so that it can be applied if the operation is valid.
  */
-public class CertifyWriteMessage<K extends OperationalSets<?>, V extends Serializable> extends Message
-        implements Certifiable<K>, Replicable<V>, Serializable {
+public class CertifyWriteMessage<V extends Serializable> extends Message
+        implements Certifiable, Replicable<V>, Serializable {
 
     // Maps table name and BitWriteSet
-    private final Map<String, K> sets;
+    private final Map<String, OperationalSets> sets;
     private long timestamp;
     private final V state;
 
-    public CertifyWriteMessage(Map<String, K> sets, V state){
+    public CertifyWriteMessage(Map<String, OperationalSets> sets, V state){
         this.sets = sets;
         this.state = state;
     }
 
     @Override
-    public Map<String, K> getSets() {
+    public Map<String, OperationalSets> getSets() {
         return this.sets;
     }
 

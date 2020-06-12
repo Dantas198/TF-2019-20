@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 //TODO atrasar decremento na rounda para não atrasar escritas
 
-public class Certifier<V, K extends OperationalSets<V>> implements Serializable {
+public class Certifier implements Serializable {
 
     //Last garbage collected timestamp limit
     private long lowWaterMark;
@@ -28,7 +28,7 @@ public class Certifier<V, K extends OperationalSets<V>> implements Serializable 
 
     //Stores the changes commited on a certain timestamp
     //TODO concurrent tbm?
-    private final HashMap<String, HashMap<Long, K>> writesPerTable;
+    private final HashMap<String, HashMap<Long, OperationalSets>> writesPerTable;
 
     public Certifier(){
         this.lowWaterMark = -1;
@@ -39,14 +39,14 @@ public class Certifier<V, K extends OperationalSets<V>> implements Serializable 
     }
 
 
-    public Certifier(Certifier<V, K> c){
+    public Certifier(Certifier c){
         this.lowWaterMark = c.getLowWaterMark();
         this.timestamp = c.getTimestamp();
         this.runningTransactionsPerTable = new HashMap<>();
         this.writesPerTable = new HashMap<>(c.getWritesPerTable());
     }
 
-    public void addState(HashMap<String, HashMap<Long, K>> c){
+    public void addState(HashMap<String, HashMap<Long, OperationalSets>> c){
         c.forEach((table,v) -> v.forEach((ts, ws) -> {
             this.writesPerTable.putIfAbsent(table, new HashMap<>());
             this.writesPerTable.get(table).put(ts, ws);
@@ -56,14 +56,14 @@ public class Certifier<V, K extends OperationalSets<V>> implements Serializable 
     }
 
     
-    public boolean isWritable(Map<String, K> sets, long ts) {
+    public boolean isWritable(Map<String, OperationalSets> sets, long ts) {
         if (ts <= lowWaterMark) {
             System.out.println("Certifier: old timestamp arrived");
             return false;
         }
 
-        for(Map.Entry<String, K> entry : sets.entrySet()){
-            HashMap<Long, K> oldSets = writesPerTable.get(entry.getKey());
+        for(Map.Entry<String, OperationalSets> entry : sets.entrySet()){
+            HashMap<Long, OperationalSets> oldSets = writesPerTable.get(entry.getKey());
             for (long i = ts; i < this.timestamp; i++) {
                 if (entry.getValue().intersect(oldSets.get(i)))
                     return false;
@@ -89,7 +89,7 @@ public class Certifier<V, K extends OperationalSets<V>> implements Serializable 
     }
 
     //Commit also increases current timestamp
-    public void commit(Map<String, K> sets) {
+    public void commit(Map<String, OperationalSets> sets) {
         sets.forEach((table, set) -> {
             this.writesPerTable.putIfAbsent(table, new HashMap<>());
             this.writesPerTable.get(table).put(this.timestamp, set);
@@ -130,11 +130,11 @@ public class Certifier<V, K extends OperationalSets<V>> implements Serializable 
         this.lowWaterMark = newLowWaterMark;
     }
 
-    public HashMap<String, HashMap<Long, K>> getWriteSetsByTimestamp(long lowerBound){
-        HashMap<String, HashMap<Long, K>> response = new HashMap<>();
+    public HashMap<String, HashMap<Long, OperationalSets>> getWriteSetsByTimestamp(long lowerBound){
+        HashMap<String, HashMap<Long, OperationalSets>> response = new HashMap<>();
         for(String table : this.writesPerTable.keySet()){
             response.put(table, new HashMap<>());
-            for(Map.Entry<Long, K> e : this.writesPerTable.get(table).entrySet()){
+            for(Map.Entry<Long, OperationalSets> e : this.writesPerTable.get(table).entrySet()){
                 if (e.getKey() > lowerBound)
                     response.get(table).put(e.getKey(), e.getValue());
             }
@@ -156,7 +156,7 @@ public class Certifier<V, K extends OperationalSets<V>> implements Serializable 
         return this.lowWaterMark;
     }
 
-    public HashMap<String, HashMap<Long, K>> getWritesPerTable(){
+    public HashMap<String, HashMap<Long, OperationalSets>> getWritesPerTable(){
         return this.writesPerTable;
     }
 

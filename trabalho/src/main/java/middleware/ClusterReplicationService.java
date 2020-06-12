@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-public class ClusterReplicationService<K, W extends OperationalSets<K>> {
+public class ClusterReplicationService {
     private final int totalServers;
     private final String privateName;
     private final SpreadConnection spreadConnection;
@@ -29,7 +29,7 @@ public class ClusterReplicationService<K, W extends OperationalSets<K>> {
     private final ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl<K,W,?> server;
+    private ServerImpl<?> server;
     private CompletableFuture<Void> started;
 
 
@@ -44,7 +44,7 @@ public class ClusterReplicationService<K, W extends OperationalSets<K>> {
     private List<Long> timestamps;
     private List<CompletableFuture<Void>> stateRequests;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<K,W,?> server, int totalServers, Connection connection){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -189,7 +189,7 @@ public class ClusterReplicationService<K, W extends OperationalSets<K>> {
     }
 
 
-    private void handleCertifyWriteMessage(CertifyWriteMessage<W, ?> cwm) {
+    private void handleCertifyWriteMessage(CertifyWriteMessage<?> cwm) {
         System.out.println("Server : " + privateName + " write id: " + cwm.getId() + " message with timestamp: " + cwm.getStartTimestamp());
         server.handleCertifierAnswer(cwm);
     }
@@ -296,7 +296,7 @@ public class ClusterReplicationService<K, W extends OperationalSets<K>> {
 
                         Message received = (Message) spreadMessage.getObject();
                         if(received instanceof CertifyWriteMessage){
-                            handleCertifyWriteMessage((CertifyWriteMessage<W, ?>) received);
+                            handleCertifyWriteMessage((CertifyWriteMessage<?>) received);
 
                         } else if(received instanceof StateLengthReplyMessage){
                             // enviado pelo líder a um membro novo

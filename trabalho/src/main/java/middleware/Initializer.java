@@ -19,19 +19,17 @@ import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 
-/**
- * Used to manage the state update and transfer for joining servers on the ClusterReplicationService
- * @param <K>
- * @param <W>
- */
-public class Initializer<K, W extends OperationalSets<K>> {
+public class Initializer {
 
     private Queue<SpreadMessage> messageQueue;
     private Boolean initializing;
+    private ServerImpl<?> server;
+    private ClusterReplicationService service;
+    private Connection connection;
     private ServerImpl<K,W,?> server;
     private ClusterReplicationService<K,W> service;
 
-    public Initializer(ServerImpl<K,W,?> server, ClusterReplicationService<K,W> service, Connection connection){
+    public Initializer(ServerImpl<?> server, ClusterReplicationService service, Connection connection){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
