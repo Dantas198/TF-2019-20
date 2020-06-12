@@ -4,6 +4,7 @@ import middleware.certifier.OperationalSets;
 import middleware.certifier.WriteSet;
 import middleware.message.Message;
 import middleware.message.replication.*;
+import middleware.reader.Pair;
 import spread.*;
 
 import java.net.InetAddress;
@@ -377,7 +378,7 @@ public class ClusterReplicationService {
         long currentLowWaterMark = server.getCertifier().getLowWaterMark();
         long currentTimeStamp = server.getCertifier().getTimestamp();
         HashMap<String, HashMap<Long, OperationalSets>> writes = new HashMap<>();
-        ArrayList<String> queries = server.getLogReader().getLogsAfter(timeStamp);
+        ArrayList<Pair<String, Long>> queries = server.getLogReader().getLogsAfter(timeStamp);
         HashMap<String, HashMap<Long, OperationalSets>> tables = server.getCertifier().getWritesPerTable();
         if(queries.size() == 0){
             script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));

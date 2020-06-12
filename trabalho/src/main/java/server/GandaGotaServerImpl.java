@@ -50,7 +50,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                Connection connection,
                                int totalServerCount,
                                String logPath,
-                               String timestampPath) throws SQLException {
+                               String timestampPath) throws Exception {
         super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath, timestampPath);
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
