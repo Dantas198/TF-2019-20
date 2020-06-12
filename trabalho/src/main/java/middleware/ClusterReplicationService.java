@@ -1,7 +1,6 @@
 package middleware;
 
 import middleware.certifier.OperationalSets;
-import middleware.certifier.WriteSet;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import middleware.reader.Pair;
@@ -13,7 +12,6 @@ import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.Consumer;
 
 public class ClusterReplicationService {
     private final int totalServers;
@@ -33,7 +31,6 @@ public class ClusterReplicationService {
     private ServerImpl<?> server;
     private CompletableFuture<Void> started;
 
-
     // safe delete
     private ScheduledExecutorService executor;
 
@@ -44,8 +41,9 @@ public class ClusterReplicationService {
     private boolean evicting;
     private List<Long> timestamps;
     private List<CompletableFuture<Void>> stateRequests;
+    private final List<GlobalEvent> events;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection, List<GlobalEvent> events){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -54,9 +52,7 @@ public class ClusterReplicationService {
         this.server = server;
         this.initializer = new Initializer(server, this, privateName);
         this.dbConnection = connection;
-
-        //this.cachedMessages = new HashMap<>();
-        //TODO recover do estado
+        this.events = events;
 
         this.electionManager = new ElectionManager(this.spreadGroup);
         this.imLeader = false;
@@ -165,17 +161,10 @@ public class ClusterReplicationService {
                         } else if (received instanceof SendTimeStampMessage){
                             // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
                             handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
+                        } else if (received instanceof GlobalEventMessage){
+
+
                         }
-                        /*
-                        cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
-                        List<Message> messagesReceived = cachedMessages.get(received.getId());
-                        // se for escrita terá de vir o estado já calculado para ser genérico
-                        Message myResponse = server.handleMessage(received).from(received);
-                        messagesReceived.add(myResponse);
-                        if (messagesReceived.size() >= nServers) {
-                            pendingMessages.get(received.getId()).complete(myResponse);
-                        }
-                        */
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -228,7 +217,7 @@ public class ClusterReplicationService {
                 imLeader = electionManager.amILeader(stayed);
 
                 if (imLeader){
-                    scheduleSafeDeleteEvent();
+                    scheduleLeaderEvents();
                     System.out.println(privateName + ": Assuming leader role");
                 }
             }
@@ -269,7 +258,7 @@ public class ClusterReplicationService {
             // é o primeiro servidor, não precisa de transferência de estado
             initializer.initialized();
             imLeader = true;
-            scheduleSafeDeleteEvent();
+            scheduleLeaderEvents();
             if (!started.isDone())
                 started.complete(null);
         }
@@ -293,7 +282,7 @@ public class ClusterReplicationService {
         System.out.println(privateName + ": Member: " + member);
         if (imLeader){
             System.out.println(privateName + ": Assuming leader role");
-            scheduleSafeDeleteEvent();
+            scheduleLeaderEvents();
             if(evicting) {
                 sdRequested.remove(member);
             }
@@ -344,7 +333,15 @@ public class ClusterReplicationService {
             evicting = false;
             this.stateRequests.forEach(req -> req.complete(null));
             this.stateRequests.clear();
+            scheduleSafeDeleteEvent();
         });
+    }
+
+
+    private void handleGlobalEvent(GlobalEventMessage msg){
+        System.out.println(privateName + ": RegularMessage received -> GlobalEventMessage");
+        server.handleGlobalEvent(msg)
+            .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
     }
 
     private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {
@@ -377,12 +374,26 @@ public class ClusterReplicationService {
     }
 
 
-
-
     // ###################################################################
     // Safe Delete
     // ###################################################################
 
+    private void scheduleLeaderEvents(){
+        scheduleSafeDeleteEvent();
+        events.forEach(this::scheduleGlobalEvent);
+    }
+
+
+    private void scheduleGlobalEvent(GlobalEvent e) {
+        executor.schedule(() -> {
+            if (!imLeader) return;
+            try {
+                floodMessage(new GlobalEventMessage(e));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }, e.getTime(), TimeUnit.MINUTES);
+    }
 
 
     private class SafeDeleteEvent implements Runnable {
@@ -392,7 +403,7 @@ public class ClusterReplicationService {
             SafeDeleteRequestMessage msg = new SafeDeleteRequestMessage();
             try {
                 evicting = true;
-                noAgreementFloodMessage(msg);
+                floodMessage(msg);
             } catch (Exception e) {
                 e.printStackTrace();
             }
