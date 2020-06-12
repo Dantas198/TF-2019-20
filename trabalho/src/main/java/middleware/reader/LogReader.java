@@ -1,6 +1,9 @@
 package middleware.reader;
 
 import java.io.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -9,10 +12,12 @@ public class LogReader {
 
     private String logPath;
     private List<String> queries;
+    private List<Long> timeStamps;
 
     public LogReader(String logPath){
         this.logPath = logPath;
         this.queries = null;
+        this.timeStamps = new LinkedList<>();
     }
 
     public int size() throws Exception{
@@ -55,13 +60,17 @@ public class LogReader {
             queries = new ArrayList<>();
             //String splitRegex = "\\d+-\\d+-\\d+ \\d+:\\d+:\\d+\\.\\d+ \\d+";
             String splitRegex = "\n"; //(?=DROP|SET|INSERT|DELETE|CREATE|REPLACE|COMMIT|ROLLBACK)"; //"\n(?=\\d{4}-\\d+-\\d+)";
-            Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
+            Pattern logLine = Pattern.compile("(/\\*.*\\*/)?((.|[\n\r])*)(/\\*T\\d+)?");//"\\d+-\\d+-\\d+ \\d+:\\d+:\\d+[.]\\d+ \\d ((.|\n)*)");
             String[] split = filestr.split(splitRegex);
             for(String log : split){
                 Matcher matcher = logLine.matcher(log);
                 if(matcher.find()){
                     String query = matcher.group(2).replaceAll("(\\\\u000a)|(\\/\\*.*\\*\\/)", "");
+                    String timeStampStr = matcher.group(3);
+                    timeStampStr = timeStampStr == null ? "-1" : timeStampStr.substring(4);
+                    long timeStamp = Long.parseLong(timeStampStr);
                     System.out.println("Query: " + query);
+                    timeStamps.add(timeStamp);
                     queries.add(query);
                 } else {
                     System.out.println("Log " + log + " couldn't be parsed");
@@ -93,5 +102,17 @@ public class LogReader {
         log.write(timestamp.getBytes());
         log.write("*/".getBytes());
         log.close();
+    }
+
+    public String getAll() throws Exception{
+        Path path = FileSystems.getDefault().getPath(logPath);
+        return new String(Files.readAllBytes(path));
+    }
+
+    public ArrayList<String> getLogsAfter(long timeStamp) throws Exception{
+        getQueries();
+        int i = 0;
+        for(; i < timeStamps.size() && timeStamps.get(i) <= timeStamp; i++);
+        return new ArrayList<>(this.queries.subList(i, timeStamps.size()));
     }
 }

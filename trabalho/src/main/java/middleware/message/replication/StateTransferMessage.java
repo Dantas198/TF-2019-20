@@ -3,7 +3,7 @@ package middleware.message.replication;
 import middleware.message.Message;
 
 import java.io.Serializable;
-
+@Deprecated
 public class StateTransferMessage<V> extends Message implements Serializable, Replicable<FullState<V>> {
     private FullState<V> state;
 

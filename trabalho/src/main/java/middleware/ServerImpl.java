@@ -47,6 +47,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
+
     public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, String timestampPath){
         this.privateName = privateName;
         this.logReader = new LogReader(logPath);
@@ -153,7 +154,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }
     }
 
-    public void updateQueries(Collection<String> queries, String logPath, Connection c){
+    public void updateQueries(Collection<String> queries, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
             for(String query : queries) {
@@ -337,5 +338,13 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
     public LogReader getLogReader() {
         return logReader;
+    }
+
+    public Certifier<K, W> getCertifier() {
+        return certifier;
+    }
+
+    public TimestampReader getTimestampReader() {
+        return timestampReader;
     }
 }

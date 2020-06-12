@@ -1,12 +1,20 @@
 package middleware;
 
+import middleware.certifier.Certifier;
+import middleware.certifier.WriteSet;
+import middleware.message.replication.DBReplicationMessage;
+import middleware.message.replication.GetTimeStampMessage;
 import middleware.message.Message;
-import middleware.message.replication.*;
+import middleware.message.replication.SendTimeStampMessage;
+import middleware.reader.TimestampReader;
 import spread.SpreadMessage;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 
@@ -21,14 +29,12 @@ public class Initializer {
     private Boolean initializing;
     private ServerImpl server;
     private ClusterReplicationService service;
-    private Connection connection;
 
     public Initializer(ServerImpl server, ClusterReplicationService service, Connection connection){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
         this.service = service;
-        this.connection = connection;
     }
 
     public boolean isInitializing(SpreadMessage spreadMessage, Consumer<SpreadMessage> respondMessage){
@@ -36,26 +42,15 @@ public class Initializer {
             if(initializing){
                 Message received = (Message) spreadMessage.getObject();
                 // apagar este if e o seu conteudo quando se remover o state
-                if(received instanceof StateTransferMessage){
-                    //TODO URGENTE
-                    //server.setState(((StateTransferMessage) received).getState());
-                    System.out.println("Received state transfer");
-                    StateTransferMessage stm = (StateTransferMessage) received;
-                    ArrayList<String> logs = stm.getState().getBusinessState();
-                    server.rebuildCertifier(stm.getState().getCertifierState());
-                    server.updateQueries(logs, server.getLogReader().getPath(), this.connection);
+                if (received instanceof GetTimeStampMessage){
+                    System.out.println("Received request for my timestamp");
+                    long timestamp = server.getTimestampReader().getTimestamp();
+                    Message timeStampMessage = new SendTimeStampMessage(timestamp);
+                    service.noAgreementFloodMessage(timeStampMessage, spreadMessage.getSender());
+                } else if (received instanceof DBReplicationMessage){
+                    handleDBReplicationMessage((DBReplicationMessage) received);
                     initializing = false;
-                    for(SpreadMessage sm : messageQueue){
-                        respondMessage.accept(sm);
-                    }
-                    messageQueue = null;
-                } else if (received instanceof GetLengthRequestMessage){
-                    System.out.println("Received logs length request");
-                    int logSize = Math.max(0, server.getLogReader().size());
-                    long latestTimestamp = server.certifier.getTimestamp();
-                    Message logsLength = new StateLengthReplyMessage(new ReplicaLatestState(latestTimestamp, logSize));
-                    service.noAgreementFloodMessage(logsLength, spreadMessage.getSender());
-                }  else {
+                } else {
                     messageQueue.add(spreadMessage);
                 }
             }
@@ -63,6 +58,23 @@ public class Initializer {
             e.printStackTrace();
         }
          return initializing;
+    }
+
+    private void handleDBReplicationMessage(DBReplicationMessage received) throws Exception {
+        System.out.println("Received DBReplicationMessage");
+        String script = received.getScript();
+        ArrayList<String> queries = received.getLogs();
+        long lowWaterMark = received.getLowWaterMark();
+        long timeStamp = received.getTimeStamp();
+        List<WriteSet> writeSets = received.getWriteSets();
+        if(script != null){
+            Files.write(Path.of("db/" + server.getPrivateName() + ".script"), script.getBytes());
+        }
+        server.updateQueries(queries, service.getDbConnection());
+        Certifier certifier = server.getCertifier();
+        certifier.setLowWaterMark(lowWaterMark);
+        certifier.setTimestamp(timeStamp);
+        //TODO Adicionar o writeSets ao certifier
     }
 
     public void initialized(){

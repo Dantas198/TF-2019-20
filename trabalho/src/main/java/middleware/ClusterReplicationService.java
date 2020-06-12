@@ -1,12 +1,13 @@
 package middleware;
 
 import middleware.certifier.WriteSet;
-import middleware.message.Message;
-import middleware.message.WriteMessage;
+import middleware.message.*;
 import middleware.message.replication.*;
 import spread.*;
 
 import java.net.InetAddress;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
@@ -18,6 +19,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
     private final SpreadConnection spreadConnection;
     private final SpreadGroup spreadGroup;
     private final int port;
+    private Connection dbConnection;
 
     //Caso sejam necessário acks poderá ser utilizada esta estrutura
     //private Map<String, List<Message>> cachedMessages;
@@ -48,6 +50,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         this.spreadConnection = new SpreadConnection();
         this.server = server;
         this.initializer = new Initializer(server, this, connection);
+        this.dbConnection = connection;
         //this.cachedMessages = new HashMap<>();
         //TODO recover do estado
 
@@ -136,9 +139,9 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         SpreadGroup newMember = info.getJoined();
 
         //TODO ENVIAR ESTADO CORRETO. De momento não funciona
-        System.out.println("Server : " + privateName + ", I'm leader. Sending state to " + newMember);
+        System.out.println("Server : " + privateName + ", I'm leader. Requesting latest timestamp to " + newMember);
         //TODO enviar apenas o que interessa do certifier
-        Message message = new GetLengthRequestMessage();
+        Message message = new GetTimeStampMessage();
         noAgreementFloodMessage(message, newMember);
     }
 
@@ -264,6 +267,35 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         });
     }
 
+    private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {
+        long timeStamp = msg.getBody();
+        System.out.println("Handling SendTimeStampMessage");
+        String script = null;
+        long currentLowWaterMark = server.getCertifier().getLowWaterMark();
+        long currentTimeStamp = server.getCertifier().getTimestamp();
+        List<WriteSet> writes = new LinkedList<>();
+        ArrayList<String> queries = server.getLogReader().getLogsAfter(timeStamp);
+        HashMap<String, HashMap<Long, WriteSet<K>>> tables = server.getCertifier().getWritesPerTable();
+        if(queries.size() == 0){
+            script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));
+        }
+        if(currentLowWaterMark < timeStamp){
+            for(HashMap<Long, WriteSet<K>> table : tables.values()){
+                writes.addAll(table.values());
+            }
+        } else {
+            for(HashMap<Long, WriteSet<K>> table : tables.values()){
+                for(long wsTimeStamp : table.keySet())
+                    if(wsTimeStamp > timeStamp)
+                        writes.add(table.get(wsTimeStamp));
+            }
+        }
+        Message response = new DBReplicationMessage(script, queries, currentLowWaterMark, currentTimeStamp, writes);
+        noAgreementFloodMessage(response, sender);
+    }
+
+
+
 
     public AdvancedMessageListener messageListener() {
         return new AdvancedMessageListener() {
@@ -298,6 +330,9 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                         } else if (received instanceof SafeDeleteMessage) {
                             // enviada pelo líder depois de obter as respostas ao SafeDeleteRequest
                             handleSafeDeleteMessage((SafeDeleteMessage) received);
+                        } else if (received instanceof SendTimeStampMessage){
+                            // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
+                            handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         }
                         /*
                         cachedMessages.putIfAbsent(received.getId(), new ArrayList<>());
@@ -314,6 +349,7 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
                     e.printStackTrace();
                 }
             }
+
             @Override
             public void membershipMessageReceived(SpreadMessage spreadMessage) {
                 try {
@@ -395,6 +431,10 @@ public class ClusterReplicationService<K, W extends WriteSet<K>> {
         m.setReliable();
         spreadConnection.multicast(m);
         //System.out.println("Sending to group ("+ sg + "): " + message);
+    }
+
+    public Connection getDbConnection() {
+        return dbConnection;
     }
 
     public void stop() throws SpreadException {

@@ -174,4 +174,22 @@ public class Certifier<V, K extends WriteSet<V>> implements Serializable {
     public HashMap<String, ConcurrentHashMap<Long, Integer>> getRunningTransactionsPerTable() {
         return runningTransactionsPerTable;
     }
+
+    public void setLowWaterMark(long lowWaterMark) {
+        try {
+            rwl.readLock().lock();
+            this.lowWaterMark = lowWaterMark;
+        }finally {
+            rwl.readLock().unlock();
+        }
+    }
+
+    public void setTimestamp(long timestamp) {
+        try {
+            rwl.readLock().lock();
+            this.timestamp = timestamp;
+        }finally {
+            rwl.readLock().unlock();
+        }
+    }
 }
