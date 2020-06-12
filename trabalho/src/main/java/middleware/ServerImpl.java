@@ -8,7 +8,7 @@ import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
 import middleware.certifier.Certifier;
 import middleware.certifier.TaggedObject;
-import middleware.certifier.WriteSet;
+import middleware.certifier.OperationSet;
 import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
 import middleware.message.Message;
@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Serializable> implements Server {
+public abstract class ServerImpl<K, W extends OperationSet<K>, STATE extends Serializable> implements Server {
 
     private final ClusterReplicationService<K,W> replicationService;
     private final Serializer s;
@@ -244,7 +244,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
 
     protected CompletableFuture<FullState<K>> getState(int lowerBound, long latestTimestamp){
         return CompletableFuture.supplyAsync(() -> {
-            HashMap<String, HashMap<Long, WriteSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
+            HashMap<String, HashMap<Long, OperationSet<K>>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
             try {
                 FullState<K> state = new FullState<>(logReader.getQueries(lowerBound), writes);
                 logReader.resetQueries();
@@ -256,7 +256,7 @@ public abstract class ServerImpl<K, W extends WriteSet<K>, STATE extends Seriali
         }, certifierExecutor);
     }
 
-    public void rebuildCertifier(HashMap<String, HashMap<Long, WriteSet<K>>> c){
+    public void rebuildCertifier(HashMap<String, HashMap<Long, OperationSet<K>>> c){
         this.certifier.addState(c);
     }
 

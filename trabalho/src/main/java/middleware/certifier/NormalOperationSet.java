@@ -3,14 +3,14 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-public class NormalWriteSet implements Serializable, WriteSet<Set<String>> {
+public class NormalOperationSet implements Serializable, OperationSet<Set<String>> {
     private HashSet<String> set;
 
-    public NormalWriteSet() {
+    public NormalOperationSet() {
         this(1024);
     }
 
-    public NormalWriteSet(int nbits) {
+    public NormalOperationSet(int nbits) {
         this.set = new HashSet<>(nbits);
     }
 
@@ -25,8 +25,8 @@ public class NormalWriteSet implements Serializable, WriteSet<Set<String>> {
     }
 
     @Override
-    public boolean intersects(WriteSet<Set<String>> ws) {
-        NormalWriteSet nws = (NormalWriteSet) ws;
+    public boolean intersects(OperationSet<Set<String>> ws) {
+        NormalOperationSet nws = (NormalOperationSet) ws;
         for(String s : nws.getSet())
             if (this.set.contains(s))
                 return true;

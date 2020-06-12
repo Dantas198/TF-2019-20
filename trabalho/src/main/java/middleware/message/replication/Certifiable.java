@@ -1,8 +1,5 @@
 package middleware.message.replication;
 
-import middleware.certifier.BitWriteSet;
-import middleware.certifier.WriteSet;
-
 import java.util.Map;
 import java.util.Set;
 
