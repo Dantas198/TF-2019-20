@@ -31,10 +31,10 @@ public class Sets<V> {
         else if (this.readSet == null)
             return writeSet.intersects(writeSet);
 
-        return writeSet.intersects(writeSet) && writeSet.intersects(readSet);
+        return writeSet.intersects(writeSet) || writeSet.intersects(readSet);
     }
 
     public boolean intersect(Sets<V> set){
-        return intersectWrite(set.getWriteSet()) && intersectRead(set.getReadSet());
+        return intersectWrite(set.getWriteSet()) || intersectRead(set.getReadSet());
     }
 }
