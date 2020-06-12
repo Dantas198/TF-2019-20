@@ -22,12 +22,15 @@ public class Initializer {
     private ServerImpl<?> server;
     private ClusterReplicationService service;
     private Connection connection;
+    private String privateName;
 
-    public Initializer(ServerImpl<?> server, ClusterReplicationService service, Connection connection){
+    public Initializer(ServerImpl<?> server, ClusterReplicationService service, Connection connection, String privateName){
         this.server = server;
         this.messageQueue = new LinkedList<>();
         this.initializing = true;
         this.service = service;
+        this.connection = connection;
+        this.privateName = privateName;
     }
 
     public boolean isInitializing(SpreadMessage spreadMessage, Consumer<SpreadMessage> respondMessage){
