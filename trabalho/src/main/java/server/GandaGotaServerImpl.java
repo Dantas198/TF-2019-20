@@ -19,6 +19,7 @@ import business.product.ProductPlaceholder;
 import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
+import middleware.GlobalEvent;
 import middleware.certifier.*;
 import middleware.ServerImpl;
 import middleware.message.ContentMessage;
@@ -51,7 +52,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                Connection connection,
                                int totalServerCount,
                                String logPath) throws Exception {
-        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath);
+        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath, new ArrayList<>());
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
         this.connection = connection;
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
@@ -208,6 +209,11 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     @Override
     public void rollback(){
         System.out.println("Server : " + this.getPrivateName() + " rollback");
+    }
+
+    @Override
+    public void handleGlobalEvent(GlobalEvent e) {
+        //TODO
     }
 
     @Override
