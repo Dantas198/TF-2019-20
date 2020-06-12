@@ -62,7 +62,6 @@ public class Initializer {
         ArrayList<Pair<String, Long>> queries = received.getLogs();
         long lowWaterMark = received.getLowWaterMark();
         long timeStamp = received.getTimeStamp();
-        HashMap<String, HashMap<Long, OperationalSets>> writeSets = received.getWriteSets();
         if(script != null){
             Files.write(Path.of("db/" + server.getPrivateName() + ".script"), script.getBytes());
         }
@@ -70,7 +69,6 @@ public class Initializer {
         Certifier certifier = server.getCertifier();
         certifier.setLowWaterMark(lowWaterMark);
         certifier.setTimestamp(timeStamp);
-        //TODO Adicionar o writeSets ao certifier
     }
 
     public void initialized(){

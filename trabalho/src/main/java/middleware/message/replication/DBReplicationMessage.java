@@ -12,11 +12,9 @@ public class DBReplicationMessage extends Message {
     private ArrayList<Pair<String, Long>> logs;
     private Long lowWaterMark;
     private Long timeStamp;
-    private HashMap<String, HashMap<Long, OperationalSets>> writeSets;
 
     public DBReplicationMessage(String script, ArrayList<Pair<String, Long>> logs, long lowWaterMark,
                                 long timeStamp, HashMap<String, HashMap<Long, OperationalSets>> writeSets){
-        this.writeSets = writeSets;
         this.script = script;
         this.logs = logs;
         this.lowWaterMark = lowWaterMark;
@@ -37,9 +35,5 @@ public class DBReplicationMessage extends Message {
 
     public Long getTimeStamp() {
         return timeStamp;
-    }
-
-    public HashMap<String, HashMap<Long, OperationalSets>> getWriteSets() {
-        return writeSets;
     }
 }
