@@ -146,7 +146,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     @Override
     public void updateStateFromCommitedWrite(CertifyWriteMessage<?> message) {
-        //TODO
+        //TODO RETIRAR
         //TESTE
         System.out.println("Server : " + this.getPrivateName() + " update state from commit");
         try {
@@ -205,8 +205,8 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void rollback(){
-        System.out.println("Server : " + this.getPrivateName() + " rollback");
+    public void rollback(CertifyWriteMessage<?> message){
+        System.out.println("Server : " + this.getPrivateName() + " rollback from message: " + message.getId());
     }
 
     @Override

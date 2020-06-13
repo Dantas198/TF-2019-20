@@ -2,34 +2,24 @@ package middleware.dbutils;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ConnectionManager<K> {
+public abstract class ConnectionReaderManager<K> {
     private final Queue<K> freeConnections;
-    private final Queue<CompletableFuture<K>> writesOnWait;
+    private Queue<CompletableFuture<K>> readersWaiting;
 
     //TODO o lock vai depender de como usamos a classe. Ver melhor depois
     private ReentrantLock rl;
     private final int maxWriteConnectionNumber;
     private int currentConnections;
 
-    private List<K> readersPool;
-
-    public ConnectionManager(int maxWriteConnectionNumber){
-        this.freeConnections = new LinkedList<>();
-        this.writesOnWait = new LinkedList<>();
+    public ConnectionReaderManager(int maxWriteConnectionNumber){
+        this.freeConnections = new ConcurrentLinkedQueue<>();
+        this.readersWaiting = new ConcurrentLinkedQueue<>();
         this.rl = new ReentrantLock();
         this.maxWriteConnectionNumber = maxWriteConnectionNumber;
         this.currentConnections = 0;
-        this.readersPool = new ArrayList<>(1);
-        this.readersPool.add(produceConnection());
-    }
-
-    public ConnectionManager(int maxWriteConnectionNumber, int readersPoolSize){
-        this(maxWriteConnectionNumber);
-        readersPool = new ArrayList<>();
-        for(int i = 0; i < readersPoolSize; i++)
-            readersPool.add(produceConnection());
     }
 
     /**
@@ -38,12 +28,12 @@ public abstract class ConnectionManager<K> {
      */
     public abstract K produceConnection();
 
-    public CompletableFuture<K> assignWriteRequest(){
+    public CompletableFuture<K> assignRequest(){
         try {
             rl.lock();
             if (freeConnections.isEmpty() && currentConnections == maxWriteConnectionNumber) {
                 CompletableFuture<K> cf = new CompletableFuture<>();
-                writesOnWait.add(cf);
+                readersWaiting.add(cf);
                 return cf;
             }
             K offered_connection;
@@ -63,8 +53,8 @@ public abstract class ConnectionManager<K> {
     public void releaseConnection(K connection){
         try{
             rl.lock();
-            if (!writesOnWait.isEmpty())
-                writesOnWait.poll().complete(connection);
+            if (!readersWaiting.isEmpty())
+                readersWaiting.poll().complete(connection);
             else
                 freeConnections.add(connection);
         }finally {
@@ -84,10 +74,5 @@ public abstract class ConnectionManager<K> {
         }finally {
             rl.unlock();
         }
-    }
-
-    public K getReadConnection(){
-        Random rand = new Random();
-        return readersPool.get(rand.nextInt(readersPool.size()));
     }
 }

@@ -28,15 +28,17 @@ public class OperationalSets implements Serializable {
     public boolean intersectWrite(BitOperationSet writeSet){
         if (writeSet == null)
             return false;
+        else if (this.writeSet != null && this.readSet != null)
+            return writeSet.intersects(this.writeSet) || writeSet.intersects(this.readSet);
         else if (this.writeSet == null)
             return writeSet.intersects(this.readSet);
-        else if (this.readSet == null)
-            return writeSet.intersects(writeSet);
-
-        return writeSet.intersects(writeSet) || writeSet.intersects(readSet);
+        else
+            return writeSet.intersects(this.writeSet);
     }
 
     public boolean intersect(OperationalSets set){
+        System.out.println("intersect write: " + intersectWrite(set.getWriteSet()));
+        System.out.println("intersect read: " + intersectRead(set.getReadSet()));
         return intersectWrite(set.getWriteSet()) || intersectRead(set.getReadSet());
     }
 }

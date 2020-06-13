@@ -1,6 +1,5 @@
 import middleware.certifier.BitOperationSet;
 import middleware.certifier.Certifier;
-import middleware.certifier.NoTableDefinedException;
 import middleware.certifier.OperationalSets;
 import org.junit.Test;
 
@@ -19,11 +18,12 @@ public class CertifierTest {
             c.commit(ws);
             c.shutDownLocalStartedTransaction(ws.keySet(), ts);
             System.out.println("Commited");
+            return false;
+        }
+        else {
+            System.out.println("Had conflict on ts: " + ts);
             return true;
         }
-        else
-            System.out.println("Had conflict on ts: " + ts);
-        return false;
     }
 
 
@@ -34,46 +34,56 @@ public class CertifierTest {
     }
 
     @Test
-    public void test() throws NoTableDefinedException {
-        int running = 0;
+    public void test() {
 
         this.c = new Certifier();
-/*
-        BitOperationSet bws1 = new BitOperationSet();
-        bws1.add("marco");
-        BitOperationSet bws11 = new BitOperationSet();
-        bws11.add("bananas");
+        int running = 0;
+        BitOperationSet write1 = new BitOperationSet();
+        write1.add("marco");
+        BitOperationSet read1 = new BitOperationSet();
+        write1.add("marco");
 
-        BitOperationSet bws2 = new BitOperationSet();
-        bws2.add("cesar");
-        bws2.add("daniel");
+        OperationalSets os1 = new OperationalSets(write1, read1);
 
-        BitOperationSet bws3 = new BitOperationSet();
-        bws3.add("cesar");
-        bws3.add("carlos");
+        BitOperationSet write11 = new BitOperationSet();
+        write11.add("bananas");
 
-        HashMap<String, BitOperationSet> ws1 = new HashMap<>();
-        ws1.put("customer", bws1);
-        ws1.put("products", bws11);
+        OperationalSets os11 = new OperationalSets(write11, null);
 
-        HashMap<String, BitOperationSet> ws2 = new HashMap<>();
-        ws2.put("customer", bws2);
+        BitOperationSet write2 = new BitOperationSet();
+        write2.add("cesar");
+        write2.add("daniel");
 
-        HashMap<String, BitOperationSet> ws3 = new HashMap<>();
-        ws3.put("customer", bws3);
+        OperationalSets os2 = new OperationalSets(write2, null);
+
+        BitOperationSet write3 = new BitOperationSet();
+        write3.add("cesar");
+        write3.add("carlos");
+
+        OperationalSets os3 = new OperationalSets(write3, null);
+
+        HashMap<String, OperationalSets> ws1 = new HashMap<>();
+        ws1.put("customer", os1);
+        ws1.put("products", os11);
+
+        HashMap<String, OperationalSets> ws2 = new HashMap<>();
+        ws2.put("customer", os2);
+
+        HashMap<String, OperationalSets> ws3 = new HashMap<>();
+        ws3.put("customer", os3);
 
         long t1 = startTransaction(ws1.keySet());
         long t11 = startTransaction(ws2.keySet());
         running += 2;
 
-        assertTrue("Shouldn't conflict", checkConflict(ws1, t1));
+        assertTrue("Shouldn't conflict 1", !checkConflict(ws1, t1));
         running--;
 
         long t2 = startTransaction(ws3.keySet());
-        assertTrue("Shouldn't conflict", checkConflict(ws2, t11));
+        assertTrue("Shouldn't conflict 2", !checkConflict(ws2, t11));
         running--;
 
-        assertTrue("Should conflict", !checkConflict(ws3, t2));
+        assertTrue("Should conflict", checkConflict(ws3, t2));
 
         //started and not commited
         long t3 = startTransaction(ws2.keySet());
@@ -81,11 +91,8 @@ public class CertifierTest {
 
         long newLowWaterMark = c.getSafeToDeleteTimestamp();
 
-        System.out.println("running: " + c.getRunningTransactionsPerTable().toString());
-
         c.evictStoredWriteSets(newLowWaterMark);
         assertEquals(c.getLowWaterMark(), t1);
 
- */
     }
 }

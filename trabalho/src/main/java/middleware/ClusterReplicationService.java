@@ -163,7 +163,6 @@ public class ClusterReplicationService {
                             handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         } else if (received instanceof GlobalEventMessage){
 
-
                         }
                     }
                 } catch (Exception e) {
@@ -238,8 +237,6 @@ public class ClusterReplicationService {
         System.out.println(privateName + ": Member: " + newMember);
         if(imLeader) {
             System.out.println(privateName + ": I'm leader. Requesting state diff from " + newMember);
-            //TODO URGENTISSIMO -> ENVIAR ESTADO CORRETO. De momento não funciona
-            //TODO enviar apenas o que interessa do certifier
             Message message = new GetTimeStampMessage();
             noAgreementFloodMessage(message, newMember);
         }
