@@ -24,7 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ServerImpl<STATE extends Serializable> implements Server {
+public abstract class ServerImpl implements Server {
 
     private final ClusterReplicationService replicationService;
     private final Serializer s;
@@ -118,16 +118,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         isPaused = false;
     }
 
-    public Collection<Pair<String, Long>> getQueries(int from){
-        try {
-            return logReader.getQueries(from);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            //alterar
-            return new LinkedList<>();
-        }
-    }
-
     public void updateQueries(Collection<Pair<String, Long>> queries, Connection c){
         try {
             System.out.println("Updating queries (size: " + queries.size() + ")");
@@ -144,7 +134,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            //TODO: Parar execução
         }
     }
 
@@ -153,8 +142,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * joining the server reaches a consistent state. When on a consistent state the server can listen to clients requests
      * server
      */
-    //TODO pode ouvir os pedidos dos clientes mesmo sem estar consistente e guarda-os,
-    // mas é discutível, porque um cliente pode ligar-se a outro e talvez ser atendido mais rapidamente
     @Override
     public void start() throws Exception {
         replicationService.start().thenAccept(x -> {
@@ -170,7 +157,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * server
      */
 
-    //TODO não mexer sem perguntar !!
     protected void handleCertifierAnswer(CertifyWriteMessage<?> message){
         CompletableFuture.runAsync(() -> {
             boolean isWritable = certifier.isWritable(message.getSets(), message.getStartTimestamp());
@@ -198,7 +184,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                     rollback(message);
                 }
             } catch (Exception e) {
-                // TODO: verificar se parar o programa é a melhor opção e ver isto do sendReply
                 sendReply(new ContentMessage<>(false), cli);
                 // If exception should stop program
                 this.stop();

@@ -9,7 +9,6 @@ public abstract class ConnectionReaderManager<K> {
     private final Queue<K> freeConnections;
     private Queue<CompletableFuture<K>> readersWaiting;
 
-    //TODO o lock vai depender de como usamos a classe. Ver melhor depois
     private ReentrantLock rl;
     private final int maxWriteConnectionNumber;
     private int currentConnections;

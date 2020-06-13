@@ -1,5 +1,6 @@
 package middleware;
 
+import middleware.message.LeaderProposal;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import middleware.reader.Pair;
@@ -21,10 +22,10 @@ public class ClusterReplicationService {
     private final int port;
     private Connection dbConnection;
     private final Initializer initializer;
-    private final ElectionManager electionManager;
+    ElectionManager electionManager;
     private boolean imLeader;
 
-    private ServerImpl<?> server;
+    private ServerImpl server;
     private CompletableFuture<Void> started;
 
     // safe delete
@@ -39,7 +40,7 @@ public class ClusterReplicationService {
     private List<CompletableFuture<Void>> stateRequests;
     private final List<GlobalEvent> events;
 
-    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection, List<GlobalEvent> events){
+    public ClusterReplicationService(int spreadPort, String privateName, ServerImpl server, int totalServers, Connection connection, List<GlobalEvent> events){
         this.totalServers = totalServers;
         this.privateName = privateName;
         this.port = spreadPort;
@@ -49,8 +50,6 @@ public class ClusterReplicationService {
         this.initializer = new Initializer(server, this, privateName);
         this.dbConnection = connection;
         this.events = events;
-
-        this.electionManager = new ElectionManager(this.spreadGroup);
         this.imLeader = false;
 
         this.evicting = false;
@@ -73,14 +72,35 @@ public class ClusterReplicationService {
         this.spreadConnection.disconnect();
     }
 
-
     public Connection getDbConnection() {
         return dbConnection;
+    }
+
+    protected boolean isInMainPartition() {
+        return this.members.length > totalServers/2;
+    }
+
+    protected SpreadGroup getPrivateSpreadGroup(){
+        return this.spreadConnection.getPrivateGroup();
+    }
+
+    private void requestLeaderState(SpreadGroup leader){
+        Message message = null;
+        try {
+            message = new SendTimeStampMessage(new LeaderProposal(server.getTimestamp(), electionManager.getGroupsLeftForLeader()));
+            noAgreementFloodMessage(message, leader);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // ###################################################################
     // Messaging Utilities
     // ###################################################################
+
+    public Set<SpreadGroup> getGroupsLeftForLeader(){
+        return this.electionManager.getGroupsLeftForLeader();
+    }
 
     public void floodMessage(Message msg) throws Exception {
         safeFloodMessage(msg, this.spreadGroup);
@@ -133,12 +153,11 @@ public class ClusterReplicationService {
             @Override
             public void regularMessageReceived(SpreadMessage spreadMessage) {
                 try {
-
                     if (!initializer.isInitializing(spreadMessage)) {
                         if(!started.isDone())
                             started.complete(null);
 
-                        if(isInMainPartition(members)) // no caso de estar em pausa por causa de partições
+                        if(isInMainPartition()) // no caso de estar em pausa por causa de partições
                             server.unpause();
 
                         Message received = (Message) spreadMessage.getObject();
@@ -164,6 +183,28 @@ public class ClusterReplicationService {
                             handleGlobalEventMessage((GlobalEventMessage) received);
                         }
                     }
+                //se não iniciou ainda poderá estar à espera da eleição do líder
+                else{
+                    //já estamos num grupo maioritário e o líder ainda não foi eleito então elege-se
+                    if(isInMainPartition() && !electionManager.isElectionTerminated()){
+                        SpreadGroup privateGroup = spreadConnection.getPrivateGroup();
+                        electionManager.elect();
+                        //se sou o líder posso iniciar logo
+                        if (electionManager.getMainCandidate().equals(privateGroup)){
+                            System.out.println("Becoming leader");
+                            imLeader = true;
+                            initializer.initialized();
+                            scheduleLeaderEvents();
+                            if (!started.isDone())
+                                started.complete(null);
+                        }
+                        //não sou lider peço o estado a quem é
+                        else{
+                            System.out.println("Not a leader. Requesting leader state");
+                            requestLeaderState(electionManager.getMainCandidate());
+                        }
+                    }
+                }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -173,20 +214,22 @@ public class ClusterReplicationService {
                 try {
                     MembershipInfo info = spreadMessage.getMembershipInfo();
 
-                    if(info.isRegularMembership()) {
-                        members = info.getMembers();
-                    } else return;
-
+                    if(!info.isRegularMembership()) {
+                        return;
+                    }
                     if(info.isCausedByJoin()) {
+                        members = info.getMembers();
                         handleJoin(info);
                     }
                     else if(info.isCausedByNetwork()) {
                         handleNetworkPartition(info);
                     }
                     else if(info.isCausedByDisconnect()) {
+                        members = info.getMembers();
                         handleDisconnect(info);
                     }
                     else if(info.isCausedByLeave()) {
+                        members = info.getMembers();
                         handleLeave(info);
                     }
                 } catch(Exception e){
@@ -201,60 +244,49 @@ public class ClusterReplicationService {
     // Handling MembershipMessage
     // ###################################################################
 
-    private boolean isInMainPartition(SpreadGroup[] partition) {
-        return partition.length > totalServers/2;
-    }
-
     private void handleNetworkPartition(MembershipInfo info) {
-        SpreadGroup[] stayed = info.getStayed(); // usar getMembers?
         System.out.println(privateName + ": MembershipMessage received -> network partition");
-        System.out.println(privateName + ": Partition members: " + Arrays.toString(stayed));
-        if(isInMainPartition(stayed)) {
+        System.out.println(privateName + ": Partition members: " + Arrays.toString(this.members));
+
+        Set<SpreadGroup> oldset = new HashSet<>(Arrays.asList(this.members));
+        Set<SpreadGroup> newset = new HashSet<>(Arrays.asList(info.getMembers()));
+
+        oldset.removeAll(newset);
+
+        if(isInMainPartition()) {
             System.out.println(privateName + ": I'm in main partition");
             if(!imLeader) {
-                imLeader = electionManager.amILeader(stayed);
-
+                imLeader = electionManager.amILeader(this.members);
                 if (imLeader){
                     scheduleLeaderEvents();
+                    if(evicting)
+                        sdRequested.removeAll(oldset);
                     System.out.println(privateName + ": Assuming leader role");
                 }
             }
         } else {
-            System.out.println(privateName + ": I'm not in main partition, pausing server");
+            System.out.println(privateName + ": Not a main partition, pausing server");
             server.pause();
             initializer.reset();
+            //caso seja o líder deixa de ser. Na verdade o electionManager leva reset quando entra num grupo
+            imLeader = false;
         }
     }
 
-    private void handleJoin(MembershipInfo info) throws Exception {
+    private void handleJoin(MembershipInfo info) throws Exception{
         SpreadGroup newMember = info.getJoined();
         if(newMember.equals(spreadConnection.getPrivateGroup())) {
-            handleSelfJoin(info);
-            return;
-        }
-        System.out.println(privateName + ": MembershipMessage received -> join");
-        System.out.println(privateName + ": Member: " + newMember);
-        if(imLeader) {
-            System.out.println(privateName + ": I'm leader. Requesting state diff from " + newMember);
-            Message message = new GetTimeStampMessage();
-            noAgreementFloodMessage(message, newMember);
-        }
-    }
-
-    private void handleSelfJoin(MembershipInfo info) {
-        System.out.println(privateName + ": MembershipMessage received -> self join");
-
-        SpreadGroup[] members = info.getMembers();
-        electionManager.joinedGroup(members);
-
-        if (members.length == 1) {
-            System.out.println(privateName + ": I'm the first member");
-            // é o primeiro servidor, não precisa de transferência de estado
-            initializer.initialized();
-            imLeader = true;
-            scheduleLeaderEvents();
-            if (!started.isDone())
-                started.complete(null);
+            SpreadGroup[] members = info.getMembers();
+            this.electionManager = new ElectionManager(this.spreadGroup, spreadConnection.getPrivateGroup());
+            electionManager.joinedGroup(members);
+        }else{
+            System.out.println(privateName + ": MembershipMessage received -> join");
+            System.out.println(privateName + ": Member: " + newMember);
+            if(imLeader || !electionManager.isElectionTerminated()) {
+                System.out.println(privateName + ": I'm leader. Requesting state diff from " + newMember);
+                Message message = new GetTimeStampMessage(new LeaderProposal(server.getTimestamp(), electionManager.getGroupsLeftForLeader()));
+                noAgreementFloodMessage(message, newMember);
+            }
         }
     }
 
@@ -272,14 +304,23 @@ public class ClusterReplicationService {
     }
 
     private void handleDL(SpreadGroup member) {
-        imLeader = electionManager.amILeader(member);
-        System.out.println(privateName + ": Member: " + member);
-        if (imLeader){
-            System.out.println(privateName + ": Assuming leader role");
-            scheduleLeaderEvents();
-            if(evicting) {
-                sdRequested.remove(member);
+        if (isInMainPartition()){
+            imLeader = electionManager.amILeader(member);
+            System.out.println(privateName + ": Member: " + member);
+            if (imLeader){
+                System.out.println(privateName + ": Assuming leader role");
+                scheduleLeaderEvents();
+                if(evicting) {
+                    sdRequested.remove(member);
+                }
             }
+        }
+        else{
+            System.out.println(privateName + ": Not a main partition, pausing server");
+            server.pause();
+            initializer.reset();
+            //caso seja o líder deixa de ser. Na verdade o electionManager leva reset quando entra num grupo
+            imLeader = false;
         }
     }
 
@@ -339,7 +380,7 @@ public class ClusterReplicationService {
     }
 
     private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {
-        long timeStamp = msg.getBody();
+        long timeStamp = msg.getBody().getTs();
         System.out.println("Handling SendTimeStampMessage");
         String script = null;
         long currentLowWaterMark = server.getCertifier().getLowWaterMark();

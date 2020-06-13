@@ -39,7 +39,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
-public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
+public class GandaGotaServerImpl extends ServerImpl {
 
     private Connection connection;
     private Duration tmax = Duration.ofSeconds(30);
