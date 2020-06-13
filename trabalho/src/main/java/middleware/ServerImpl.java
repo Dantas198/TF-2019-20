@@ -6,9 +6,7 @@ import io.atomix.cluster.messaging.impl.NettyMessagingService;
 import io.atomix.utils.net.Address;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
-import middleware.certifier.Certifier;
-import middleware.certifier.OperationalSets;
-import middleware.certifier.TaggedObject;
+import middleware.certifier.*;
 import middleware.message.replication.GlobalEventMessage;
 import middleware.reader.LogReader;
 import middleware.message.ContentMessage;
@@ -17,7 +15,6 @@ import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
 import middleware.message.replication.FullState;
 import middleware.reader.Pair;
-import middleware.reader.TimestampReader;
 import spread.SpreadException;
 
 import java.io.IOException;
@@ -89,9 +86,10 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * the request and then it is passed down the certification pipeline
      * server
      * @param message The body Message received
+     * @param updates The class that stores all data that should be persisted
      * @return the message body of the response
      */
-    public abstract CertifyWriteMessage<?> handleWriteMessage(WriteMessage<?> message);
+    public abstract boolean handleWriteMessage(WriteMessage<?> message, StateUpdates<String, Serializable> updates);
 
     /**
      * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
@@ -313,8 +311,9 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             try {
                 if(request instanceof WriteMessage) {
                     System.out.println("Server " + privateName + " handling the request with group members, certification needed");
-                    CertifyWriteMessage<?> cwm = handleWriteMessage((WriteMessage<?>) request);
-                    if(cwm != null) {
+                    StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
+                    if(handleWriteMessage((WriteMessage<?>) request, updates)) {
+                        CertifyWriteMessage<?> cwm = new CertifyWriteMessage<>(updates.getSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
                         startTransaction(requester, cwm);
                     } else {
                         // error

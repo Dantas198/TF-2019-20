@@ -4,6 +4,7 @@ import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.data.DAO;
+import business.data.DBInitialization;
 import business.data.customer.CustomerCertifierDAO;
 import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderCertifierDAO;
@@ -20,6 +21,7 @@ import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
 import middleware.GlobalEvent;
+import middleware.Server;
 import middleware.certifier.*;
 import middleware.ServerImpl;
 import middleware.message.ContentMessage;
@@ -109,10 +111,10 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     /**
      * returns null if execution fails
-    */
+     * @return
+     */
     @Override
-    public CertifyWriteMessage<?> handleWriteMessage(WriteMessage<?> message){
-        StateUpdates<String, Serializable> updates = new StateUpdatesBitSet<>();
+    public boolean handleWriteMessage(WriteMessage<?> message, StateUpdates<String, Serializable> updates){
         SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates, tmax);
         boolean success = false;
 
@@ -138,10 +140,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
         }
 
-        if(success)
-            return new CertifyWriteMessage<>(updates.getSets(), (LinkedHashSet<TaggedObject<String, Serializable>>) updates.getAllUpdates());
-
-        return null;
+        return success;
     }
 
 
@@ -231,5 +230,38 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String serverName = args[0];
+        int i = Integer.parseInt(args[1]);
+        int totalServerCount = Integer.parseInt(args[2]);
+        String serverVersion = args[3];
+        Connection connection = initDatabase(serverName, 9000 + i);
+        initServer(serverName + "(" + serverVersion + ")", 6000 + i, connection, totalServerCount, "db/" + serverName + ".log");
+        System.out.println(serverName + "(" + serverVersion + ")");
+    }
+
+    private static Connection initDatabase(String serverName, int port) throws SQLException {
+        HSQLServer server = new HSQLServer();
+        server.setPort(port);
+        server.addDatabase(serverName);
+        server.start();
+        Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + port, "user", "password");
+        DBInitialization dbInit = new DBInitialization(connection);
+        if(!dbInit.exists()) {
+            dbInit.init();
+        }
+        return connection;
+    }
+
+    private static Server initServer(String serverName,
+                             int atomixPort,
+                             Connection connection,
+                             int totalServerCount,
+                             String logPath) throws Exception {
+        GandaGotaServerImpl server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath);
+        server.start();
+        return server;
     }
 }
