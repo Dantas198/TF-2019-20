@@ -213,7 +213,7 @@ public abstract class ServerImpl implements Server {
         HashMap<String, HashMap<Long, OperationalSets>> map = new HashMap<>();
         ResultSet rs = databaseConnection.prepareCall("SELECT * FROM \"__certifier\"").executeQuery();
         while(rs.next()) {
-            String table = rs.getString("table");
+            String table = rs.getString("table_name");
             long timestamp = rs.getLong("timestamp");
             byte [] data = Base64.getDecoder().decode(rs.getString("keys"));
             ObjectInputStream ois = new ObjectInputStream(
