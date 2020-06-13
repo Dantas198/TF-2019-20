@@ -55,9 +55,9 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                String dbStrConnection,
                                int totalServerCount,
                                String logPath) throws Exception {
-        super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>());
+        super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>(Collections.singletonList(new GlobalEvent("", 1))));
 
-        this.connection = super.getDatabaseConnection();
+        this.connection = DriverManager.getConnection(dbStrConnection);
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
             try {
                 return new OrderProductDAO(connection, id);
@@ -197,6 +197,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     public void handleGlobalEvent(GlobalEvent e) {
         // é sempre garbage collection
         try {
+            System.out.println("Limpeza");
             currentOrderCleaner.clean();
         } catch (SQLException ex) {
             this.stop();
