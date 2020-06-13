@@ -54,7 +54,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                int totalServerCount,
                                String logPath) throws Exception {
         super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>(Collections.singletonList(new GlobalEvent("", 1))));
-        this.connectionManager = new ConnectionReaderManagerImpl(1, dbStrConnection);
+        this.connectionManager = new ConnectionReaderManagerImpl(maxConnection, dbStrConnection);
         this.connection = DriverManager.getConnection(dbStrConnection);
         this.currentOrderCleaner = new CurrentOrderCleaner(connection, tmax);
     }
