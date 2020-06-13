@@ -46,7 +46,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
     private DAO<String, Order> orderCertifierDAO;
-    private Duration tmax = Duration.ofMinutes(1);
+    private Duration tmax = Duration.ofSeconds(30);
     private CurrentOrderCleaner currentOrderCleaner;
 
     public GandaGotaServerImpl(int spreadPort,
@@ -77,7 +77,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         this.productDAO = new ProductSQLDAO(this.connection);
         this.customerDAO = new CustomerSQLDAO(this.connection);
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null, Duration.ofMinutes(1));
-        this.currentOrderCleaner = new CurrentOrderCleaner(connection, Duration.ofSeconds(30));
+        this.currentOrderCleaner = new CurrentOrderCleaner(connection, tmax);
     }
 
     @Override
@@ -201,23 +201,6 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
             currentOrderCleaner.clean();
         } catch (SQLException ex) {
             this.stop();
-        }
-    }
-
-    @Override
-    public ArrayList<String> getState() {
-        return null;
-    }
-
-    @Override
-    public void setState(ArrayList<String> queries) {
-        try {
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/1", "user", "password");
-            for(String query : queries) {
-                c.prepareStatement(query).execute();
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
         }
     }
 

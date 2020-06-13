@@ -130,8 +130,10 @@ public class SuperMarketImpl implements SuperMarket, Serializable {
 	}
 
 	private boolean isClosed(Order order) {
-		long now = calendar.getTime().getTime();
+		long now = Calendar.getInstance().getTimeInMillis();
 		long threshold = now - tmax;
+		System.out.println(new Date(now) + " " + threshold);
+		System.out.println(order.getTimestamp() + " - " + new Date(threshold));
 		long orderTime = order.getTimestamp().getTime();
 		return orderTime < threshold;
 	}

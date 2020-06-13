@@ -113,21 +113,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     public abstract void handleGlobalEvent(GlobalEvent e);
 
-    /**
-     * Get of the state of the current Server
-     * @return the state of the current Server
-     */
-    @Deprecated
-    public abstract STATE getState();
-
-    /**
-     * Set of the state of the Server, used for extended classes to update their state, called when secondary server
-     * receives the updated version
-     * @param state the updated state of the server
-     */
-    @Deprecated
-    public abstract void setState(STATE state);
-
     public void pause() {
         isPaused = true;
     }

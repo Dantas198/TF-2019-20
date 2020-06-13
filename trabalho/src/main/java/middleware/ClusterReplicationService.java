@@ -159,7 +159,7 @@ public class ClusterReplicationService {
                             // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
                             handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         } else if (received instanceof GlobalEventMessage){
-                            server.handleGlobalEvent((GlobalEventMessage) received);
+                            handleGlobalEventMessage((GlobalEventMessage) received);
                         }
                     }
                 } catch (Exception e) {
@@ -332,7 +332,7 @@ public class ClusterReplicationService {
     }
 
 
-    private void handleGlobalEvent(GlobalEventMessage msg){
+    private void handleGlobalEventMessage(GlobalEventMessage msg){
         System.out.println(privateName + ": RegularMessage received -> GlobalEventMessage");
         server.handleGlobalEvent(msg)
             .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
