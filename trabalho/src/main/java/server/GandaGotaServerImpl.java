@@ -104,7 +104,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     /**
      * returns null if execution fails
-     * @return
+     * @return true is there is update to do in the database
      */
     @Override
     public boolean handleWriteMessage(WriteMessage<?> message, StateUpdates<String, Serializable> updates){
@@ -152,7 +152,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void commit(Set<TaggedObject<String, Serializable>> changes, Connection databaseConnection) throws SQLException, ExecutionException, InterruptedException {
+    public void commit(Set<TaggedObject<String, Serializable>> changes, Connection databaseConnection) throws SQLException {
         DAO<String, Order> orderDAO = new OrderSQLDAO(databaseConnection, id -> {
             try {
                 return new OrderProductDAO(databaseConnection, id);
