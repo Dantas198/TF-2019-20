@@ -93,7 +93,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
             if(message instanceof GetHistoryMessage) {
                 ArrayList<Order> response = new ArrayList<>(0);
                 for (Order order:
-                     superMarket.getHistory(((GetHistoryMessage) message).getBody())) {
+                        superMarket.getHistory(((GetHistoryMessage) message).getBody())) {
                     response.add(new OrderImpl(order.getId(),
                             new HashMap<>(order.getProducts()),
                             order.getTimestamp(),
@@ -220,31 +220,32 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         int i = Integer.parseInt(args[1]);
         int totalServerCount = Integer.parseInt(args[2]);
         String serverVersion = args[3];
-        Connection connection = initDatabase(serverName, 9000 + i);
-        // TODO erro
+        String connection = initDatabase(serverName, 9000 + i);
         initServer(serverName + "(" + serverVersion + ")", 6000 + i, connection, totalServerCount, "db/" + serverName + ".log");
         System.out.println(serverName + "(" + serverVersion + ")");
     }
 
-    private static Connection initDatabase(String serverName, int port) throws SQLException {
+    private static String initDatabase(String serverName, int port) throws SQLException {
         HSQLServer server = new HSQLServer();
         server.setPort(port);
         server.addDatabase(serverName);
         server.start();
+        String connectionStr = "jdbc:hsqldb:hsql://localhost:" + port + ";user=user;password=password";
         Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + port, "user", "password");
         DBInitialization dbInit = new DBInitialization(connection);
         if(!dbInit.exists()) {
             dbInit.init();
         }
-        return connection;
+        connection.close();
+        return connectionStr;
     }
 
     private static Server initServer(String serverName,
-                             int atomixPort,
-                             String dbStringConnection,
-                             int totalServerCount,
-                             String logPath) throws Exception {
-        GandaGotaServerImpl server = new GandaGotaServerImpl(4803, serverName, atomixPort, dbStringConnection, totalServerCount, logPath);
+                                     int atomixPort,
+                                     String connection,
+                                     int totalServerCount,
+                                     String logPath) throws Exception {
+        GandaGotaServerImpl server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath);
         server.start();
         return server;
     }
