@@ -77,7 +77,7 @@ public class Certifier implements Serializable {
     }
 
     //Commit also increases current timestamp
-    public void commit(Map<String, OperationalSets> sets) {
+    public long commit(Map<String, OperationalSets> sets) {
         sets.forEach((table, set) -> {
             this.writesPerTable.putIfAbsent(table, new HashMap<>());
             this.writesPerTable.get(table).put(this.timestamp, set);
@@ -85,6 +85,7 @@ public class Certifier implements Serializable {
         try {
             rwl.writeLock().lock();
             this.timestamp++;
+            return this.timestamp;
         }finally {
             rwl.writeLock().unlock();
         }

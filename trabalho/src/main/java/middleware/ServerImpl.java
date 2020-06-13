@@ -185,7 +185,9 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             try {
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
-                    logReader.putTimeStamp(certifier.getTimestamp());
+                    long commitTs = certifier.getTimestamp();
+                    logReader.putTimeStamp(commitTs);
+                    save(commitTs, message.getSets());
                     databaseConnection.setAutoCommit(false);
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
                     certifier.commit(message.getSets());
@@ -237,7 +239,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         rebuildCertifier(map);
     }
 
-    public void save(Long timestamp, HashMap<String, OperationalSets> operations) throws SQLException, IOException {
+    public void save(Long timestamp, Map<String, OperationalSets> operations) throws SQLException, IOException {
         for (Map.Entry<String, OperationalSets> operation : operations.entrySet()) {
             PreparedStatement ps = databaseConnection.prepareStatement("INSERT INTO \"__certifier\" (\"timestamp\", \"table_name\", \"keys\") VALUES (?, ?, ?)");
             String table = operation.getKey();
