@@ -20,8 +20,7 @@ public class CurrentOrderCleaner {
         this.tmax = tmax.toMillis();
     }
 
-    public boolean clean() throws SQLException {
-        long currentTime = Calendar.getInstance().getTime().getTime();
+    public boolean clean(long currentTime) throws SQLException {
         long threshold = currentTime - tmax;
         Calendar debugCalender = Calendar.getInstance();
         debugCalender.setTimeInMillis(threshold);

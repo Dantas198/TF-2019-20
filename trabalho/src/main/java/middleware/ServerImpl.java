@@ -17,12 +17,8 @@ import middleware.message.replication.FullState;
 import middleware.reader.Pair;
 import spread.SpreadException;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.*;
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -111,7 +107,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     public abstract void rollback(CertifyWriteMessage<?> message);
 
 
-    public abstract void handleGlobalEvent(GlobalEvent e);
+    public abstract void handleGlobalEvent(GlobalEventMessage e);
 
     public void pause() {
         isPaused = true;
@@ -212,10 +208,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         }, certifierExecutor);
     }
 
-    protected CompletableFuture<Void> handleGlobalEvent(GlobalEventMessage e){
-        return CompletableFuture.runAsync(() -> handleGlobalEvent(e.getBody()));
-    }
-
     protected CompletableFuture<Long> getSafeToDeleteTimestamp(){
         return CompletableFuture.supplyAsync(() -> certifier.getSafeToDeleteTimestamp(), certifierExecutor);
     }
@@ -226,6 +218,39 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     public void rebuildCertifier(HashMap<String, HashMap<Long, OperationalSets>> c){
         this.certifier.addState(c);
+    }
+
+    public void rebuildCertifier() throws SQLException, IOException, ClassNotFoundException {
+        HashMap<String, HashMap<Long, OperationalSets>> map = new HashMap<>();
+        ResultSet rs = databaseConnection.prepareCall("SELECT * FROM \"__certifier\"").executeQuery();
+        while(rs.next()) {
+            String table = rs.getString("table");
+            long timestamp = rs.getLong("timestamp");
+            byte [] data = Base64.getDecoder().decode(rs.getString("keys"));
+            ObjectInputStream ois = new ObjectInputStream(
+                    new ByteArrayInputStream(data));
+            OperationalSets operationalSets = (OperationalSets) ois.readObject();
+            map.computeIfAbsent(table, k -> new HashMap<>()).put(timestamp, operationalSets);
+            this.certifier.setTimestamp(Long.max(this.certifier.getTimestamp(), timestamp));
+            this.certifier.setLowWaterMark(Long.min(this.certifier.getLowWaterMark(), timestamp));
+        }
+        rebuildCertifier(map);
+    }
+
+    public void save(Long timestamp, HashMap<String, OperationalSets> operations) throws SQLException, IOException {
+        for (Map.Entry<String, OperationalSets> operation : operations.entrySet()) {
+            PreparedStatement ps = databaseConnection.prepareStatement("INSERT INTO \"__certifier\" (\"timestamp\", \"table_name\", \"keys\") VALUES (?, ?, ?)");
+            String table = operation.getKey();
+            OperationalSets operationalSets = operation.getValue();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream( baos );
+            oos.writeObject( operationalSets );
+            oos.close();
+            String operationalSetsEncoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+            ps.setString(1, table);
+            ps.setLong(2, timestamp);
+            ps.setString(3, operationalSetsEncoded);
+        }
     }
 
     private void sendReply(Message message, Address address) {
@@ -332,5 +357,9 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
         } else {
             return -1;
         }
+    }
+
+    public GlobalEventMessage createEvent(GlobalEvent e) {
+        return new GlobalEventMessage(e);
     }
 }

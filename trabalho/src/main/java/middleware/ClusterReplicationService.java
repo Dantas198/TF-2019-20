@@ -334,8 +334,8 @@ public class ClusterReplicationService {
 
     private void handleGlobalEventMessage(GlobalEventMessage msg){
         System.out.println(privateName + ": RegularMessage received -> GlobalEventMessage");
-        server.handleGlobalEvent(msg)
-            .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
+        server.handleGlobalEvent(msg);
+        scheduleGlobalEvent(msg.getBody());
     }
 
     private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {
@@ -367,7 +367,10 @@ public class ClusterReplicationService {
         executor.schedule(() -> {
             if (!imLeader) return;
             try {
-                floodMessage(new GlobalEventMessage(e));
+                GlobalEventMessage globalEventMessage = server.createEvent(e);
+                if(globalEventMessage != null) {
+                    floodMessage(globalEventMessage);
+                }
             } catch (Exception ex) {
                 ex.printStackTrace();
             }

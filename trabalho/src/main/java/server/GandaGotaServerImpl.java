@@ -24,11 +24,13 @@ import middleware.GlobalEvent;
 import middleware.Server;
 import middleware.certifier.*;
 import middleware.ServerImpl;
+import middleware.dbutils.ConnectionReaderManager;
 import middleware.message.ContentMessage;
 import middleware.message.ErrorMessage;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
+import middleware.message.replication.GlobalEventMessage;
 
 
 import java.io.Serializable;
@@ -37,17 +39,15 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
-    private SuperMarketImpl superMarket;
     private Connection connection;
-    private DAO<String, Order> orderDAO;
-    private DAO<String, Product> productDAO;
-    private DAO<String, Customer> customerDAO;
-    private DAO<String, Order> orderCertifierDAO;
     private Duration tmax = Duration.ofSeconds(30);
     private CurrentOrderCleaner currentOrderCleaner;
+    private ConnectionReaderManager<Connection> connectionManager;
+    private int maxConnection = 20;
 
     public GandaGotaServerImpl(int spreadPort,
                                String privateName,
@@ -56,33 +56,26 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                int totalServerCount,
                                String logPath) throws Exception {
         super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>(Collections.singletonList(new GlobalEvent("", 1))));
-
+        this.connectionManager = new ConnectionReaderManagerImpl(maxConnection, dbStrConnection);
         this.connection = DriverManager.getConnection(dbStrConnection);
-        this.orderDAO = new OrderSQLDAO(this.connection, id -> {
-            try {
-                return new OrderProductDAO(connection, id);
-            } catch (SQLException throwables) {
-                throwables.printStackTrace();
-            }
-            return null;
-        });
-        this.orderCertifierDAO = new OrderSQLDAO(connection, id -> {
-            try {
-                return new OrderProductDAO(connection, id);
-            } catch (SQLException throwables) {
-                throwables.printStackTrace();
-            }
-            return null;
-        });
-        this.productDAO = new ProductSQLDAO(this.connection);
-        this.customerDAO = new CustomerSQLDAO(this.connection);
-        this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null, Duration.ofMinutes(1));
         this.currentOrderCleaner = new CurrentOrderCleaner(connection, tmax);
     }
 
     @Override
     public Message handleMessage(Message message) {
         try {
+            Connection connection = connectionManager.assignRequest().get();
+            DAO<String, Order> orderDAO = new OrderSQLDAO(connection, id -> {
+                try {
+                    return new OrderProductDAO(connection, id);
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+                return null;
+            });
+            DAO<String, Product> productDAO = new ProductSQLDAO(connection);
+            DAO<String, Customer> customerDAO = new CustomerSQLDAO(connection);
+            SuperMarket superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null, tmax);
             if(message instanceof GetOrderMessage) {
                 String customer = ((GetOrderMessage) message).getBody();
                 Map<Product, Integer> result = superMarket.getCurrentOrderProducts(customer);
@@ -117,7 +110,23 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
      */
     @Override
     public boolean handleWriteMessage(WriteMessage<?> message, StateUpdates<String, Serializable> updates){
-        SuperMarket superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderCertifierDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates, tmax);
+        SuperMarket superMarket;
+        try {
+            Connection connection = connectionManager.assignRequest().get();
+            DAO<String, Order> orderDAO = new OrderSQLDAO(connection, id -> {
+                try {
+                    return new OrderProductDAO(connection, id);
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+                return null;
+            });
+            DAO<String, Product> productDAO = new ProductSQLDAO(connection);
+            DAO<String, Customer> customerDAO = new CustomerSQLDAO(connection);
+            superMarket = new SuperMarketImpl(new OrderCertifierDAO(orderDAO, updates), new ProductCertifierDAO(productDAO, updates), new CustomerCertifierDAO(customerDAO, updates), updates, tmax);
+        } catch (Exception e) {
+            return false;
+        }
         boolean success = false;
 
         if(message instanceof AddCustomerMessage) {
@@ -145,7 +154,18 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
+    public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException, ExecutionException, InterruptedException {
+        Connection connection = connectionManager.assignRequest().get();
+        DAO<String, Order> orderDAO = new OrderSQLDAO(connection, id -> {
+            try {
+                return new OrderProductDAO(connection, id);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return null;
+        });
+        DAO<String, Product> productDAO = new ProductSQLDAO(connection);
+        DAO<String, Customer> customerDAO = new CustomerSQLDAO(connection);
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
             String key = change.getKey();
@@ -194,49 +214,19 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void handleGlobalEvent(GlobalEvent e) {
-        // é sempre garbage collection
+    public GlobalEventMessage createEvent(GlobalEvent e) {
+        return new CurrentOrderCleanerEventMessage(e, Calendar.getInstance().getTimeInMillis());
+    }
+
+    @Override
+    public void handleGlobalEvent(GlobalEventMessage e) {
         try {
             System.out.println("Limpeza");
-            currentOrderCleaner.clean();
+            long time = ((CurrentOrderCleanerEventMessage) e).getTime();
+            currentOrderCleaner.clean(time);
         } catch (SQLException ex) {
             this.stop();
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        System.out.println("What is my id?");
-        int i = new Scanner(System.in).nextInt();
-        String serverName = "Server" + i;
-        int totalServerCount = Integer.parseInt(args[0]);
-        System.out.println("What is my version?");
-        String serverVersion = new Scanner(System.in).nextLine();
-        initServer(serverName + "" + serverVersion + "", 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", totalServerCount, "db/" + serverName + ".log");
-        System.out.println(serverName + "" + serverVersion + "");
-    }
-
-    private static String initDatabase(String serverName, int port) throws SQLException {
-        HSQLServer server = new HSQLServer();
-        server.setPort(port);
-        server.addDatabase(serverName);
-        server.start();
-        String connectionStr = "jdbc:hsqldb:hsql://localhost:" + port + ";user=user;password=password";
-        Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + port, "user", "password");
-        DBInitialization dbInit = new DBInitialization(connection);
-        if(!dbInit.exists()) {
-            dbInit.init();
-        }
-        connection.close();
-        return connectionStr;
-    }
-
-    private static Server initServer(String serverName,
-                                     int atomixPort,
-                                     String connection,
-                                     int totalServerCount,
-                                     String logPath) throws Exception {
-        GandaGotaServerImpl server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath);
-        server.start();
-        return server;
-    }
 }
