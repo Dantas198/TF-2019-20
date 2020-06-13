@@ -350,26 +350,11 @@ public class ClusterReplicationService {
         String script = null;
         long currentLowWaterMark = server.getCertifier().getLowWaterMark();
         long currentTimeStamp = server.getCertifier().getTimestamp();
-        HashMap<String, HashMap<Long, OperationalSets>> writes = new HashMap<>();
         ArrayList<Pair<String, Long>> queries = server.getLogReader().getLogsAfter(timeStamp);
-        HashMap<String, HashMap<Long, OperationalSets>> tables = server.getCertifier().getWritesPerTable();
         if(queries.size() == 0){
             script = Files.readString(FileSystems.getDefault().getPath("db/" + server.getPrivateName() + ".log"));
         }
-        if(currentLowWaterMark < timeStamp){
-            writes = tables;
-        } else {
-            for(String table : tables.keySet()){
-                writes.put(table, new HashMap<>());
-                for(Long tableTimestamp: tables.get(table).keySet()){
-                    if(tableTimestamp > timeStamp) {
-                        OperationalSets write = writes.get(table).get(tableTimestamp);
-                        writes.get(table).put(tableTimestamp, write);
-                    }
-                }
-            }
-        }
-        Message response = new DBReplicationMessage(script, queries, currentLowWaterMark, currentTimeStamp, writes);
+        Message response = new DBReplicationMessage(script, queries, currentLowWaterMark, currentTimeStamp);
         noAgreementFloodMessage(response, sender);
     }
 

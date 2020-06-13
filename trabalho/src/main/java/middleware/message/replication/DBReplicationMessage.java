@@ -14,7 +14,7 @@ public class DBReplicationMessage extends Message {
     private Long timeStamp;
 
     public DBReplicationMessage(String script, ArrayList<Pair<String, Long>> logs, long lowWaterMark,
-                                long timeStamp, HashMap<String, HashMap<Long, OperationalSets>> writeSets){
+                                long timeStamp){
         this.script = script;
         this.logs = logs;
         this.lowWaterMark = lowWaterMark;

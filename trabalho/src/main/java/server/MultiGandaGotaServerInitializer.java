@@ -17,7 +17,7 @@ public class MultiGandaGotaServerInitializer {
         server.setPort(port);
         server.addDatabase(serverName);
         server.start();
-        Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + port, "user", "password");
+        Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + port + ";user=user;password=password");
         DBInitialization dbInit = new DBInitialization(connection);
         if(!dbInit.exists()) {
             dbInit.init();
@@ -27,12 +27,12 @@ public class MultiGandaGotaServerInitializer {
 
     public Server initServer(String serverName,
                              int atomixPort,
-                             Connection connection,
+                             String strConnection,
                              int totalServerCount,
                              String logPath,
                              String timestampPath) {
         try {
-            Server server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath);
+            Server server = new GandaGotaServerImpl(4803, serverName, atomixPort, strConnection, totalServerCount, logPath);
             new Thread(() -> {
                 try {
                     server.start();
@@ -62,8 +62,7 @@ public class MultiGandaGotaServerInitializer {
             String serverName = "Server" + i;
             HSQLServer dbServer = init.initDatabase(serverName, 9000 + i);
             databases.put(i, dbServer);
-            Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + (9000 + i), "user", "password");
-            servers.put(i, init.initServer(serverName, 6000 + i, connection, numServers, "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
+            servers.put(i, init.initServer(serverName, 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", numServers, "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
         }
 
 
@@ -89,8 +88,7 @@ public class MultiGandaGotaServerInitializer {
                         String serverName = "Server" + idx;
                         String newServerName = "Server" + i++;
                         databases.get(idx).start();
-                        Connection connection = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:" + (9000 + idx), "user", "password");
-                        servers.put(i, init.initServer(newServerName, 6000 + idx, connection, numServers,
+                        servers.put(i, init.initServer(newServerName, 6000 + idx, "jdbc:hsqldb:hsql://localhost:" + (9000 + idx) + ";user=user;password=password", numServers,
                                 "db/Server" + idx + ".log", "timestamp/" + serverName));
                     }
                     break;

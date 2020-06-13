@@ -49,12 +49,12 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     public GandaGotaServerImpl(int spreadPort,
                                String privateName,
                                int atomixPort,
-                               Connection connection,
+                               String dbStrConnection,
                                int totalServerCount,
                                String logPath) throws Exception {
-        super(spreadPort, privateName, atomixPort, connection, totalServerCount, logPath, new ArrayList<>());
+        super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>());
         //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
-        this.connection = connection;
+        this.connection = super.getDatabaseConnection();
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
             try {
                 return new OrderProductDAO(connection, id);
@@ -135,7 +135,6 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         } else if (message instanceof UpdateProductMessage) {
             UpdateProductBody body = ((UpdateProductMessage) message).getBody();
             success = superMarket.updateProduct(body.getName(), body.getPrice(), body.getDescription(), body.getStock());
-
         }
 
         if(success)

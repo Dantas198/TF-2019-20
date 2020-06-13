@@ -23,6 +23,7 @@ import spread.SpreadException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
@@ -37,7 +38,8 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private final Serializer s;
     private final ManagedMessagingService mms;
     private final CompletableFuture<Void> runningCompletable;
-    private final Connection databaseConnection;
+
+    private Connection databaseConnection;
     private ReentrantLock rl;
 
     //TODO remove/update
@@ -46,15 +48,18 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private final String privateName;
     private final LogReader logReader;
     private boolean isPaused;
+    private String connectionURL;
 
     private final ExecutorService certifierExecutor;
     private final ExecutorService taskExecutor;
 
 
-    public ServerImpl(int spreadPort, String privateName, int atomixPort, Connection databaseConnection, int totalServerCount, String logPath, List<GlobalEvent> events){
+    public ServerImpl(int spreadPort, String privateName, int atomixPort, String connectionURL, int totalServerCount,
+                      String logPath, List<GlobalEvent> events) throws Exception{
         this.privateName = privateName;
         this.logReader = new LogReader(logPath);
-        this.databaseConnection = databaseConnection;
+        this.connectionURL = connectionURL;
+        this.databaseConnection = DriverManager.getConnection(connectionURL);
         this.replicationService = new ClusterReplicationService(spreadPort, privateName, this, totalServerCount, databaseConnection, events);
         this.runningCompletable = new CompletableFuture<>();
         this.rl = new ReentrantLock();
@@ -333,11 +338,20 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     }
 
 
+    public void resetDBConnection() throws Exception{
+        this.databaseConnection.close();
+        this.databaseConnection = DriverManager.getConnection(connectionURL);
+    }
+
     @Override
     public void stop() throws SpreadException {
         this.runningCompletable.complete(null);
         this.replicationService.stop();
         this.mms.stop();
+    }
+
+    public Connection getDatabaseConnection() {
+        return databaseConnection;
     }
 
     public String getPrivateName() {

@@ -77,6 +77,7 @@ public class Initializer {
         Certifier certifier = server.getCertifier();
         certifier.setLowWaterMark(lowWaterMark);
         certifier.setTimestamp(timeStamp);
+        server.resetDBConnection();
     }
 
 
