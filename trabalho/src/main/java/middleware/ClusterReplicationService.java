@@ -39,7 +39,6 @@ public class ClusterReplicationService {
     private List<CompletableFuture<Void>> stateRequests;
     private final List<GlobalEvent> events;
 
-
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection, List<GlobalEvent> events){
         this.totalServers = totalServers;
         this.privateName = privateName;
@@ -136,8 +135,11 @@ public class ClusterReplicationService {
                 try {
 
                     if (!initializer.isInitializing(spreadMessage)) {
-                        if(!started.isDone())
+                        if(!started.isDone()) {
                             started.complete(null);
+                        }
+                        if(isInMainPartition(members)) // no caso de estar em pausa por causa de partições
+                            server.unpause();
 
                         Message received = (Message) spreadMessage.getObject();
                         if(received instanceof CertifyWriteMessage){
@@ -159,7 +161,7 @@ public class ClusterReplicationService {
                             // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
                             handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         } else if (received instanceof GlobalEventMessage){
-                            server.handleGlobalEvent((GlobalEventMessage) received);
+                            handleGlobalEvent((GlobalEventMessage) received);
                         }
                     }
                 } catch (Exception e) {
@@ -241,8 +243,6 @@ public class ClusterReplicationService {
 
     private void handleSelfJoin(MembershipInfo info) {
         System.out.println(privateName + ": MembershipMessage received -> self join");
-        if(isInMainPartition(info.getMembers()))
-            server.unpause();
 
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);
@@ -335,7 +335,7 @@ public class ClusterReplicationService {
     private void handleGlobalEvent(GlobalEventMessage msg){
         System.out.println(privateName + ": RegularMessage received -> GlobalEventMessage");
         server.handleGlobalEvent(msg)
-            .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
+                .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
     }
 
     private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {
