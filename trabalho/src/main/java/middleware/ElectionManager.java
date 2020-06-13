@@ -41,6 +41,9 @@ public class ElectionManager {
      * @param members members of the group
      */
     public void joinedGroup(SpreadGroup[] members) {
+        for (SpreadGroup member:
+             members) {
+        }
         groupsLeftForLeader.addAll(Arrays.asList(members));
         groupsLeftForLeader.remove(spreadGroup);
     }

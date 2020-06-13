@@ -146,7 +146,6 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     @Override
     public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
-        this.connection.setAutoCommit(false);
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
             String key = change.getKey();
@@ -186,7 +185,6 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                 break;
             }
         }
-        this.connection.commit();
         System.out.println("Server : " + this.getPrivateName() + " commit");
     }
 
@@ -223,13 +221,14 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     public static void main(String[] args) throws Exception {
-        String serverName = args[0];
-        int i = Integer.parseInt(args[1]);
-        int totalServerCount = Integer.parseInt(args[2]);
-        String serverVersion = args[3];
-        String connection = initDatabase(serverName, 9000 + i);
-        initServer(serverName + "(" + serverVersion + ")", 6000 + i, connection, totalServerCount, "db/" + serverName + ".log");
-        System.out.println(serverName + "(" + serverVersion + ")");
+        System.out.println("What is my id?");
+        int i = new Scanner(System.in).nextInt();
+        String serverName = "Server" + i;
+        int totalServerCount = Integer.parseInt(args[0]);
+        System.out.println("What is my version?");
+        String serverVersion = new Scanner(System.in).nextLine();
+        initServer(serverName + "" + serverVersion + "", 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", totalServerCount, "db/" + serverName + ".log");
+        System.out.println(serverName + "" + serverVersion + "");
     }
 
     private static String initDatabase(String serverName, int port) throws SQLException {
