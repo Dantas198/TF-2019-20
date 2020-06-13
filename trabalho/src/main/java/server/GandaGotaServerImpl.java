@@ -4,7 +4,6 @@ import business.SuperMarket;
 import business.SuperMarketImpl;
 import business.customer.Customer;
 import business.data.DAO;
-import business.data.DBInitialization;
 import business.data.customer.CustomerCertifierDAO;
 import business.data.customer.CustomerSQLDAO;
 import business.data.order.OrderCertifierDAO;
@@ -21,7 +20,6 @@ import client.message.bodies.AddProductBody;
 import client.message.*;
 import client.message.bodies.UpdateProductBody;
 import middleware.GlobalEvent;
-import middleware.Server;
 import middleware.certifier.*;
 import middleware.ServerImpl;
 import middleware.dbutils.ConnectionReaderManager;
@@ -56,7 +54,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                int totalServerCount,
                                String logPath) throws Exception {
         super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>(Collections.singletonList(new GlobalEvent("", 1))));
-        this.connectionManager = new ConnectionReaderManagerImpl(maxConnection, dbStrConnection);
+        this.connectionManager = new ConnectionReaderManagerImpl(1, dbStrConnection);
         this.connection = DriverManager.getConnection(dbStrConnection);
         this.currentOrderCleaner = new CurrentOrderCleaner(connection, tmax);
     }
@@ -154,18 +152,17 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException, ExecutionException, InterruptedException {
-        Connection connection = connectionManager.assignRequest().get();
-        DAO<String, Order> orderDAO = new OrderSQLDAO(connection, id -> {
+    public void commit(Set<TaggedObject<String, Serializable>> changes, Connection databaseConnection) throws SQLException, ExecutionException, InterruptedException {
+        DAO<String, Order> orderDAO = new OrderSQLDAO(databaseConnection, id -> {
             try {
-                return new OrderProductDAO(connection, id);
+                return new OrderProductDAO(databaseConnection, id);
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
             return null;
         });
-        DAO<String, Product> productDAO = new ProductSQLDAO(connection);
-        DAO<String, Customer> customerDAO = new CustomerSQLDAO(connection);
+        DAO<String, Product> productDAO = new ProductSQLDAO(databaseConnection);
+        DAO<String, Customer> customerDAO = new CustomerSQLDAO(databaseConnection);
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
             String key = change.getKey();

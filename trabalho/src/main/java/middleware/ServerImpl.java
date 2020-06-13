@@ -13,7 +13,6 @@ import middleware.message.ContentMessage;
 import middleware.message.Message;
 import middleware.message.WriteMessage;
 import middleware.message.replication.CertifyWriteMessage;
-import middleware.message.replication.FullState;
 import middleware.reader.Pair;
 import spread.SpreadException;
 
@@ -69,6 +68,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
         this.certifierExecutor = Executors.newFixedThreadPool(1);
         this.taskExecutor = Executors.newFixedThreadPool(8);
+        rebuildCertifier();
 
     }
 
@@ -96,8 +96,9 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * Needs to make changes effective
      * server
      * @param changes Objects changed and have to persist
+     * @param databaseConnection
      */
-    public abstract void commit(Set<TaggedObject<String, Serializable>> changes) throws Exception;
+    public abstract void commit(Set<TaggedObject<String, Serializable>> changes, Connection databaseConnection) throws Exception;
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered invalid.
@@ -189,7 +190,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                     logReader.putTimeStamp(commitTs);
                     save(commitTs, message.getSets());
                     databaseConnection.setAutoCommit(false);
-                    commit((Set<TaggedObject<String, Serializable>>) message.getState());
+                    commit((Set<TaggedObject<String, Serializable>>) message.getState(), databaseConnection);
                     certifier.commit(message.getSets());
                     databaseConnection.commit();
                 } else {
@@ -203,10 +204,11 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 this.stop();
             }
 
-            if (cli != null)
+            if (cli != null) {
                 CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
                         message.getStartTimestamp()), taskExecutor);
                 sendReply(new ContentMessage<>(isWritable), cli);
+            }
         }, certifierExecutor);
     }
 
@@ -240,8 +242,8 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     }
 
     public void save(Long timestamp, Map<String, OperationalSets> operations) throws SQLException, IOException {
+        PreparedStatement ps = databaseConnection.prepareStatement("INSERT INTO \"__certifier\" (\"timestamp\", \"table_name\", \"keys\") VALUES (?, ?, ?)");
         for (Map.Entry<String, OperationalSets> operation : operations.entrySet()) {
-            PreparedStatement ps = databaseConnection.prepareStatement("INSERT INTO \"__certifier\" (\"timestamp\", \"table_name\", \"keys\") VALUES (?, ?, ?)");
             String table = operation.getKey();
             OperationalSets operationalSets = operation.getValue();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -249,9 +251,10 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
             oos.writeObject( operationalSets );
             oos.close();
             String operationalSetsEncoded = Base64.getEncoder().encodeToString(baos.toByteArray());
-            ps.setString(1, table);
-            ps.setLong(2, timestamp);
+            ps.setLong(1, timestamp);
+            ps.setString(2, table);
             ps.setString(3, operationalSetsEncoded);
+            ps.execute();
         }
     }
 
