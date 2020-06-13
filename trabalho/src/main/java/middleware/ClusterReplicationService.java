@@ -39,7 +39,6 @@ public class ClusterReplicationService {
     private List<CompletableFuture<Void>> stateRequests;
     private final List<GlobalEvent> events;
 
-
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection, List<GlobalEvent> events){
         this.totalServers = totalServers;
         this.privateName = privateName;
@@ -138,6 +137,9 @@ public class ClusterReplicationService {
                     if (!initializer.isInitializing(spreadMessage)) {
                         if(!started.isDone())
                             started.complete(null);
+
+                        if(isInMainPartition(members)) // no caso de estar em pausa por causa de partições
+                            server.unpause();
 
                         Message received = (Message) spreadMessage.getObject();
                         if(received instanceof CertifyWriteMessage){
@@ -241,8 +243,6 @@ public class ClusterReplicationService {
 
     private void handleSelfJoin(MembershipInfo info) {
         System.out.println(privateName + ": MembershipMessage received -> self join");
-        if(isInMainPartition(info.getMembers()))
-            server.unpause();
 
         SpreadGroup[] members = info.getMembers();
         electionManager.joinedGroup(members);
