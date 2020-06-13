@@ -68,7 +68,7 @@ public class Certifier implements Serializable {
                     if (v == null)
                         v = 0;
                     return ++v;
-                });
+            });
         }
     }
 
@@ -146,10 +146,6 @@ public class Certifier implements Serializable {
 
     public HashMap<String, HashMap<Long, OperationalSets>> getWritesPerTable(){
         return this.writesPerTable;
-    }
-
-    public HashMap<String, ConcurrentHashMap<Long, Integer>> getRunningTransactionsPerTable() {
-        return runningTransactionsPerTable;
     }
 
     public void setLowWaterMark(long lowWaterMark) {

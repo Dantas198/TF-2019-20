@@ -191,8 +191,8 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     }
 
     @Override
-    public void rollback(){
-        System.out.println("Server : " + this.getPrivateName() + " rollback");
+    public void rollback(CertifyWriteMessage<?> message){
+        System.out.println("Server : " + this.getPrivateName() + " rollback from message: " + message.getId());
     }
 
     @Override

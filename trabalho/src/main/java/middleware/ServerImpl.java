@@ -108,7 +108,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * Needs to cancel the transaction
      * server
      */
-    public abstract void rollback();
+    public abstract void rollback(CertifyWriteMessage<?> message);
 
 
     public abstract void handleGlobalEvent(GlobalEvent e);
@@ -209,7 +209,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
                 } else {
                     System.out.println("Server " + privateName + " rolling back write from db");
-                    rollback();
+                    rollback(message);
                 }
             } catch (Exception e) {
                 // TODO: verificar se parar o programa é a melhor opção e ver isto do sendReply
@@ -236,23 +236,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     protected CompletableFuture<Void> evictStoredWriteSets(long ts){
         return CompletableFuture.runAsync(() -> certifier.evictStoredWriteSets(ts), certifierExecutor);
-    }
-
-    protected CompletableFuture<FullState> getState(int lowerBound, long latestTimestamp){
-        return CompletableFuture.supplyAsync(() -> {
-            HashMap<String, HashMap<Long, OperationalSets>> writes = certifier.getWriteSetsByTimestamp(latestTimestamp);
-            try {
-                List<Pair<String, Long>> queriesWithTS = logReader.getQueries(lowerBound);
-                ArrayList<String> onlyQueries = new ArrayList<>();
-                queriesWithTS.forEach(pair -> {onlyQueries.add(pair.getKey());});
-                FullState state = new FullState(onlyQueries, writes);
-                logReader.resetQueries();
-                return state;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
-        }, certifierExecutor);
     }
 
     public void rebuildCertifier(HashMap<String, HashMap<Long, OperationalSets>> c){
