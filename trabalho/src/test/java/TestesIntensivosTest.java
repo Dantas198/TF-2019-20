@@ -2,9 +2,6 @@ import middleware.Server;
 import org.junit.Test;
 import server.HSQLServer;
 import server.MultiGandaGotaServerInitializer;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +24,10 @@ public class TestesIntensivosTest {
             String serverName = "Server" + i;
             HSQLServer dbServer = init.initDatabase(serverName, 9000 + i);
             databases.put(i, dbServer);
-            servers.put(i, init.initServer(serverName, 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", numServers, "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
+            servers.put(i, init.initServer(serverName, 6000 + i,
+                    "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password",
+                    numServers,
+                    "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
         }
 
 

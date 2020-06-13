@@ -47,6 +47,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     private DAO<String, Customer> customerDAO;
     private DAO<String, Order> orderCertifierDAO;
     private Duration tmax = Duration.ofMinutes(1);
+    private CurrentOrderCleaner currentOrderCleaner;
 
     public GandaGotaServerImpl(int spreadPort,
                                String privateName,
@@ -76,6 +77,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         this.productDAO = new ProductSQLDAO(this.connection);
         this.customerDAO = new CustomerSQLDAO(this.connection);
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null, Duration.ofMinutes(1));
+        this.currentOrderCleaner = new CurrentOrderCleaner(connection, Duration.ofSeconds(30));
     }
 
     @Override
@@ -195,7 +197,12 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     @Override
     public void handleGlobalEvent(GlobalEvent e) {
-        //TODO coisas
+        // é sempre garbage collection
+        try {
+            currentOrderCleaner.clean();
+        } catch (SQLException ex) {
+            this.stop();
+        }
     }
 
     @Override

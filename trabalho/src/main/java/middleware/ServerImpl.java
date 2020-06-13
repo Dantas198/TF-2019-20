@@ -215,11 +215,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 // TODO: verificar se parar o programa é a melhor opção e ver isto do sendReply
                 sendReply(new ContentMessage<>(false), cli);
                 // If exception should stop program
-                try {
-                    this.stop();
-                } catch (SpreadException spreadException) {
-                    spreadException.printStackTrace();
-                }
+                this.stop();
             }
             if(isWritable)
                 certifier.commit(message.getSets());
@@ -334,9 +330,13 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     }
 
     @Override
-    public void stop() throws SpreadException {
+    public void stop() {
         this.runningCompletable.complete(null);
-        this.replicationService.stop();
+        try {
+            this.replicationService.stop();
+        } catch (SpreadException e) {
+            System.exit(1);
+        }
         this.mms.stop();
     }
 
