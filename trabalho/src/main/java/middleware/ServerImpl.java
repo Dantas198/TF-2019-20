@@ -113,21 +113,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
 
     public abstract void handleGlobalEvent(GlobalEvent e);
 
-    /**
-     * Get of the state of the current Server
-     * @return the state of the current Server
-     */
-    @Deprecated
-    public abstract STATE getState();
-
-    /**
-     * Set of the state of the Server, used for extended classes to update their state, called when secondary server
-     * receives the updated version
-     * @param state the updated state of the server
-     */
-    @Deprecated
-    public abstract void setState(STATE state);
-
     public void pause() {
         isPaused = true;
     }
@@ -205,8 +190,10 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 if (isWritable) {
                     System.out.println("Server " + privateName + " commiting to db");
                     logReader.putTimeStamp(certifier.getTimestamp());
+                    databaseConnection.setAutoCommit(false);
                     commit((Set<TaggedObject<String, Serializable>>) message.getState());
-
+                    certifier.commit(message.getSets());
+                    databaseConnection.commit();
                 } else {
                     System.out.println("Server " + privateName + " rolling back write from db");
                     rollback(message);
@@ -217,8 +204,7 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
                 // If exception should stop program
                 this.stop();
             }
-            if(isWritable)
-                certifier.commit(message.getSets());
+
             if (cli != null)
                 CompletableFuture.runAsync(() -> certifier.shutDownLocalStartedTransaction(message.getTables(),
                         message.getStartTimestamp()), taskExecutor);

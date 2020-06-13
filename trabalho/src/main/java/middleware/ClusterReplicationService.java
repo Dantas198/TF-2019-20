@@ -135,9 +135,9 @@ public class ClusterReplicationService {
                 try {
 
                     if (!initializer.isInitializing(spreadMessage)) {
-                        if(!started.isDone()) {
+                        if(!started.isDone())
                             started.complete(null);
-                        }
+
                         if(isInMainPartition(members)) // no caso de estar em pausa por causa de partições
                             server.unpause();
 
@@ -161,7 +161,7 @@ public class ClusterReplicationService {
                             // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
                             handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         } else if (received instanceof GlobalEventMessage){
-                            handleGlobalEvent((GlobalEventMessage) received);
+                            handleGlobalEventMessage((GlobalEventMessage) received);
                         }
                     }
                 } catch (Exception e) {
@@ -332,10 +332,10 @@ public class ClusterReplicationService {
     }
 
 
-    private void handleGlobalEvent(GlobalEventMessage msg){
+    private void handleGlobalEventMessage(GlobalEventMessage msg){
         System.out.println(privateName + ": RegularMessage received -> GlobalEventMessage");
         server.handleGlobalEvent(msg)
-                .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
+            .thenAccept((x) -> scheduleGlobalEvent(msg.getBody()));
     }
 
     private void handleSendTimeStampMessage(SendTimeStampMessage msg, SpreadGroup sender) throws Exception {

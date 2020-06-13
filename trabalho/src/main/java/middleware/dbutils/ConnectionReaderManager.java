@@ -14,11 +14,11 @@ public abstract class ConnectionReaderManager<K> {
     private final int maxWriteConnectionNumber;
     private int currentConnections;
 
-    public ConnectionReaderManager(int maxWriteConnectionNumber){
+    public ConnectionReaderManager(int maxConnectionNumber){
         this.freeConnections = new ConcurrentLinkedQueue<>();
         this.readersWaiting = new ConcurrentLinkedQueue<>();
         this.rl = new ReentrantLock();
-        this.maxWriteConnectionNumber = maxWriteConnectionNumber;
+        this.maxWriteConnectionNumber = maxConnectionNumber;
         this.currentConnections = 0;
     }
 
@@ -40,8 +40,9 @@ public abstract class ConnectionReaderManager<K> {
             if (freeConnections.isEmpty()) {
                 offered_connection = produceConnection();
                 currentConnections++;
-            }else
+            }else {
                 offered_connection = freeConnections.poll();
+            }
 
             return CompletableFuture.completedFuture(offered_connection);
 

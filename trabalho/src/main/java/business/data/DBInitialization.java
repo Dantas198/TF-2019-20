@@ -49,7 +49,7 @@ public class DBInitialization {
                 "    \"product_name\" varchar(255),\n" +
                 "    \"quantity\" int,\n" +
                 "    PRIMARY KEY(\"order_id\", \"product_name\"),\n" +
-                "    FOREIGN KEY (\"order_id\") REFERENCES \"order\"(\"id\"),\n" +
+                "    FOREIGN KEY (\"order_id\") REFERENCES \"order\"(\"id\") ON DELETE CASCADE,\n" +
                 "    FOREIGN KEY (\"product_name\") REFERENCES \"product\"(\"name\")" +
                 "); ").execute();
         c.prepareCall("DROP TABLE IF EXISTS \"__certifier\";\n").execute();

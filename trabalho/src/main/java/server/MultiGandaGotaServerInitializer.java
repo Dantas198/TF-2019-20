@@ -29,8 +29,7 @@ public class MultiGandaGotaServerInitializer {
                              int atomixPort,
                              String strConnection,
                              int totalServerCount,
-                             String logPath,
-                             String timestampPath) {
+                             String logPath) {
         try {
             Server server = new GandaGotaServerImpl(4803, serverName, atomixPort, strConnection, totalServerCount, logPath);
             new Thread(() -> {
@@ -62,7 +61,7 @@ public class MultiGandaGotaServerInitializer {
             String serverName = "Server" + i;
             HSQLServer dbServer = init.initDatabase(serverName, 9000 + i);
             databases.put(i, dbServer);
-            servers.put(i, init.initServer(serverName, 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", numServers, "db/" + serverName + ".log", "timestamp/" + serverName + ".timestamp"));
+            servers.put(i, init.initServer(serverName, 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", numServers, "db/" + serverName + ".log"));
         }
 
 
@@ -89,7 +88,7 @@ public class MultiGandaGotaServerInitializer {
                         String newServerName = "Server" + i++;
                         databases.get(idx).start();
                         servers.put(i, init.initServer(newServerName, 6000 + idx, "jdbc:hsqldb:hsql://localhost:" + (9000 + idx) + ";user=user;password=password", numServers,
-                                "db/Server" + idx + ".log", "timestamp/" + serverName));
+                                "db/Server" + idx + ".log"));
                     }
                     break;
                     case "active": {

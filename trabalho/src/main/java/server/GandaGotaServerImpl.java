@@ -46,7 +46,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     private DAO<String, Product> productDAO;
     private DAO<String, Customer> customerDAO;
     private DAO<String, Order> orderCertifierDAO;
-    private Duration tmax = Duration.ofMinutes(1);
+    private Duration tmax = Duration.ofSeconds(30);
     private CurrentOrderCleaner currentOrderCleaner;
 
     public GandaGotaServerImpl(int spreadPort,
@@ -55,9 +55,9 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                String dbStrConnection,
                                int totalServerCount,
                                String logPath) throws Exception {
-        super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>());
+        super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>(Collections.singletonList(new GlobalEvent("", 1))));
 
-        this.connection = super.getDatabaseConnection();
+        this.connection = DriverManager.getConnection(dbStrConnection);
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
             try {
                 return new OrderProductDAO(connection, id);
@@ -77,7 +77,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         this.productDAO = new ProductSQLDAO(this.connection);
         this.customerDAO = new CustomerSQLDAO(this.connection);
         this.superMarket = new SuperMarketImpl(orderDAO, productDAO, customerDAO, null, Duration.ofMinutes(1));
-        this.currentOrderCleaner = new CurrentOrderCleaner(connection, Duration.ofSeconds(30));
+        this.currentOrderCleaner = new CurrentOrderCleaner(connection, tmax);
     }
 
     @Override
@@ -146,7 +146,6 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     @Override
     public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
-        this.connection.setAutoCommit(false);
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
             String key = change.getKey();
@@ -186,7 +185,6 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                 break;
             }
         }
-        this.connection.commit();
         System.out.println("Server : " + this.getPrivateName() + " commit");
     }
 
@@ -199,37 +197,22 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
     public void handleGlobalEvent(GlobalEvent e) {
         // é sempre garbage collection
         try {
+            System.out.println("Limpeza");
             currentOrderCleaner.clean();
         } catch (SQLException ex) {
             this.stop();
         }
     }
 
-    @Override
-    public ArrayList<String> getState() {
-        return null;
-    }
-
-    @Override
-    public void setState(ArrayList<String> queries) {
-        try {
-            Connection c = DriverManager.getConnection("jdbc:hsqldb:hsql://localhost:9001/1", "user", "password");
-            for(String query : queries) {
-                c.prepareStatement(query).execute();
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-    }
-
     public static void main(String[] args) throws Exception {
-        String serverName = args[0];
-        int i = Integer.parseInt(args[1]);
-        int totalServerCount = Integer.parseInt(args[2]);
-        String serverVersion = args[3];
-        String connection = initDatabase(serverName, 9000 + i);
-        initServer(serverName + "(" + serverVersion + ")", 6000 + i, connection, totalServerCount, "db/" + serverName + ".log");
-        System.out.println(serverName + "(" + serverVersion + ")");
+        System.out.println("What is my id?");
+        int i = new Scanner(System.in).nextInt();
+        String serverName = "Server" + i;
+        int totalServerCount = Integer.parseInt(args[0]);
+        System.out.println("What is my version?");
+        String serverVersion = new Scanner(System.in).nextLine();
+        initServer(serverName + "" + serverVersion + "", 6000 + i, "jdbc:hsqldb:hsql://localhost:" + (9000 + i) + ";user=user;password=password", totalServerCount, "db/" + serverName + ".log");
+        System.out.println(serverName + "" + serverVersion + "");
     }
 
     private static String initDatabase(String serverName, int port) throws SQLException {
