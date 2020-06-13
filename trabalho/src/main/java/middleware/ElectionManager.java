@@ -14,7 +14,6 @@ public class ElectionManager {
     private SpreadGroup privateGroup;
 
     //caso tenha de haver troca de grupos com o lider efetivo
-    private Set<SpreadGroup> possibleSpreadGroup;
     private SpreadGroup mainCandidate;
     private Long mainCandidateCommitedTimestamp;
     private boolean electionTerminated;
@@ -22,24 +21,24 @@ public class ElectionManager {
     public ElectionManager(SpreadGroup spreadGroup, SpreadGroup principalCandidate){
         this.groupsLeftForLeader = new HashSet<>();
         this.spreadGroup = spreadGroup;
-        this.possibleSpreadGroup = new HashSet<>();
         this.privateGroup = principalCandidate;
         this.mainCandidate = principalCandidate;
         this.electionTerminated = false;
     }
 
 
-    public void elect(){
+    public boolean elect(){
         this.electionTerminated = true;
         //se sou o líder não esperarei por mais ninguém
         if(this.mainCandidate.equals(this.privateGroup)){
             groupsLeftForLeader.clear();
+            return false;
         }
-        //se sou o oldest candidate "troco" de lugar com o lider efetivo.
+        //se sou o oldest candidate vai sair e entrar do grupo para tentar trocar lugar com o lider efetivo.
         else if(groupsLeftForLeader.isEmpty()){
-            this.groupsLeftForLeader = this.possibleSpreadGroup;
-            this.possibleSpreadGroup.clear();
+            return true;
         }
+        return false;
     }
 
     // caso o timestamp seja maior a nova proposta passa a ser o candidato principal
@@ -49,7 +48,6 @@ public class ElectionManager {
                         && candidate.toString().compareTo(privateGroup.toString()) > 0)){
 
             this.mainCandidate = candidate;
-            this.possibleSpreadGroup = lp.getGroupsLeftForLeader();
             this.mainCandidateCommitedTimestamp = lp.getTs();
         }
     }

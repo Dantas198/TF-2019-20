@@ -7,6 +7,7 @@ import middleware.reader.Pair;
 import spread.*;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.sql.Connection;
@@ -59,10 +60,14 @@ public class ClusterReplicationService {
     }
 
 
-    public CompletableFuture<Void> start() throws Exception {
+    public void joinGroup() throws SpreadException, UnknownHostException {
         this.spreadConnection.connect(InetAddress.getByName("localhost"), port, this.privateName,
                 false, true);
         this.spreadGroup.join(this.spreadConnection, "grupo");
+    }
+
+    public CompletableFuture<Void> start() throws Exception {
+        joinGroup();
         this.spreadConnection.add(messageListener());
         this.started = new CompletableFuture<>();
         return started;
@@ -188,7 +193,7 @@ public class ClusterReplicationService {
                     //já estamos num grupo maioritário e o líder ainda não foi eleito então elege-se
                     if(isInMainPartition() && !electionManager.isElectionTerminated()){
                         SpreadGroup privateGroup = spreadConnection.getPrivateGroup();
-                        electionManager.elect();
+                        boolean toSwitch = electionManager.elect();
                         //se sou o líder posso iniciar logo
                         if (electionManager.getMainCandidate().equals(privateGroup)){
                             System.out.println("Becoming leader");
@@ -200,8 +205,13 @@ public class ClusterReplicationService {
                         }
                         //não sou lider peço o estado a quem é
                         else{
-                            System.out.println("Not a leader. Requesting leader state");
-                            requestLeaderState(electionManager.getMainCandidate());
+                            if(toSwitch){
+                                joinGroup();
+                            }
+                            else{
+                                System.out.println("Not a leader. Requesting leader state");
+                                requestLeaderState(electionManager.getMainCandidate());
+                            }
                         }
                     }
                 }
@@ -285,7 +295,7 @@ public class ClusterReplicationService {
             if(imLeader || !electionManager.isElectionTerminated()) {
                 System.out.println(privateName + ": I'm leader. Requesting state diff from " + newMember);
                 Message message = new GetTimeStampMessage(new LeaderProposal(server.getTimestamp(), electionManager.getGroupsLeftForLeader()));
-                noAgreementFloodMessage(message, newMember);
+                noAgreementFloodMessage(message);
             }
         }
     }
