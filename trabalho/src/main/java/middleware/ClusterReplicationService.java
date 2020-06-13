@@ -287,7 +287,7 @@ public class ClusterReplicationService {
         SpreadGroup newMember = info.getJoined();
         if(newMember.equals(spreadConnection.getPrivateGroup())) {
             SpreadGroup[] members = info.getMembers();
-            this.electionManager = new ElectionManager(this.spreadGroup, spreadConnection.getPrivateGroup());
+            this.electionManager = new ElectionManager(this.spreadGroup, spreadConnection.getPrivateGroup(), server.getTimestamp());
             electionManager.joinedGroup(members);
         }else{
             System.out.println(privateName + ": MembershipMessage received -> join");

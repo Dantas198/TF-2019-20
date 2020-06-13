@@ -18,11 +18,12 @@ public class ElectionManager {
     private Long mainCandidateCommitedTimestamp;
     private boolean electionTerminated;
 
-    public ElectionManager(SpreadGroup spreadGroup, SpreadGroup principalCandidate){
+    public ElectionManager(SpreadGroup spreadGroup, SpreadGroup principalCandidate, Long mainCandidateCommitedTimestamp){
         this.groupsLeftForLeader = new HashSet<>();
         this.spreadGroup = spreadGroup;
         this.privateGroup = principalCandidate;
         this.mainCandidate = principalCandidate;
+        this.mainCandidateCommitedTimestamp = mainCandidateCommitedTimestamp;
         this.electionTerminated = false;
     }
 
