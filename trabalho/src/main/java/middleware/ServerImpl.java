@@ -39,7 +39,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
     private Connection databaseConnection;
     private ReentrantLock rl;
 
-    //TODO remove/update
     private final Map<String, Address> writesRequests;
     public Certifier certifier;
     private final String privateName;
@@ -95,14 +94,6 @@ public abstract class ServerImpl<STATE extends Serializable> implements Server {
      * @return the message body of the response
      */
     public abstract boolean handleWriteMessage(WriteMessage<?> message, StateUpdates<String, Serializable> updates);
-
-    /**
-     * Called from handleCertifierAnswer when a certified write operation arrived at a replicated server.
-     * Needs to persist the incoming changes
-     * server
-     * @param message contains the state to persist
-     */
-    public abstract void updateStateFromCommitedWrite(CertifyWriteMessage<?> message);
 
     /**
      * Called from handleCertifierAnswer when a write request was made and is considered valid.

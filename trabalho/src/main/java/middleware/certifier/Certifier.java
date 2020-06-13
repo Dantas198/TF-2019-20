@@ -10,9 +10,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Class that deals with certification logic.
  */
 
-
-//TODO atrasar decremento na rounda para não atrasar escritas
-
 public class Certifier implements Serializable {
 
     //Last garbage collected timestamp limit
@@ -27,7 +24,6 @@ public class Certifier implements Serializable {
     private final HashMap<String, ConcurrentHashMap<Long, Integer>> runningTransactionsPerTable;
 
     //Stores the changes commited on a certain timestamp
-    //TODO concurrent tbm?
     private final HashMap<String, HashMap<Long, OperationalSets>> writesPerTable;
 
     public Certifier(){
@@ -36,14 +32,6 @@ public class Certifier implements Serializable {
         this.runningTransactionsPerTable = new HashMap<>();
         this.writesPerTable = new HashMap<>();
         this.rwl = new ReentrantReadWriteLock();
-    }
-
-
-    public Certifier(Certifier c){
-        this.lowWaterMark = c.getLowWaterMark();
-        this.timestamp = c.getTimestamp();
-        this.runningTransactionsPerTable = new HashMap<>();
-        this.writesPerTable = new HashMap<>(c.getWritesPerTable());
     }
 
     public void addState(HashMap<String, HashMap<Long, OperationalSets>> c){

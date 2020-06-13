@@ -1,6 +1,5 @@
 package middleware;
 
-import middleware.certifier.OperationalSets;
 import middleware.message.Message;
 import middleware.message.replication.*;
 import middleware.reader.Pair;
@@ -13,6 +12,7 @@ import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
 
+
 public class ClusterReplicationService {
     private final int totalServers;
     private final String privateName;
@@ -20,10 +20,6 @@ public class ClusterReplicationService {
     private final SpreadGroup spreadGroup;
     private final int port;
     private Connection dbConnection;
-
-    //Caso sejam necessário acks poderá ser utilizada esta estrutura
-    //private Map<String, List<Message>> cachedMessages;
-
     private final Initializer initializer;
     private final ElectionManager electionManager;
     private boolean imLeader;
@@ -42,6 +38,7 @@ public class ClusterReplicationService {
     private List<Long> timestamps;
     private List<CompletableFuture<Void>> stateRequests;
     private final List<GlobalEvent> events;
+
 
     public ClusterReplicationService(int spreadPort, String privateName, ServerImpl<?> server, int totalServers, Connection connection, List<GlobalEvent> events){
         this.totalServers = totalServers;
@@ -162,8 +159,7 @@ public class ClusterReplicationService {
                             // enviada pelo líder depois de receber o timestamp do GetTimeStampMessage
                             handleSendTimeStampMessage((SendTimeStampMessage) received, spreadMessage.getSender());
                         } else if (received instanceof GlobalEventMessage){
-
-
+                            server.handleGlobalEvent((GlobalEventMessage) received);
                         }
                     }
                 } catch (Exception e) {
@@ -238,8 +234,6 @@ public class ClusterReplicationService {
         System.out.println(privateName + ": Member: " + newMember);
         if(imLeader) {
             System.out.println(privateName + ": I'm leader. Requesting state diff from " + newMember);
-            //TODO URGENTISSIMO -> ENVIAR ESTADO CORRETO. De momento não funciona
-            //TODO enviar apenas o que interessa do certifier
             Message message = new GetTimeStampMessage();
             noAgreementFloodMessage(message, newMember);
         }

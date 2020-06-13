@@ -1,10 +1,7 @@
-import middleware.certifier.BitOperationSet;
 import middleware.certifier.Certifier;
-import middleware.certifier.NoTableDefinedException;
 import middleware.certifier.OperationalSets;
 import org.junit.Test;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,7 +31,7 @@ public class CertifierTest {
     }
 
     @Test
-    public void test() throws NoTableDefinedException {
+    public void test() {
         int running = 0;
 
         this.c = new Certifier();

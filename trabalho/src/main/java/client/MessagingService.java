@@ -69,19 +69,8 @@ public class MessagingService {
     @SuppressWarnings("unchecked")
     private class Request<R extends Message> {
 
-        // TODO timeout, enviar a outro servidor?
-        //  implementar primeiro no servidor para o caso de falhar antes de enviar resposta
         public R sendAndReceive(Message request) throws ExecutionException, InterruptedException {
             res = new CompletableFuture<>();
-            /*
-            ScheduledFuture<?> sf = scheduleTimeout(reqm);
-            //Caso a resposta tenha chegado cancela o timeout
-            res.whenComplete((m,t) -> {
-                if(t != null)
-                    t.printStackTrace();
-                sf.cancel(true);
-            });
-            */
             mms.sendAsync(chooseServer(), "request", s.encode(request));
             return (R) res.thenApply(cm -> {
                 System.out.println("Received message: "+ cm);

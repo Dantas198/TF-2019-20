@@ -55,7 +55,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
                                int totalServerCount,
                                String logPath) throws Exception {
         super(spreadPort, privateName, atomixPort, dbStrConnection, totalServerCount, logPath, new ArrayList<>());
-        //TODO tmax não poderá aumentar/diminuir consoante a quantidade de aborts
+
         this.connection = super.getDatabaseConnection();
         this.orderDAO = new OrderSQLDAO(this.connection, id -> {
             try {
@@ -142,25 +142,9 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         return success;
     }
 
-
-
-    @Override
-    public void updateStateFromCommitedWrite(CertifyWriteMessage<?> message) {
-        //TODO
-        //TESTE
-        System.out.println("Server : " + this.getPrivateName() + " update state from commit");
-        try {
-            commit((Set<TaggedObject<String, Serializable>>) message.getState());
-        } catch (Exception e) {
-            //TODO: Se algo corre mal, o servidor tem de parar para ficar consistente??
-            System.exit(1);
-        }
-    }
-
     @Override
     public void commit(Set<TaggedObject<String, Serializable>> changes) throws SQLException {
         this.connection.setAutoCommit(false);
-        //TODO verificar se é necessário transação
         for (TaggedObject<String, Serializable> change : changes) {
             String tag = change.getTag();
             String key = change.getKey();
@@ -211,7 +195,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     @Override
     public void handleGlobalEvent(GlobalEvent e) {
-        //TODO
+        //TODO coisas
     }
 
     @Override
@@ -237,6 +221,7 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
         int totalServerCount = Integer.parseInt(args[2]);
         String serverVersion = args[3];
         Connection connection = initDatabase(serverName, 9000 + i);
+        // TODO erro
         initServer(serverName + "(" + serverVersion + ")", 6000 + i, connection, totalServerCount, "db/" + serverName + ".log");
         System.out.println(serverName + "(" + serverVersion + ")");
     }
@@ -256,10 +241,10 @@ public class GandaGotaServerImpl extends ServerImpl<ArrayList<String>> {
 
     private static Server initServer(String serverName,
                              int atomixPort,
-                             Connection connection,
+                             String dbStringConnection,
                              int totalServerCount,
                              String logPath) throws Exception {
-        GandaGotaServerImpl server = new GandaGotaServerImpl(4803, serverName, atomixPort, connection, totalServerCount, logPath);
+        GandaGotaServerImpl server = new GandaGotaServerImpl(4803, serverName, atomixPort, dbStringConnection, totalServerCount, logPath);
         server.start();
         return server;
     }

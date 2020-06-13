@@ -45,7 +45,6 @@ public class CustomerOldOrderDAO extends DAOSet<Order> {
 
             @Override
             public PreparedStatement add(Order o) throws SQLException {
-                // TODO: Não inserir se já for a order atual
                 PreparedStatement ps = c.prepareStatement("REPLACE INTO \"order\" (\"id\", \"customer_id\") VALUES (?, ?)");
                 ps.setString(1, o.getId());
                 ps.setString(2, current_id);
